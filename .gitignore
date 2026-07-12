@@ -1,0 +1,11 @@
+node_modules/
+dist/
+public/mediapipe/
+.playwright-cli/
+output/playwright/
+.DS_Store
+**/.DS_Store
+
+# Local reference material, not required to run the demo.
+摄影头识别手部识别参考/
+黑洞试验Dome/

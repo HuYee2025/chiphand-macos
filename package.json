@@ -1,0 +1,28 @@
+{
+  "name": "wormhole-hand-control-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assets:sync": "node scripts/sync-mediapipe-assets.mjs",
+    "predev": "npm run assets:sync",
+    "dev": "vite --host 127.0.0.1",
+    "prebuild": "npm run assets:sync",
+    "build": "tsc --noEmit && vite build",
+    "test": "tsx --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "prepreview": "npm run assets:sync",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.35",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/three": "0.185.0",
+    "tsx": "4.23.0",
+    "typescript": "6.0.3",
+    "vite": "8.1.4"
+  }
+}

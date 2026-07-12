@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="使用摄像头和单手控制方向的无限循环黑洞 Web Demo。" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>黑洞手势控制实验</title>
+  </head>
+  <body>
+    <main id="app" aria-label="黑洞手势控制实验">
+      <div id="scene-root" aria-hidden="true"></div>
+      <div class="vignette" aria-hidden="true"></div>
+
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MARS VANGUARD / INTERACTION STUDY</p>
+          <h1>WORMHOLE HAND CONTROL</h1>
+        </div>
+        <div class="status-cluster">
+          <span id="fps-status" class="status-chip status-chip--quiet">-- FPS</span>
+          <span id="tracking-status" class="status-chip">等待启动</span>
+        </div>
+      </header>
+
+      <section id="camera-panel" class="camera-panel" aria-label="摄像头手势识别预览">
+        <div class="camera-stage">
+          <video id="camera-video" autoplay playsinline muted></video>
+          <canvas id="landmark-canvas"></canvas>
+          <div id="camera-placeholder" class="camera-placeholder">
+            <span class="camera-placeholder__mark"></span>
+            <span>CAMERA OFFLINE</span>
+          </div>
+        </div>
+        <div class="camera-meta">
+          <div>
+            <span id="hand-label" class="camera-meta__label">NO HAND</span>
+            <strong id="gesture-label">等待摄像头</strong>
+          </div>
+          <button id="camera-hide" class="text-button" type="button">隐藏小窗</button>
+        </div>
+      </section>
+
+      <section id="intro-panel" class="intro-panel">
+        <p class="intro-panel__index">01 / CAMERA ACCESS</p>
+        <h2>举起一只手，控制虫洞方向</h2>
+        <p>手掌移动控制上下左右，保持左右倾斜让虫洞持续旋转。张开手继续前进，握拳暂停。摄像头画面只在本机处理。</p>
+        <button id="camera-start" class="primary-button" type="button">启动摄像头</button>
+        <span id="intro-error" class="intro-error" role="alert"></span>
+      </section>
+
+      <footer class="controlbar">
+        <div class="control-hint"><kbd>OPEN PALM</kbd><span>继续</span></div>
+        <div class="control-hint"><kbd>CLOSED FIST</kbd><span>暂停</span></div>
+        <div class="control-hint"><kbd>PALM ROLL</kbd><span>旋转虫洞</span></div>
+        <div class="control-hint control-hint--fallback"><kbd>POINTER</kbd><span>备用方向</span></div>
+        <button id="camera-show" class="icon-button is-concealed" type="button">显示摄像头</button>
+        <button id="pause-toggle" class="icon-button" type="button" aria-pressed="false">暂停</button>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
