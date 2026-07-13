@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>手势浏览控制</title>
+  </head>
+  <body>
+    <main class="panel-shell">
+      <header class="panel-header">
+        <div>
+          <p class="eyebrow">LOCAL CAMERA CONTROL</p>
+          <h1>手势浏览</h1>
+        </div>
+        <span id="runtime-status" class="status-chip">未启动</span>
+      </header>
+
+      <section class="camera-card" aria-label="摄像头识别画面">
+        <div class="camera-stage">
+          <video id="camera-video" autoplay playsinline muted></video>
+          <canvas id="landmark-canvas"></canvas>
+          <div id="camera-placeholder" class="camera-placeholder">
+            <span class="camera-mark" aria-hidden="true"></span>
+            <span>CAMERA OFF</span>
+          </div>
+        </div>
+        <div class="camera-meta">
+          <span id="hand-status">等待摄像头</span>
+          <strong id="gesture-status">挥动手掌控制网页</strong>
+        </div>
+      </section>
+
+      <section class="direction-card" aria-label="最近识别动作">
+        <p class="section-label">LAST ACTION</p>
+        <div class="direction-grid">
+          <span></span>
+          <button data-direction="up" type="button" tabindex="-1">↑<small>上滚</small></button>
+          <span></span>
+          <button data-direction="left" type="button" tabindex="-1">←<small>上一页</small></button>
+          <div id="last-action" class="last-action">—</div>
+          <button data-direction="right" type="button" tabindex="-1">→<small>下一页</small></button>
+          <span></span>
+          <button data-direction="down" type="button" tabindex="-1">↓<small>下滚</small></button>
+          <span></span>
+        </div>
+      </section>
+
+      <button id="camera-toggle" class="primary-button" type="button">启动摄像头</button>
+      <p id="panel-message" class="panel-message" role="status">画面只在本机处理，不会上传。</p>
+
+      <footer class="panel-help">
+        <p>张开手掌，快速挥动约五分之一画面。</p>
+        <p>切换标签页后，请在新页面重新点击插件图标。</p>
+      </footer>
+    </main>
+    <script type="module" src="./sidepanel.ts"></script>
+  </body>
+</html>

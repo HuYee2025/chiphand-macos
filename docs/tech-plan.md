@@ -5,6 +5,7 @@
 - Vite 8 + TypeScript 6。
 - Three.js 0.185：虫洞渲染。
 - `@mediapipe/tasks-vision` 0.10.35：`HandLandmarker` 21 点关键点和左右手识别。
+- Chrome Manifest V3、Side Panel、`activeTab`、`scripting`。
 - 原生 DOM/CSS、Web Worker、`getUserMedia`。
 
 ## 架构/模块
@@ -16,6 +17,10 @@
 - `InputController`：位置映射、10% 中央死区、6° 旋转死区、首次出现校准旋转零点和平滑；手掌倾斜量映射为持续旋转速度。
 - `HandDistanceCalibrator`：以手腕到掌指关节的平均画面尺寸估算相对距离，首次约 0.6 秒校准，输出平滑的 0.45×～2.4× 前进倍率。
 - `CameraOverlay`：镜像摄像头和红蓝手部骨架。
+- `SwipeDetector`：保存最近 360ms 手掌中心轨迹，按位移、持续时间和主方向识别四方向挥动；650ms 冷却后以稳定手掌或离手重新激活。
+- Extension Side Panel：持有摄像头、HandTracker、方向反馈和启动/停止生命周期。
+- Extension Service Worker：确认当前活动标签页授权、动态注入网页控制脚本并转发动作。
+- `PageActionAdapter`：通用适配器负责 75% 视口滚动和 ArrowLeft / ArrowRight；站点适配器后续按注册顺序扩展。
 
 ## 开发命令
 
@@ -25,6 +30,8 @@ npm run dev
 npm run typecheck
 npm test
 npm run build
+npm run build:demo
+npm run build:extension
 npm run preview
 ```
 
@@ -64,10 +71,14 @@ npm run preview
 
 - 静态 Web 应用，部署必须提供 HTTPS 才能使用摄像头。
 - `predev`、`prebuild` 会把 MediaPipe WASM 和模型同步到本地静态资源目录。
-- 当前未发布；本地使用 localhost。
+- `dist/` 为黑洞 Demo 与验收页；`dist-extension/` 为可加载的 Chrome 解压扩展。
+- Extension 使用 Chrome 114+，只申请 `activeTab`、`scripting`、`sidePanel`，不申请 `<all_urls>`。
+- 当前未发布 Chrome Web Store；通过 `chrome://extensions/` 加载 `dist-extension/`。
 
 ## 技术限制
 
 - MediaPipe 控制台会输出 WebGL 初始化和 `NORM_RECT` 警告，已确认不影响识别。
 - Three.js 主包构建后约 539 kB，Vite 会给出 chunk 体积警告，但不影响构建与 60 FPS 实测。
 - Windows 与手机尚需对应真机验收。
+- Chrome 内置页、Chrome Web Store 等受保护页面禁止脚本注入。
+- 左右翻页使用合成 KeyboardEvent，`isTrusted` 为 false；拒绝合成事件的网站需要专用适配器。

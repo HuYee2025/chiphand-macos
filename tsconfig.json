@@ -9,12 +9,12 @@
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "types": ["node", "vite/client"],
+    "types": ["node", "vite/client", "chrome"],
     "noEmit": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "tests"]
+  "include": ["src", "tests", "extension", "vite.extension.config.ts"]
 }

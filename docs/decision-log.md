@@ -62,3 +62,26 @@
 影响：
 - 摄像头开启后的黑洞渲染恢复约 60 FPS；模型和 WASM 从本项目同源加载。
 - 极端 90° 侧面仍受单目 RGB 摄像头物理限制，但短时遮挡和拇指收拢的体验会明显改善。
+
+## 2026-07-13 Chrome 插件优先
+
+背景：
+- 用户希望把摄像头手势能力用于网页或 MacBook 控制，具体载体尚未确定。
+- 现有 HandLandmarker、Worker、平滑和骨架预览均为 Web 技术，可以直接复用。
+
+决策：
+- 第一版做 Chrome Manifest V3 插件，不做 macOS 原生应用。
+- 使用 Side Panel 常驻摄像头和模型；Service Worker 与动态注入脚本控制当前标签页。
+- 上下挥动滚动 75% 视口；左右挥动发送 ArrowLeft / ArrowRight，不控制浏览器历史。
+- 使用 `activeTab`、`scripting`、`sidePanel` 最小权限，不申请 `<all_urls>`。
+- 通用动作后预留 `PageActionAdapter`，按网站逐步补兼容。
+
+原因：
+- 浏览器路线可最大化复用现有代码，最快验证用户是否真的愿意使用手势浏览。
+- Side Panel 比点击后关闭的 Popup 更适合持续摄像头识别。
+- 合成键盘事件不是可信硬件输入，提前建立适配层比宣称全站通用更诚实。
+
+影响：
+- 新增 `dist-extension/` 构建，黑洞 Demo 继续保留在 `dist/`。
+- 切换新标签页后需要重新点击插件图标授权。
+- 如果浏览器版验证成功，再复用 `SwipeDetector` 开发 macOS 全局输入层。

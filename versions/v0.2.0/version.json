@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "date": "2026-07-13",
+  "tag": "v0.2.0",
+  "summary": "Chrome side-panel gesture browsing extension MVP.",
+  "scope": [
+    "four-direction discrete swipe detector with cooldown and rearming",
+    "Chrome Manifest V3 side panel and active-tab action bridge",
+    "generic page scrolling and ArrowLeft or ArrowRight page actions",
+    "editable-field protection and deterministic gesture test page",
+    "separate web demo and extension production builds"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test (20 tests, including 10 swipes per direction and two-minute jitter simulation)",
+    "npm run build",
+    "real Chromium gesture test page inspection"
+  ],
+  "notes": [
+    "dist-extension is generated and intentionally not tracked.",
+    "Synthetic keyboard events are not trusted and may require site-specific adapters.",
+    "Final physical-hand acceptance remains a user test on the target MacBook."
+  ]
+}
