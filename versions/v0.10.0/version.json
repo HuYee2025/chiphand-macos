@@ -1,0 +1,21 @@
+{
+  "version": "0.10.0",
+  "date": "2026-07-14",
+  "tag": "v0.10.0",
+  "summary": "Repair the page overlay and add persistent gesture sensitivity controls.",
+  "scope": [
+    "Invert the real webpage backdrop under the pinch cursor.",
+    "Restore the page receiver when the native controller closes.",
+    "Persist swipe and pinch sensitivity sliders locally."
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build",
+    "Static controller layout inspection at 300x350 and 300x540"
+  ],
+  "notes": [
+    "The storage permission contains only two numeric sensitivity preferences.",
+    "Real camera behavior after closing the native controller still requires Chrome verification."
+  ]
+}

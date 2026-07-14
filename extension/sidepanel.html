@@ -32,6 +32,22 @@
       </section>
 
       <button id="camera-toggle" class="primary-button" type="button">开启摄像头</button>
+      <button id="advanced-toggle" class="advanced-toggle" type="button" aria-expanded="false" aria-controls="advanced-settings">
+        高级设置
+        <span aria-hidden="true">＋</span>
+      </button>
+      <section id="advanced-settings" class="advanced-settings" hidden aria-label="手势灵敏度设置">
+        <label class="setting-row" for="swipe-sensitivity">
+          <span>左右挥手灵敏度 <output id="swipe-sensitivity-value" for="swipe-sensitivity">50 · 标准</output></span>
+          <input id="swipe-sensitivity" type="range" min="0" max="100" step="1" value="50" />
+          <small>数值越大，越短的横向挥动即可翻屏。</small>
+        </label>
+        <label class="setting-row" for="pinch-sensitivity">
+          <span>手指捏合灵敏度 <output id="pinch-sensitivity-value" for="pinch-sensitivity">50 · 标准</output></span>
+          <input id="pinch-sensitivity" type="range" min="0" max="100" step="1" value="50" />
+          <small>数值越大，允许拇指与食指留有更小间隙。</small>
+        </label>
+      </section>
       <p id="panel-message" class="panel-message" role="status"></p>
     </main>
     <script type="module" src="./sidepanel.ts"></script>

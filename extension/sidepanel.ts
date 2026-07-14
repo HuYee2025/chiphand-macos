@@ -1,5 +1,6 @@
 import "./sidepanel.css";
 import { CameraOverlay } from "../src/camera-overlay";
+import { DEFAULT_GESTURE_SETTINGS, normalizeGestureSettings, sensitivityLabel, type GestureSettings } from "../src/gesture-settings";
 import { EMPTY_HAND_STATE } from "../src/types";
 import { isTrackerEvent, type ExtensionRequest, type ExtensionResponse } from "./message-types";
 
@@ -14,6 +15,12 @@ const placeholderLabel = required<HTMLElement>("#camera-placeholder-label");
 const previewVideo = required<HTMLVideoElement>("#camera-video");
 const previewCanvas = required<HTMLCanvasElement>("#landmark-canvas");
 const toggle = required<HTMLButtonElement>("#camera-toggle");
+const advancedToggle = required<HTMLButtonElement>("#advanced-toggle");
+const advancedSettings = required<HTMLElement>("#advanced-settings");
+const swipeSensitivity = required<HTMLInputElement>("#swipe-sensitivity");
+const pinchSensitivity = required<HTMLInputElement>("#pinch-sensitivity");
+const swipeSensitivityValue = required<HTMLOutputElement>("#swipe-sensitivity-value");
+const pinchSensitivityValue = required<HTMLOutputElement>("#pinch-sensitivity-value");
 const runtimeStatus = required<HTMLElement>("#runtime-status");
 const handStatus = required<HTMLElement>("#hand-status");
 const gestureStatus = required<HTMLElement>("#gesture-status");
@@ -26,6 +33,8 @@ let pointerInside = false;
 let closeTimer: number | null = null;
 let previewStream: MediaStream | null = null;
 let previewStarting: Promise<void> | null = null;
+let advancedOpen = false;
+let settingsSaveTimer: number | null = null;
 const LEAVE_CLOSE_MS = 450;
 const targetTabId = (() => {
   const value = Number(new URLSearchParams(window.location.search).get("tabId"));
@@ -60,6 +69,42 @@ function setCameraToggle(active: boolean): void {
   toggle.textContent = label;
   toggle.setAttribute("aria-label", label);
   toggle.title = label;
+}
+
+function formatSensitivity(value: number): string {
+  return `${value} · ${sensitivityLabel(value)}`;
+}
+
+function readSettingsFromControls(): GestureSettings {
+  return normalizeGestureSettings({
+    swipeSensitivity: Number(swipeSensitivity.value),
+    pinchSensitivity: Number(pinchSensitivity.value),
+  });
+}
+
+function renderSettings(settings: GestureSettings): void {
+  const normalized = normalizeGestureSettings(settings);
+  swipeSensitivity.value = String(normalized.swipeSensitivity);
+  pinchSensitivity.value = String(normalized.pinchSensitivity);
+  swipeSensitivityValue.value = formatSensitivity(normalized.swipeSensitivity);
+  pinchSensitivityValue.value = formatSensitivity(normalized.pinchSensitivity);
+}
+
+function setAdvancedOpen(expanded: boolean): void {
+  advancedOpen = expanded;
+  advancedSettings.hidden = !expanded;
+  advancedToggle.setAttribute("aria-expanded", String(expanded));
+  void sendRequest({ type: "set-controller-advanced", expanded, ...(targetTabId === null ? {} : { tabId: targetTabId }) });
+}
+
+function scheduleSettingsSave(): void {
+  if (settingsSaveTimer !== null) window.clearTimeout(settingsSaveTimer);
+  settingsSaveTimer = window.setTimeout(() => {
+    settingsSaveTimer = null;
+    void sendRequest({ type: "update-gesture-settings", settings: readSettingsFromControls() }).then((response) => {
+      if (!response.ok) showMessage(response.message, true);
+    });
+  }, 90);
 }
 
 async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse> {
@@ -175,6 +220,14 @@ toggle.addEventListener("click", () => {
   else void startCamera();
 });
 
+advancedToggle.addEventListener("click", () => setAdvancedOpen(!advancedOpen));
+for (const control of [swipeSensitivity, pinchSensitivity]) {
+  control.addEventListener("input", () => {
+    renderSettings(readSettingsFromControls());
+    scheduleSettingsSave();
+  });
+}
+
 panelShell.addEventListener("pointerenter", () => {
   pointerInside = true;
   clearAutoClose();
@@ -217,9 +270,14 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
 
 window.addEventListener("pagehide", () => {
   clearAutoClose();
+  if (settingsSaveTimer !== null) window.clearTimeout(settingsSaveTimer);
   stopPreview();
 });
 window.addEventListener("blur", () => {
   if (running) scheduleAutoClose(120);
 });
-void refreshBackgroundStatus();
+void (async () => {
+  const response = await sendRequest({ type: "get-gesture-settings" });
+  renderSettings(response.settings ?? DEFAULT_GESTURE_SETTINGS);
+  await refreshBackgroundStatus();
+})();

@@ -1,4 +1,5 @@
 import type { GestureAction, HandControlState, SwipeDirection } from "../src/types";
+import type { GestureSettings } from "../src/gesture-settings";
 
 export type ExtensionRequest =
   | { type: "activate-tab"; tabId?: number }
@@ -6,6 +7,9 @@ export type ExtensionRequest =
   | { type: "start-background-tracking"; tabId?: number }
   | { type: "stop-background-tracking" }
   | { type: "get-background-tracker-status" }
+  | { type: "get-gesture-settings" }
+  | { type: "update-gesture-settings"; settings: GestureSettings }
+  | { type: "set-controller-advanced"; expanded: boolean; tabId?: number }
   | {
       type: "gesture-action";
       action: GestureAction;
@@ -36,18 +40,21 @@ export type ExtensionResponse = {
   adapterId?: string;
   trackingActive?: boolean;
   tabId?: number;
+  settings?: GestureSettings;
 };
 
 export type OffscreenRequest =
   | { type: "offscreen-start-tracking"; tabId: number }
   | { type: "offscreen-stop-tracking" }
-  | { type: "offscreen-get-tracker-status" };
+  | { type: "offscreen-get-tracker-status" }
+  | { type: "offscreen-update-gesture-settings"; settings: GestureSettings };
 
 export type OffscreenResponse = {
   ok: boolean;
   active: boolean;
   message: string;
   tabId?: number;
+  settings?: GestureSettings;
 };
 
 export type TrackerEvent =
@@ -64,6 +71,9 @@ export function isExtensionRequest(message: unknown): message is ExtensionReques
     type === "start-background-tracking" ||
     type === "stop-background-tracking" ||
     type === "get-background-tracker-status" ||
+    type === "get-gesture-settings" ||
+    type === "update-gesture-settings" ||
+    type === "set-controller-advanced" ||
     type === "gesture-action" ||
     type === "pinch-scroll"
   );
@@ -72,7 +82,12 @@ export function isExtensionRequest(message: unknown): message is ExtensionReques
 export function isOffscreenRequest(message: unknown): message is OffscreenRequest {
   if (!message || typeof message !== "object" || !("type" in message)) return false;
   const type = (message as { type?: unknown }).type;
-  return type === "offscreen-start-tracking" || type === "offscreen-stop-tracking" || type === "offscreen-get-tracker-status";
+  return (
+    type === "offscreen-start-tracking" ||
+    type === "offscreen-stop-tracking" ||
+    type === "offscreen-get-tracker-status" ||
+    type === "offscreen-update-gesture-settings"
+  );
 }
 
 export function isTrackerEvent(message: unknown): message is TrackerEvent {

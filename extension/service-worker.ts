@@ -8,10 +8,13 @@ import {
   type OffscreenResponse,
   type TrackerEvent,
 } from "./message-types";
+import { normalizeGestureSettings, type GestureSettings } from "../src/gesture-settings";
 
 const OFFSCREEN_DOCUMENT = "offscreen.html";
 const CONTROLLER_WIDTH = 300;
 const CONTROLLER_HEIGHT = 350;
+const CONTROLLER_ADVANCED_HEIGHT = 540;
+const GESTURE_SETTINGS_KEY = "gestureSettings";
 let creatingOffscreenDocument: Promise<void> | null = null;
 const controllerWindowByTab = new Map<number, number>();
 
@@ -79,6 +82,24 @@ async function sendToOffscreen(request: OffscreenRequest): Promise<OffscreenResp
   return response;
 }
 
+async function getGestureSettings(): Promise<GestureSettings> {
+  const stored = await chrome.storage.local.get(GESTURE_SETTINGS_KEY);
+  return normalizeGestureSettings(stored[GESTURE_SETTINGS_KEY] as Partial<GestureSettings> | undefined);
+}
+
+async function saveGestureSettings(settings: GestureSettings): Promise<GestureSettings> {
+  const normalized = normalizeGestureSettings(settings);
+  await chrome.storage.local.set({ [GESTURE_SETTINGS_KEY]: normalized });
+  // The controller may be closed. If no Offscreen Document exists, persistence
+  // is enough; it will receive these values before the next camera start.
+  try {
+    await sendToOffscreen({ type: "offscreen-update-gesture-settings", settings: normalized });
+  } catch {
+    // No background tracker yet.
+  }
+  return normalized;
+}
+
 function toExtensionResponse(response: OffscreenResponse): ExtensionResponse {
   return {
     ok: response.ok,
@@ -92,6 +113,7 @@ async function startBackgroundTracking(request: Extract<ExtensionRequest, { type
   const tabId = request.tabId ?? (await getActiveTabId());
   await ensureContentScript(tabId);
   await ensureOffscreenDocument();
+  await sendToOffscreen({ type: "offscreen-update-gesture-settings", settings: await getGestureSettings() });
   return toExtensionResponse(await sendToOffscreen({ type: "offscreen-start-tracking", tabId }));
 }
 
@@ -123,6 +145,19 @@ async function handleRequest(request: ExtensionRequest): Promise<ExtensionRespon
   if (request.type === "start-background-tracking") return startBackgroundTracking(request);
   if (request.type === "stop-background-tracking") return stopBackgroundTracking();
   if (request.type === "get-background-tracker-status") return getBackgroundTrackingStatus();
+  if (request.type === "get-gesture-settings") {
+    const settings = await getGestureSettings();
+    return { ok: true, message: "手势灵敏度已读取。", settings };
+  }
+  if (request.type === "update-gesture-settings") {
+    const settings = await saveGestureSettings(request.settings);
+    return { ok: true, message: "手势灵敏度已更新。", settings };
+  }
+  if (request.type === "set-controller-advanced") {
+    const tabId = request.tabId ?? (await getActiveTabId());
+    await resizeControllerWindow(tabId, request.expanded);
+    return { ok: true, message: request.expanded ? "高级设置已展开。" : "高级设置已收起。" };
+  }
 
   const tabId = request.tabId ?? (await getActiveTabId());
   if (request.type === "activate-tab") {
@@ -140,6 +175,33 @@ async function handleRequest(request: ExtensionRequest): Promise<ExtensionRespon
     action: request.action,
   };
   return sendToPage(tabId, contentRequest);
+}
+
+async function resizeControllerWindow(tabId: number, advanced: boolean): Promise<void> {
+  const controllerWindowId = controllerWindowByTab.get(tabId);
+  if (controllerWindowId === undefined) return;
+  const height = advanced ? CONTROLLER_ADVANCED_HEIGHT : CONTROLLER_HEIGHT;
+  const updates: chrome.windows.UpdateInfo = { height };
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    const parentWindow = await chrome.windows.get(tab.windowId);
+    if (
+      typeof parentWindow.left === "number" &&
+      typeof parentWindow.top === "number" &&
+      typeof parentWindow.width === "number" &&
+      typeof parentWindow.height === "number"
+    ) {
+      updates.left = parentWindow.left + parentWindow.width - CONTROLLER_WIDTH;
+      updates.top = parentWindow.top + Math.round((parentWindow.height - height) / 2);
+    }
+  } catch {
+    // Resize remains useful even if the original Chrome window is unavailable.
+  }
+  try {
+    await chrome.windows.update(controllerWindowId, updates);
+  } catch {
+    controllerWindowByTab.delete(tabId);
+  }
 }
 
 async function forwardTrackerEvent(event: TrackerEvent): Promise<void> {
@@ -209,10 +271,32 @@ chrome.windows.onRemoved.addListener((windowId) => {
   for (const [tabId, controllerWindowId] of controllerWindowByTab) {
     if (controllerWindowId !== windowId) continue;
     controllerWindowByTab.delete(tabId);
-    void sendToPage(tabId, { type: "gesture-overlay-controller", expanded: false }).catch(() => undefined);
+    // Closing the native preview must never end the Offscreen camera session.
+    // Re-establish the page receiver before restoring the entry dot so a stale
+    // content script cannot make the next hand action disappear silently.
+    void restorePageAfterControllerClose(tabId);
     break;
   }
 });
+
+async function restorePageAfterControllerClose(tabId: number): Promise<void> {
+  let active = false;
+  let message = "控制窗口已收起；后台手势识别继续运行。";
+  try {
+    const status = await getBackgroundTrackingStatus();
+    active = Boolean(status.trackingActive);
+    message = status.message;
+  } catch {
+    // The page still receives a visible entry even if the background is gone.
+  }
+  try {
+    await ensureContentScript(tabId);
+    await sendToPage(tabId, { type: "gesture-overlay-controller", expanded: false });
+    await sendToPage(tabId, { type: "gesture-overlay-status", active, message });
+  } catch {
+    // The original tab may have been closed or navigated to a protected page.
+  }
+}
 
 chrome.runtime.onMessage.addListener((request: unknown, sender, sendResponse: (response: ExtensionResponse) => void) => {
   if (isTrackerEvent(request)) {

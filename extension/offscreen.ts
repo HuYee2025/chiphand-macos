@@ -1,4 +1,13 @@
 import { HandTracker } from "../src/hand-tracker";
+import {
+  DEFAULT_GESTURE_SETTINGS,
+  normalizeGestureSettings,
+  pinchContactThreshold,
+  pinchReleaseThreshold,
+  swipeMinimumDisplacement,
+  type GestureSettings,
+} from "../src/gesture-settings";
+import { classifyHandGesture } from "../src/hand-gesture-math";
 import { PinchScrollDetector } from "../src/pinch-scroll-detector";
 import { SwipeDetector, swipeDirectionToAction } from "../src/swipe-detector";
 import type { HandControlState, SwipeDirection } from "../src/types";
@@ -14,8 +23,9 @@ const video = document.querySelector<HTMLVideoElement>("#background-camera");
 if (!video) throw new Error("缺少后台摄像头元素。");
 const backgroundVideo = video;
 
-const detector = new SwipeDetector({ allowedDirections: ["left", "right"] });
-const pinchScrollDetector = new PinchScrollDetector();
+let gestureSettings: GestureSettings = DEFAULT_GESTURE_SETTINGS;
+let detector = createSwipeDetector(gestureSettings);
+let pinchScrollDetector = createPinchScrollDetector(gestureSettings);
 let tracker: HandTracker | null = null;
 let running = false;
 let targetTabId: number | null = null;
@@ -25,6 +35,27 @@ let lastPreviewUpdateAt = 0;
 const PREVIEW_UPDATE_INTERVAL_MS = 1000 / 30;
 const PINCH_FEEDBACK_INTERVAL_MS = 180;
 let lastPinchFeedbackAt = 0;
+
+function createSwipeDetector(settings: GestureSettings): SwipeDetector {
+  return new SwipeDetector({
+    allowedDirections: ["left", "right"],
+    minimumDisplacement: swipeMinimumDisplacement(settings),
+  });
+}
+
+function createPinchScrollDetector(settings: GestureSettings): PinchScrollDetector {
+  return new PinchScrollDetector({
+    pinchThreshold: pinchContactThreshold(settings),
+    releaseThreshold: pinchReleaseThreshold(settings),
+  });
+}
+
+function applyGestureSettings(settings: GestureSettings): GestureSettings {
+  gestureSettings = normalizeGestureSettings(settings);
+  detector = createSwipeDetector(gestureSettings);
+  pinchScrollDetector = createPinchScrollDetector(gestureSettings);
+  return gestureSettings;
+}
 
 function statusResponse(message: string, ok = true): OffscreenResponse {
   return { ok, active: running, message, ...(targetTabId === null ? {} : { tabId: targetTabId }) };
@@ -100,7 +131,13 @@ async function executePinchScroll(deltaY: number, direction: Extract<SwipeDirect
   }
 }
 
-function handleHandState(state: HandControlState): void {
+function handleHandState(rawState: HandControlState): void {
+  // HandTracker keeps position smoothing independent from gesture thresholds.
+  // Reclassify here so the user can tune pinch sensitivity without restarting
+  // the camera or model worker.
+  const state: HandControlState = rawState.detected
+    ? { ...rawState, gesture: classifyHandGesture(rawState.landmarks, pinchContactThreshold(gestureSettings)) }
+    : rawState;
   const now = performance.now();
   if (now - lastPreviewUpdateAt >= PREVIEW_UPDATE_INTERVAL_MS) {
     lastPreviewUpdateAt = now;
@@ -177,6 +214,11 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse: (
   }
   if (message.type === "offscreen-stop-tracking") {
     sendResponse(stopTracking());
+    return;
+  }
+  if (message.type === "offscreen-update-gesture-settings") {
+    const settings = applyGestureSettings(message.settings);
+    sendResponse({ ...statusResponse("手势灵敏度已更新。"), settings });
     return;
   }
   sendResponse(statusResponse(running ? "后台识别中。" : "摄像头未启动。"));

@@ -8,6 +8,7 @@ declare global {
 }
 
 const OVERLAY_ID = "__gesture_browser_indicator__";
+const PINCH_DOT_ID = "__gesture_browser_pinch_dot__";
 
 // Content Script 通过 chrome.scripting.executeScript 注入。保持它不依赖
 // 运行时 import，确保每次注入都是独立、可执行的单文件。
@@ -52,12 +53,6 @@ function createIndicator(): GestureIndicator {
     <style>
       :host { all: initial; }
       #feedback-overlay { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-      #pinch-dot {
-        position: fixed; width: 28px; height: 28px; border-radius: 50%; pointer-events: none;
-        background: #fff; mix-blend-mode: difference; opacity: 0;
-        transform: translate3d(-100px, -100px, 0) translate(-50%, -50%);
-      }
-      #pinch-dot.is-visible { opacity: 1; }
       #indicator {
         position: fixed; right: 6px; top: calc(50% + 132px); width: 28px; height: 28px; cursor: pointer;
         border: 1px solid #161616; border-radius: 50%; background: #090909;
@@ -69,7 +64,6 @@ function createIndicator(): GestureIndicator {
       @media (prefers-reduced-motion: reduce) { #indicator { transition: none; } }
     </style>
     <canvas id="feedback-overlay" aria-hidden="true"></canvas>
-    <div id="pinch-dot" aria-hidden="true"></div>
     <div id="indicator" aria-label="手势浏览识别状态，点击查看摄像头" role="button" tabindex="0">
     </div>
   `;
@@ -77,9 +71,33 @@ function createIndicator(): GestureIndicator {
 
   const root = shadow.querySelector<HTMLElement>("#indicator");
   const feedbackOverlay = shadow.querySelector<HTMLCanvasElement>("#feedback-overlay");
-  const pinchDot = shadow.querySelector<HTMLElement>("#pinch-dot");
   const handContext = feedbackOverlay?.getContext("2d");
-  if (!root || !feedbackOverlay || !pinchDot || !handContext) throw new Error("无法创建手势状态提示。");
+  if (!root || !feedbackOverlay || !handContext) throw new Error("无法创建手势状态提示。");
+
+  // Shadow DOM establishes an isolated compositing group, so blend modes there
+  // cannot see page pixels. The cursor must be a light-DOM sibling to invert
+  // what is actually rendered beneath it.
+  let pinchDot = document.getElementById(PINCH_DOT_ID) as HTMLElement | null;
+  if (!pinchDot) {
+    pinchDot = document.createElement("div");
+    pinchDot.id = PINCH_DOT_ID;
+    pinchDot.setAttribute("aria-hidden", "true");
+    pinchDot.style.cssText = [
+      "position:fixed",
+      "width:28px",
+      "height:28px",
+      "border-radius:50%",
+      "pointer-events:none",
+      "z-index:2147483647",
+      "opacity:0",
+      "background:rgba(255,255,255,.001)",
+      "backdrop-filter:invert(1)",
+      "-webkit-backdrop-filter:invert(1)",
+      "will-change:transform",
+      "transform:translate3d(-100px,-100px,0) translate(-50%,-50%)",
+    ].join(";");
+    document.documentElement.append(pinchDot);
+  }
 
   let tracking = false;
   let gestureTimer: number | null = null;
@@ -168,9 +186,9 @@ function createIndicator(): GestureIndicator {
       }
       if (renderedPinchPoint) {
         pinchDot.style.transform = `translate3d(${renderedPinchPoint.x}px, ${renderedPinchPoint.y}px, 0) translate(-50%, -50%)`;
-        pinchDot.classList.add("is-visible");
+        pinchDot.style.opacity = "1";
       } else {
-        pinchDot.classList.remove("is-visible");
+        pinchDot.style.opacity = "0";
       }
       renderFeedback();
       if (needsAnotherFrame) scheduleRender();

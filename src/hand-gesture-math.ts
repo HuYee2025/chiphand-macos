@@ -98,9 +98,12 @@ export function isPinching(landmarks: ReadonlyArray<Point2D>, threshold = PINCH_
   return pinchStrength(landmarks) <= threshold;
 }
 
-export function classifyHandGesture(landmarks: ReadonlyArray<Point2D>): ControlGesture {
+export function classifyHandGesture(
+  landmarks: ReadonlyArray<Point2D>,
+  pinchThreshold = PINCH_DISTANCE_THRESHOLD,
+): ControlGesture {
   if (isClosedFist(landmarks)) return "Closed_Fist";
-  if (isPinching(landmarks)) return "Pinch";
+  if (isPinching(landmarks, pinchThreshold)) return "Pinch";
   if (handOpenness(landmarks) >= 0.38) return "Open_Palm";
   return "Other";
 }
