@@ -1,0 +1,20 @@
+{
+  "version": "0.3.0",
+  "date": "2026-07-14",
+  "tag": "v0.3.0",
+  "summary": "Replace Chrome Side Panel with a camera-capable controller window on macOS.",
+  "scope": [
+    "open a dedicated controller window from the extension action",
+    "bind the controller window to the source webpage tab",
+    "remove the unsupported sidePanel camera flow"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "The user must reload the unpacked extension before testing.",
+    "The controller window is required because macOS Chrome Side Panel cannot request camera permission."
+  ]
+}

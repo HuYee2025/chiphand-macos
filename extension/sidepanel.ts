@@ -26,6 +26,10 @@ const overlay = new CameraOverlay(video, canvas);
 const detector = new SwipeDetector();
 let tracker: HandTracker | null = null;
 let running = false;
+const targetTabId = (() => {
+  const value = Number(new URLSearchParams(window.location.search).get("tabId"));
+  return Number.isInteger(value) && value > 0 ? value : null;
+})();
 
 const directionText: Record<SwipeDirection, string> = {
   up: "向上",
@@ -64,11 +68,16 @@ async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse
 }
 
 async function executeDirection(direction: SwipeDirection): Promise<void> {
+  if (targetTabId === null) {
+    showMessage("没有关联网页。请回到目标网页后，从插件图标重新打开控制窗口。", true);
+    return;
+  }
   const request: ExtensionRequest = {
     type: "gesture-action",
     action: swipeDirectionToAction(direction),
     direction,
     timestamp: Date.now(),
+    tabId: targetTabId,
   };
   const response = await sendRequest(request);
   lastAction.textContent = directionText[direction];
@@ -108,7 +117,11 @@ function handleTrackerError(text: string): void {
 }
 
 async function connectCurrentTab(): Promise<void> {
-  const activation = await sendRequest({ type: "activate-tab" });
+  if (targetTabId === null) {
+    showMessage("摄像头已启动，但没有关联网页。请从目标网页点击插件图标。", true);
+    return;
+  }
+  const activation = await sendRequest({ type: "activate-tab", tabId: targetTabId });
   if (activation.ok) {
     showMessage("摄像头和当前网页已连接，张开手掌开始挥动。");
     return;

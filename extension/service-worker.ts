@@ -1,9 +1,5 @@
 import type { ContentScriptRequest, ExtensionRequest, ExtensionResponse } from "./message-types";
 
-chrome.runtime.onInstalled.addListener(() => {
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-});
-
 async function getActiveTabId(): Promise<number> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.id === undefined) throw new Error("没有找到当前标签页。");
@@ -28,7 +24,7 @@ async function ensureContentScript(tabId: number): Promise<void> {
 }
 
 async function handleRequest(request: ExtensionRequest): Promise<ExtensionResponse> {
-  const tabId = await getActiveTabId();
+  const tabId = request.tabId ?? (await getActiveTabId());
   await ensureContentScript(tabId);
   if (request.type === "activate-tab") {
     return { ok: true, message: "当前标签页已连接。" };
@@ -41,6 +37,27 @@ async function handleRequest(request: ExtensionRequest): Promise<ExtensionRespon
   const response = (await chrome.tabs.sendMessage(tabId, contentRequest)) as ExtensionResponse | undefined;
   return response ?? { ok: false, message: "网页没有返回动作结果。" };
 }
+
+async function openControllerWindow(tab: chrome.tabs.Tab): Promise<void> {
+  if (tab.id === undefined) return;
+  try {
+    await ensureContentScript(tab.id);
+  } catch {
+    // Camera tracking can still start in the controller window. It will show a
+    // clear connection error instead of silently failing on protected pages.
+  }
+  await chrome.windows.create({
+    url: chrome.runtime.getURL(`sidepanel.html?tabId=${tab.id}`),
+    type: "popup",
+    width: 390,
+    height: 720,
+    focused: true,
+  });
+}
+
+chrome.action.onClicked.addListener((tab) => {
+  void openControllerWindow(tab);
+});
 
 chrome.runtime.onMessage.addListener(
   (request: ExtensionRequest, _sender, sendResponse: (response: ExtensionResponse) => void) => {

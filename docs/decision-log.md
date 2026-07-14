@@ -85,3 +85,22 @@
 - 新增 `dist-extension/` 构建，黑洞 Demo 继续保留在 `dist/`。
 - 切换新标签页后需要重新点击插件图标授权。
 - 如果浏览器版验证成功，再复用 `SwipeDetector` 开发 macOS 全局输入层。
+
+## 2026-07-14 用控制窗口替代 Side Panel
+
+背景：
+- 用户在 macOS Chrome 的 Side Panel 中启动摄像头，Chrome 网页权限和系统权限均正常，但 `getUserMedia()` 仍返回 `NotAllowedError`。
+- Chromium 扩展支持渠道已确认：Side Panel 没有摄像头/麦克风授权弹窗所需的交互界面。
+
+决策：
+- 不再由 Chrome Side Panel 承载摄像头。
+- 用户从目标网页点击插件图标后，Service Worker 注入网页控制脚本，并打开独立的控制窗口；该窗口在用户点击“启动摄像头”时请求权限。
+- 控制窗口 URL 带原始 tabId，后续挥动始终控制触发它的网页，而不是控制窗口自身。
+
+原因：
+- 这是 Chrome Side Panel 在 macOS 上的产品限制，继续调权限没有意义。
+- 控制窗口保留常驻体验，同时拥有授权摄像头的正常交互环境。
+
+影响：
+- 移除 `sidePanel` 权限；用户不再从 Chrome 侧栏菜单打开插件。
+- 版本升级到 `0.3.0`，需要用户在 `chrome://extensions/` 重新加载解压扩展。

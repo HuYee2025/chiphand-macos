@@ -2,18 +2,15 @@
   "manifest_version": 3,
   "name": "手势浏览控制",
   "description": "使用本机摄像头和手掌挥动控制网页滚动与左右翻页。",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "minimum_chrome_version": "114",
-  "permissions": ["activeTab", "scripting", "sidePanel"],
+  "permissions": ["activeTab", "scripting"],
   "action": {
     "default_title": "打开手势浏览控制"
   },
   "background": {
     "service_worker": "service-worker.js",
     "type": "module"
-  },
-  "side_panel": {
-    "default_path": "sidepanel.html"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
