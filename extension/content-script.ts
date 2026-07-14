@@ -20,7 +20,8 @@ function isContentScriptRequest(message: unknown): message is ContentScriptReque
     type === "execute-pinch-scroll" ||
     type === "gesture-overlay-status" ||
     type === "gesture-overlay-gesture" ||
-    type === "gesture-overlay-hand-state"
+    type === "gesture-overlay-hand-state" ||
+    type === "gesture-overlay-controller"
   );
 }
 
@@ -33,6 +34,7 @@ type GestureIndicator = {
   setTracking(active: boolean, message: string): void;
   flash(direction: SwipeDirection): void;
   drawHand(state: HandControlState): void;
+  setControllerExpanded(expanded: boolean): void;
 };
 
 function createIndicator(): GestureIndicator {
@@ -53,8 +55,10 @@ function createIndicator(): GestureIndicator {
       #indicator {
         position: fixed; right: 14px; top: 50%; width: 28px; height: 28px; cursor: pointer;
         border: 1px solid #161616; border-radius: 50%; background: #090909;
-        box-shadow: 0 3px 12px rgba(0,0,0,.18); pointer-events: auto; transition: opacity .2s ease;
+        box-shadow: 0 3px 12px rgba(0,0,0,.18); pointer-events: auto; transform: scale(1);
+        transform-origin: center; transition: opacity .24s ease, transform .24s cubic-bezier(.2,.9,.25,1);
       }
+      #indicator.is-expanded { opacity: 0; transform: scale(11); pointer-events: none; }
       #indicator:focus-visible { outline: 2px solid #7ee49a; outline-offset: 3px; }
       @media (prefers-reduced-motion: reduce) { #indicator { transition: none; } }
     </style>
@@ -73,6 +77,9 @@ function createIndicator(): GestureIndicator {
   let gestureTimer: number | null = null;
   let latestHandState: HandControlState | null = null;
   let activeDirection: Extract<SwipeDirection, "left" | "right"> | null = null;
+  let targetPinchPoint: { x: number; y: number } | null = null;
+  let renderedPinchPoint: { x: number; y: number } | null = null;
+  let renderFrame: number | null = null;
   const openController = (): void => {
     const request: ExtensionRequest = { type: "open-controller" };
     void chrome.runtime.sendMessage(request).catch(() => undefined);
@@ -97,24 +104,14 @@ function createIndicator(): GestureIndicator {
     }
     handContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     handContext.clearRect(0, 0, width, height);
-    const state = latestHandState;
-    if (state?.detected && !state.stale && state.landmarks.length > 0) {
-      const pointAt = (index: number): { x: number; y: number } | null => {
-        const landmark = state.landmarks[index];
-        return landmark ? { x: (1 - landmark.x) * width, y: landmark.y * height } : null;
-      };
-      if (state.gesture === "Pinch") {
-        const thumb = pointAt(4);
-        const index = pointAt(8);
-        if (thumb && index) {
-          const x = (thumb.x + index.x) / 2;
-          const y = (thumb.y + index.y) / 2;
-          handContext.beginPath();
-          handContext.arc(x, y, 9, 0, Math.PI * 2);
-          handContext.fillStyle = "rgba(101, 217, 133, .62)";
-          handContext.fill();
-        }
-      }
+    if (renderedPinchPoint) {
+      handContext.beginPath();
+      handContext.arc(renderedPinchPoint.x, renderedPinchPoint.y, 18, 0, Math.PI * 2);
+      handContext.fillStyle = "#65d985";
+      handContext.shadowColor = "rgba(41, 121, 66, .42)";
+      handContext.shadowBlur = 5;
+      handContext.fill();
+      handContext.shadowBlur = 0;
     }
     if (activeDirection === null) return;
     const size = Math.min(width * 0.34, height * 0.34);
@@ -138,12 +135,52 @@ function createIndicator(): GestureIndicator {
     handContext.restore();
   };
 
+  const updatePinchTarget = (): void => {
+    const state = latestHandState;
+    if (!state?.detected || state.stale || state.gesture !== "Pinch" || state.landmarks.length <= 8) {
+      targetPinchPoint = null;
+      renderedPinchPoint = null;
+      return;
+    }
+    const thumb = state.landmarks[4];
+    const index = state.landmarks[8];
+    if (!thumb || !index) {
+      targetPinchPoint = null;
+      renderedPinchPoint = null;
+      return;
+    }
+    targetPinchPoint = {
+      x: (1 - (thumb.x + index.x) / 2) * window.innerWidth,
+      y: ((thumb.y + index.y) / 2) * window.innerHeight,
+    };
+    renderedPinchPoint ??= { ...targetPinchPoint };
+  };
+
+  const scheduleRender = (): void => {
+    if (renderFrame !== null) return;
+    renderFrame = window.requestAnimationFrame(() => {
+      renderFrame = null;
+      let needsAnotherFrame = false;
+      if (targetPinchPoint && renderedPinchPoint) {
+        const distance = Math.hypot(targetPinchPoint.x - renderedPinchPoint.x, targetPinchPoint.y - renderedPinchPoint.y);
+        renderedPinchPoint.x += (targetPinchPoint.x - renderedPinchPoint.x) * 0.52;
+        renderedPinchPoint.y += (targetPinchPoint.y - renderedPinchPoint.y) * 0.52;
+        needsAnotherFrame = distance > 0.35;
+      }
+      renderFeedback();
+      if (needsAnotherFrame) scheduleRender();
+    });
+  };
+
   const drawHand = (state: HandControlState): void => {
     latestHandState = state;
-    renderFeedback();
+    updatePinchTarget();
+    scheduleRender();
   };
   window.addEventListener("resize", () => {
-    if (latestHandState) renderFeedback();
+    if (!latestHandState) return;
+    updatePinchTarget();
+    scheduleRender();
   });
 
   const indicator: GestureIndicator = {
@@ -153,21 +190,26 @@ function createIndicator(): GestureIndicator {
       if (!active) {
         activeDirection = null;
         latestHandState = null;
+        targetPinchPoint = null;
+        renderedPinchPoint = null;
         if (gestureTimer !== null) window.clearTimeout(gestureTimer);
-        renderFeedback();
+        scheduleRender();
       }
     },
     flash(direction): void {
       if (!tracking || (direction !== "left" && direction !== "right")) return;
       activeDirection = direction;
-      renderFeedback();
+      scheduleRender();
       if (gestureTimer !== null) window.clearTimeout(gestureTimer);
       gestureTimer = window.setTimeout(() => {
         activeDirection = null;
-        renderFeedback();
+        scheduleRender();
       }, 550);
     },
     drawHand,
+    setControllerExpanded(expanded): void {
+      root.classList.toggle("is-expanded", expanded);
+    },
   };
   root.__gestureIndicator = indicator;
   return indicator;
@@ -257,6 +299,11 @@ if (!window.__gestureBrowserControlInstalled) {
       if (request.type === "gesture-overlay-hand-state") {
         indicator.drawHand(request.state);
         sendResponse({ ok: true, message: "网页手势坐标已更新。" });
+        return;
+      }
+      if (request.type === "gesture-overlay-controller") {
+        indicator.setControllerExpanded(request.expanded);
+        sendResponse({ ok: true, message: "控制窗口动效已更新。" });
         return;
       }
       if (request.type === "execute-pinch-scroll") {

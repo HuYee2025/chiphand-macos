@@ -7,7 +7,8 @@ import { EMPTY_HAND_STATE, type HandControlState, type Handedness } from "./type
 const MIN_INFERENCE_INTERVAL_MS = 1000 / 30;
 const MAX_INFERENCE_INTERVAL_MS = 1000 / 24;
 const LOST_HAND_GRACE_MS = 220;
-const LANDMARK_SMOOTHING = 0.5;
+// 让定位点更跟手；网页端仍会用动画帧补间消除离散帧的跳动。
+const LANDMARK_SMOOTHING = 0.65;
 
 function normalizeHandedness(name: string | undefined): Handedness | null {
   if (name === "Left" || name === "Right") return name;
@@ -178,7 +179,8 @@ export class HandTracker {
       roll: this.rotationCalibrator.update(smoothed),
       speedScale: distance.speedScale,
       distanceCalibrating: distance.calibrating,
-      gesture: classifyHandGesture(smoothed),
+      // 接触/松开要比位置更即时：手势类别使用原始关键点，网页点的位置继续使用平滑后的关键点。
+      gesture: classifyHandGesture(landmarks),
       gestureConfidence: 1,
       landmarks: smoothed,
     };

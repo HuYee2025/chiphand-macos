@@ -10,7 +10,10 @@ import {
 } from "./message-types";
 
 const OFFSCREEN_DOCUMENT = "offscreen.html";
+const CONTROLLER_WIDTH = 300;
+const CONTROLLER_HEIGHT = 400;
 let creatingOffscreenDocument: Promise<void> | null = null;
+const controllerWindowByTab = new Map<number, number>();
 
 async function getActiveTabId(): Promise<number> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -161,17 +164,54 @@ async function openControllerWindow(tab: chrome.tabs.Tab): Promise<void> {
   } catch {
     // 后台识别仍可启动，控制窗口会明确提示当前网页不能执行动作。
   }
-  await chrome.windows.create({
+  const existingWindowId = controllerWindowByTab.get(tab.id);
+  if (existingWindowId !== undefined) {
+    try {
+      await chrome.windows.update(existingWindowId, { focused: true });
+      void sendToPage(tab.id, { type: "gesture-overlay-controller", expanded: true }).catch(() => undefined);
+      return;
+    } catch {
+      controllerWindowByTab.delete(tab.id);
+    }
+  }
+
+  const options: chrome.windows.CreateData = {
     url: chrome.runtime.getURL(`sidepanel.html?tabId=${tab.id}`),
     type: "popup",
-    width: 340,
-    height: 560,
+    width: CONTROLLER_WIDTH,
+    height: CONTROLLER_HEIGHT,
     focused: true,
-  });
+  };
+  try {
+    const parentWindow = await chrome.windows.get(tab.windowId);
+    if (
+      typeof parentWindow.left === "number" &&
+      typeof parentWindow.top === "number" &&
+      typeof parentWindow.width === "number" &&
+      typeof parentWindow.height === "number"
+    ) {
+      options.left = parentWindow.left + parentWindow.width - CONTROLLER_WIDTH - 20;
+      options.top = parentWindow.top + Math.round((parentWindow.height - CONTROLLER_HEIGHT) / 2);
+    }
+  } catch {
+    // 无法读取宿主窗口坐标时，让 Chrome 采用自己的安全位置。
+  }
+  const controllerWindow = await chrome.windows.create(options);
+  if (controllerWindow?.id !== undefined) controllerWindowByTab.set(tab.id, controllerWindow.id);
+  void sendToPage(tab.id, { type: "gesture-overlay-controller", expanded: true }).catch(() => undefined);
 }
 
 chrome.action.onClicked.addListener((tab) => {
   void openControllerWindow(tab);
+});
+
+chrome.windows.onRemoved.addListener((windowId) => {
+  for (const [tabId, controllerWindowId] of controllerWindowByTab) {
+    if (controllerWindowId !== windowId) continue;
+    controllerWindowByTab.delete(tabId);
+    void sendToPage(tabId, { type: "gesture-overlay-controller", expanded: false }).catch(() => undefined);
+    break;
+  }
 });
 
 chrome.runtime.onMessage.addListener((request: unknown, sender, sendResponse: (response: ExtensionResponse) => void) => {

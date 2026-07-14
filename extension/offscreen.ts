@@ -21,7 +21,8 @@ let running = false;
 let targetTabId: number | null = null;
 let handPresent: boolean | null = null;
 let lastPreviewUpdateAt = 0;
-const PREVIEW_UPDATE_INTERVAL_MS = 1000 / 15;
+// 网页捏合点需要跟手，按摄像头推理的最高 30 FPS 同步；页面端再用 rAF 插值。
+const PREVIEW_UPDATE_INTERVAL_MS = 1000 / 30;
 const PINCH_FEEDBACK_INTERVAL_MS = 180;
 let lastPinchFeedbackAt = 0;
 

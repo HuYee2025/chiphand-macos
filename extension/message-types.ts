@@ -27,7 +27,8 @@ export type ContentScriptRequest =
   | { type: "execute-pinch-scroll"; deltaY: number }
   | { type: "gesture-overlay-status"; active: boolean; message: string }
   | { type: "gesture-overlay-gesture"; direction: SwipeDirection }
-  | { type: "gesture-overlay-hand-state"; state: HandControlState };
+  | { type: "gesture-overlay-hand-state"; state: HandControlState }
+  | { type: "gesture-overlay-controller"; expanded: boolean };
 
 export type ExtensionResponse = {
   ok: boolean;

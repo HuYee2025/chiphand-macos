@@ -1,0 +1,20 @@
+{
+  "version": "0.9.0",
+  "date": "2026-07-14",
+  "tag": "v0.9.0",
+  "summary": "Tighten pinch contact, smooth the page cursor, and visually connect a compact controller window to the page entry dot.",
+  "scope": [
+    "require near-contact thumb-index pinch before showing or activating the cursor",
+    "sync hand states at 30 FPS and animate the webpage cursor between updates",
+    "use an opaque 36px green cursor with a subtle shadow",
+    "open a compact controller near the right-side entry dot with expand-collapse feedback"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Chrome native extension windows cannot be embedded in a webpage; the entry-dot transition provides the visual continuity."
+  ]
+}

@@ -18,8 +18,8 @@ export type PinchScrollDetectorOptions = {
 
 const DEFAULTS = {
   activationMilliseconds: 80,
-  pinchThreshold: 0.34,
-  releaseThreshold: 0.46,
+  pinchThreshold: 0.18,
+  releaseThreshold: 0.2,
   minimumConfidence: 0.65,
   minimumStep: 0.003,
   maximumStep: 0.12,

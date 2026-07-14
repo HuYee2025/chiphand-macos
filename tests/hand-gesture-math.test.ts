@@ -51,6 +51,16 @@ test("thumb-index contact is classified as a pinch with a midpoint", () => {
   assert.deepEqual(pinchCenter(landmarks), { x: 0.42, y: 0.28 });
 });
 
+test("pinch requires near-contact and releases after a small separation", () => {
+  const landmarks = openHand();
+  landmarks[4] = { x: 0.42, y: 0.28 };
+  landmarks[8] = { x: 0.45, y: 0.28 };
+  assert.equal(isPinching(landmarks), true);
+  landmarks[8] = { x: 0.48, y: 0.28 };
+  assert.equal(isPinching(landmarks), false);
+  assert.notEqual(classifyHandGesture(landmarks), "Pinch");
+});
+
 test("PalmRotationCalibrator treats the first seen orientation as neutral", () => {
   const calibrator = new PalmRotationCalibrator();
   const baseline = openHand();

@@ -5,7 +5,8 @@ const THUMB_TIP = 4;
 const INDEX_TIP = 8;
 const NON_THUMB_TIPS = [8, 12, 16, 20];
 const MCPs = [5, 9, 13, 17];
-const PINCH_DISTANCE_THRESHOLD = 0.34;
+// 只把“拇指和食指真正贴合”视为捏合；普通靠近不显示网页控制点。
+const PINCH_DISTANCE_THRESHOLD = 0.18;
 
 export function pointDistance(a: Point2D, b: Point2D): number {
   return Math.hypot(a.x - b.x, a.y - b.y);

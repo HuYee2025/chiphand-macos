@@ -55,6 +55,13 @@ function showMessage(text: string, isError = false): void {
   message.classList.toggle("is-error", isError);
 }
 
+function setCameraToggle(active: boolean): void {
+  toggle.textContent = active ? "■" : "▶";
+  const label = active ? "停止摄像头" : "启动摄像头";
+  toggle.setAttribute("aria-label", label);
+  toggle.title = label;
+}
+
 async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse> {
   try {
     const response = (await chrome.runtime.sendMessage(request)) as ExtensionResponse | undefined;
@@ -69,7 +76,7 @@ function setRunning(active: boolean, detail?: string): void {
   if (active) {
     placeholder.classList.toggle("is-hidden", previewStream !== null);
     placeholderLabel.textContent = "BACKGROUND ACTIVE";
-    toggle.textContent = "停止摄像头";
+    setCameraToggle(true);
     handStatus.textContent = "后台识别中";
     gestureStatus.textContent = "点击网页不会中断手势";
     setStatus("识别中", "active");
@@ -90,7 +97,7 @@ function setRunning(active: boolean, detail?: string): void {
   stopPreview();
   placeholder.classList.remove("is-hidden");
   placeholderLabel.textContent = "CAMERA OFF";
-  toggle.textContent = "启动摄像头";
+  setCameraToggle(false);
   handStatus.textContent = "等待摄像头";
   gestureStatus.textContent = "挥动手掌控制网页";
   setStatus("已停止");
@@ -188,8 +195,8 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
         event.state.gesture === "Pinch"
           ? "已捏合 · 上下拖动页面"
           : event.state.gesture === "Open_Palm"
-            ? "张开手掌，可左右挥动翻页"
-            : "张开手掌翻页，或拇指食指捏合滚动";
+            ? "张开手掌，可左右挥动滚动"
+            : "左右挥动翻屏，或拇指食指捏合滚动";
     } else {
       handStatus.textContent = "寻找手掌";
       gestureStatus.textContent = "请把一只手完整放入画面";
