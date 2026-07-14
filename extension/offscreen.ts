@@ -18,6 +18,8 @@ let tracker: HandTracker | null = null;
 let running = false;
 let targetTabId: number | null = null;
 let handPresent: boolean | null = null;
+let lastPreviewUpdateAt = 0;
+const PREVIEW_UPDATE_INTERVAL_MS = 1000 / 15;
 
 function statusResponse(message: string, ok = true): OffscreenResponse {
   return { ok, active: running, message, ...(targetTabId === null ? {} : { tabId: targetTabId }) };
@@ -61,6 +63,11 @@ async function executeDirection(direction: SwipeDirection): Promise<void> {
 }
 
 function handleHandState(state: HandControlState): void {
+  const now = performance.now();
+  if (now - lastPreviewUpdateAt >= PREVIEW_UPDATE_INTERVAL_MS) {
+    lastPreviewUpdateAt = now;
+    publish({ type: "background-hand-state", state });
+  }
   if (state.detected !== handPresent) {
     handPresent = state.detected;
     publishStatus(
@@ -69,7 +76,7 @@ function handleHandState(state: HandControlState): void {
         : "正在寻找张开的手掌。",
     );
   }
-  const direction = detector.update(state, performance.now());
+  const direction = detector.update(state, now);
   if (direction) void executeDirection(direction);
 }
 
@@ -79,6 +86,7 @@ function handleTrackerError(message: string): void {
   detector.reset();
   running = false;
   handPresent = null;
+  lastPreviewUpdateAt = 0;
   publishStatus(`后台识别失败：${message}`);
 }
 
@@ -92,6 +100,7 @@ async function startTracking(tabId: number): Promise<OffscreenResponse> {
     tracker ??= new HandTracker(backgroundVideo, handleHandState, handleTrackerError);
     await tracker.start();
     running = true;
+    lastPreviewUpdateAt = 0;
     publishStatus("后台识别中；点击网页不会中断手势。");
     return statusResponse("后台识别已启动。现在可以直接点击网页。");
   } catch (error) {
@@ -110,6 +119,7 @@ function stopTracking(): OffscreenResponse {
   detector.reset();
   running = false;
   handPresent = null;
+  lastPreviewUpdateAt = 0;
   publishStatus("摄像头已停止。");
   return statusResponse("摄像头已停止。");
 }

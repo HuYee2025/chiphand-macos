@@ -114,6 +114,7 @@ async function handleRequest(request: ExtensionRequest): Promise<ExtensionRespon
 }
 
 async function forwardTrackerEvent(event: TrackerEvent): Promise<void> {
+  if (event.type === "background-hand-state") return;
   if (event.tabId === undefined) return;
   const request: ContentScriptRequest =
     event.type === "background-tracker-status"

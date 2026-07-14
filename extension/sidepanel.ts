@@ -1,5 +1,6 @@
 import "./sidepanel.css";
-import type { SwipeDirection } from "../src/types";
+import { CameraOverlay } from "../src/camera-overlay";
+import { EMPTY_HAND_STATE, type SwipeDirection } from "../src/types";
 import { isTrackerEvent, type ExtensionRequest, type ExtensionResponse } from "./message-types";
 
 function required<T extends Element>(selector: string): T {
@@ -11,6 +12,7 @@ function required<T extends Element>(selector: string): T {
 const placeholder = required<HTMLElement>("#camera-placeholder");
 const placeholderLabel = required<HTMLElement>("#camera-placeholder-label");
 const previewVideo = required<HTMLVideoElement>("#camera-video");
+const previewCanvas = required<HTMLCanvasElement>("#landmark-canvas");
 const toggle = required<HTMLButtonElement>("#camera-toggle");
 const runtimeStatus = required<HTMLElement>("#runtime-status");
 const handStatus = required<HTMLElement>("#hand-status");
@@ -20,6 +22,7 @@ const message = required<HTMLElement>("#panel-message");
 const panelShell = required<HTMLElement>("#panel-shell");
 const compactActiveGesture = required<HTMLElement>("#compact-active-gesture");
 const directionIndicators = Array.from(document.querySelectorAll<HTMLElement>("[data-direction]"));
+const cameraOverlay = new CameraOverlay(previewVideo, previewCanvas);
 
 let running = false;
 let compact = false;
@@ -180,6 +183,7 @@ function stopPreview(): void {
   previewStream = null;
   previewStarting = null;
   previewVideo.srcObject = null;
+  cameraOverlay.draw(EMPTY_HAND_STATE);
 }
 
 async function startCamera(): Promise<void> {
@@ -240,6 +244,17 @@ panelShell.addEventListener("pointerleave", () => {
 
 chrome.runtime.onMessage.addListener((event: unknown) => {
   if (!isTrackerEvent(event)) return;
+  if (event.type === "background-hand-state") {
+    cameraOverlay.draw(event.state);
+    if (event.state.detected) {
+      handStatus.textContent = `已检测到${event.state.handedness === "Left" ? "左手" : "右手"} ${Math.round(event.state.confidence * 100)}%`;
+      gestureStatus.textContent = event.state.gesture === "Open_Palm" ? "张开手掌，可以挥动" : "请张开手掌";
+    } else {
+      handStatus.textContent = "寻找手掌";
+      gestureStatus.textContent = "请把一只手完整放入画面";
+    }
+    return;
+  }
   if (event.type === "background-tracker-status") {
     if (event.active) setRunning(true, event.message);
     else {

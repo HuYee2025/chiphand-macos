@@ -9,7 +9,7 @@
 6. `docs/decision-log.md`
 
 当前版本状态：
-- `0.4.3` Chrome 手势浏览插件以独立控制窗口完成首次摄像头授权和实时预览，再由 Offscreen Document 持续识别；后台已运行时重新打开窗口会恢复预览；点击网页不会停止手势，网页右侧提示条会保留反馈；第 03 阶段等待用户真实手势验收。
+- `0.4.4` Chrome 手势浏览插件以独立控制窗口完成首次摄像头授权和实时预览，再由 Offscreen Document 持续识别；后台已运行时重新打开窗口会恢复预览；点击网页不会停止手势。网页右侧固定显示黑色方形动作反馈，控制窗口恢复显示 21 点手部骨架；第 03 阶段等待用户真实手势验收。
 - `v0.1.0` 是原始 Demo 回滚点；`v0.2.0` 保存 Chrome 插件 MVP，`v0.2.1` 保存启动顺序修复，`v0.3.0` 保存控制窗口架构。
 - GitHub 仓库：`https://github.com/HuYee2025/black-hole-gesture-control`。
 
@@ -21,10 +21,11 @@
 - `npm run build` 同时生成 `dist/` 与 `dist-extension/`。
 - 识别到 macOS Chrome Side Panel 无法请求摄像头；改为由独立控制窗口请求权限，并透传原网页 tabId。
 - 摄像头与 HandLandmarker 已迁入 Offscreen Document；控制窗口失焦或关闭时，后台识别仍继续。
-- 新增网页内右侧提示条：平时极细纯黑，悬停展开；识别到动作时，短暂显示对应的绿色大箭头。
+- 网页内右侧提示固定为 88×88 黑色方形；识别到动作时，短暂显示对应的绿色大箭头。
 - 控制窗口恢复实时摄像头预览；鼠标停在窗口内不收起，只在移出后收起。
 - 修复后台识别已经运行时重新打开控制窗口没有预览的问题。
 - Offscreen 识别改用独立定时轮询，避免后台页面不产生视频/动画帧回调而导致手势不触发；新增“已检测到手掌 / 正在寻找张开的手掌”状态。
+- 后台识别每秒最多同步 15 次关键点到控制窗口，实时预览恢复 21 点骨架连线。
 
 本次验证：
 - `npm run typecheck` 通过。
@@ -32,6 +33,7 @@
 - `npm run build` 通过，模型、WASM、控制窗口、Offscreen Document、Service Worker 和 Content Script 产物齐全。
 - Playwright 真实 Chromium：测试页布局、ArrowLeft / ArrowRight 页码变化和页面滚动通过。
 - `0.4.3` Offscreen 取帧修复和手掌检测状态通过 TypeScript、20 项手势测试及完整构建；真实 Chrome Offscreen 手势仍需用户 MacBook 验收。
+- `0.4.4` 方形网页提示和骨架预览恢复尚待运行完整质量门与用户 Chrome 验收。
 
 当前未完成：
 - 用户在目标 MacBook 上重新加载 `dist-extension/`，从测试页点击插件图标打开控制窗口，再用真实手掌测试四个方向。

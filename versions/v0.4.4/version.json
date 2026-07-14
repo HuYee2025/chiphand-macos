@@ -1,0 +1,19 @@
+{
+  "version": "0.4.4",
+  "date": "2026-07-14",
+  "tag": "v0.4.4",
+  "summary": "Make the in-page gesture feedback permanently square and restore the 21-point hand skeleton in the controller preview.",
+  "scope": [
+    "keep an 88 by 88 in-page black indicator visible while tracking",
+    "relay hand landmarks from the offscreen tracker to the local preview"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Reload the unpacked extension and refresh the controlled webpage before testing.",
+    "The controller preview should now show the colored 21-point hand skeleton when a hand is detected."
+  ]
+}

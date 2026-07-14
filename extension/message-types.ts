@@ -1,4 +1,4 @@
-import type { GestureAction, SwipeDirection } from "../src/types";
+import type { GestureAction, HandControlState, SwipeDirection } from "../src/types";
 
 export type ExtensionRequest =
   | { type: "activate-tab"; tabId?: number }
@@ -41,7 +41,8 @@ export type OffscreenResponse = {
 
 export type TrackerEvent =
   | { type: "background-tracker-status"; active: boolean; message: string; tabId?: number }
-  | { type: "background-gesture-feedback"; direction: SwipeDirection; ok: boolean; message: string; tabId?: number };
+  | { type: "background-gesture-feedback"; direction: SwipeDirection; ok: boolean; message: string; tabId?: number }
+  | { type: "background-hand-state"; state: HandControlState };
 
 export function isExtensionRequest(message: unknown): message is ExtensionRequest {
   if (!message || typeof message !== "object" || !("type" in message)) return false;
@@ -64,5 +65,5 @@ export function isOffscreenRequest(message: unknown): message is OffscreenReques
 export function isTrackerEvent(message: unknown): message is TrackerEvent {
   if (!message || typeof message !== "object" || !("type" in message)) return false;
   const type = (message as { type?: unknown }).type;
-  return type === "background-tracker-status" || type === "background-gesture-feedback";
+  return type === "background-tracker-status" || type === "background-gesture-feedback" || type === "background-hand-state";
 }
