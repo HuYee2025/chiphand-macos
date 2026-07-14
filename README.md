@@ -30,7 +30,7 @@ npm run build:extension
 npm run package:extension
 ```
 
-命令会生成 `releases/gesture-browser-control-v1.0.0.zip`，用于提交 Chrome Web Store 或 Microsoft Edge Add-ons。日常本机安装仍应选择解压后的 `dist-extension/` 文件夹，而不是 ZIP。
+命令会生成 `releases/gesture-browser-control-v1.0.1.zip`，用于提交 Chrome Web Store 或 Microsoft Edge Add-ons。日常本机安装仍应选择解压后的 `dist-extension/` 文件夹，而不是 ZIP。
 
 Microsoft Edge（Chromium 版）可直接兼容这一份 MV3 扩展：在 `edge://extensions/` 开启“开发人员模式”，选择“加载解压缩的扩展”，再选 `dist-extension/`。发布到商店时，Chrome Web Store 与 Microsoft Edge Add-ons 分别提交同一份 ZIP 和各自的商店资料。
 

@@ -1,0 +1,19 @@
+{
+  "version": "1.0.1",
+  "date": "2026-07-14",
+  "tag": "v1.0.1",
+  "summary": "Fix the native controller height so the always-visible Advanced Settings trigger is not clipped.",
+  "scope": [
+    "Increase the default controller window from 300x350 to 300x390.",
+    "Regenerate the Chrome and Edge store ZIP package."
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run package:extension",
+    "Controller layout inspection at 300x390"
+  ],
+  "notes": [
+    "The previous 1.0.0 build contained the button but its native popup clipped the final row."
+  ]
+}

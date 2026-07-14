@@ -12,7 +12,9 @@ import { normalizeGestureSettings, type GestureSettings } from "../src/gesture-s
 
 const OFFSCREEN_DOCUMENT = "offscreen.html";
 const CONTROLLER_WIDTH = 300;
-const CONTROLLER_HEIGHT = 350;
+// The always-visible Advanced Settings trigger needs one full control row below
+// the camera button; 350px was the old pre-settings height and clipped it.
+const CONTROLLER_HEIGHT = 390;
 const CONTROLLER_ADVANCED_HEIGHT = 640;
 const GESTURE_SETTINGS_KEY = "gestureSettings";
 let creatingOffscreenDocument: Promise<void> | null = null;

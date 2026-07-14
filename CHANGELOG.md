@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 - 2026-07-14
+
+- 修复 1.0.0 原生控制窗口仍沿用 350px 旧高度，导致常驻“高级设置”按钮落在窗口裁切区、实际无法看见的问题；默认窗口增至 390px，高级设置入口完整可见。
+
 ## 1.0.0 - 2026-07-14
 
 - 作为首个可交付版本，新增 `npm run package:extension`，生成可提交 Chrome Web Store 与 Microsoft Edge Add-ons 的标准 ZIP 包。

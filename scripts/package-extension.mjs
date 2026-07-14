@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const extensionDir = resolve(root, "dist-extension");
 const releaseDir = resolve(root, "releases");
-const archive = resolve(releaseDir, "gesture-browser-control-v1.0.0.zip");
+const archive = resolve(releaseDir, "gesture-browser-control-v1.0.1.zip");
 
 if (!existsSync(extensionDir)) {
   throw new Error("缺少 dist-extension。请先构建扩展。");
