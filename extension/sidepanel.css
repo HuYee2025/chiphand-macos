@@ -22,7 +22,7 @@ h1 { margin: 0; font-size: 20px; line-height: 1; letter-spacing: -.05em; }
 .status-chip.is-error { border-color: #783f3f; color: #ffaaaa; }
 .primary-button:focus-visible { outline: 2px solid #9be0b0; outline-offset: 3px; }
 
-.camera-card, .action-card { overflow: hidden; border: 1px solid #2d2c28; border-radius: 10px; background: #11110f; }
+.camera-card { overflow: hidden; border: 1px solid #2d2c28; border-radius: 10px; background: #11110f; }
 .camera-stage { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: #060606; }
 .camera-stage video, .camera-stage canvas {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);
@@ -40,13 +40,6 @@ h1 { margin: 0; font-size: 20px; line-height: 1; letter-spacing: -.05em; }
 .camera-meta { display: grid; gap: 4px; padding: 10px 12px 12px; }
 .camera-meta span { color: #77736b; font: 700 8px/1 ui-monospace, monospace; letter-spacing: .08em; }
 .camera-meta strong { overflow: hidden; color: #d9d4c8; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
-
-.action-card { min-height: 82px; display: grid; place-items: center; background: radial-gradient(circle at center, #151915, #080908 70%); }
-.last-action {
-  color: #8cf2a8; font: 700 54px/.9 ui-sans-serif, system-ui, sans-serif; opacity: 0;
-  transform: scale(.72); text-shadow: 0 0 0 transparent; transition: opacity .15s ease, transform .15s ease, text-shadow .15s ease;
-}
-.last-action.is-active { opacity: 1; transform: scale(1); text-shadow: 0 0 20px rgba(101, 217, 133, .9); }
 
 .primary-button {
   width: 100%; height: 42px; border: 1px solid #eee9dc; border-radius: 9px; background: #eee9dc;

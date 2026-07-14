@@ -155,6 +155,6 @@ test("SwipeDetector ignores fist, stale frames, and low confidence", () => {
 test("swipe directions map to the expected browser actions", () => {
   assert.equal(swipeDirectionToAction("up"), "scroll-up");
   assert.equal(swipeDirectionToAction("down"), "scroll-down");
-  assert.equal(swipeDirectionToAction("left"), "page-prev");
-  assert.equal(swipeDirectionToAction("right"), "page-next");
+  assert.equal(swipeDirectionToAction("left"), "scroll-up");
+  assert.equal(swipeDirectionToAction("right"), "scroll-down");
 });

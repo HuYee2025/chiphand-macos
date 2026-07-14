@@ -35,14 +35,6 @@ type GestureIndicator = {
   drawHand(state: HandControlState): void;
 };
 
-const HAND_CONNECTIONS = [
-  [0, 1], [1, 2], [2, 3], [3, 4],
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  [5, 9], [9, 10], [10, 11], [11, 12],
-  [9, 13], [13, 14], [14, 15], [15, 16],
-  [13, 17], [17, 18], [18, 19], [19, 20], [0, 17],
-] as const;
-
 function createIndicator(): GestureIndicator {
   const existing = document.getElementById(OVERLAY_ID);
   if (existing?.shadowRoot) {
@@ -57,39 +49,30 @@ function createIndicator(): GestureIndicator {
   shadow.innerHTML = `
     <style>
       :host { all: initial; }
-      #hand-overlay { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      #feedback-overlay { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
       #indicator {
-        position: fixed; right: 14px; top: 50%; width: 88px; height: 88px; display: grid; place-items: center; overflow: hidden;
-        border: 1px solid #171717; border-radius: 9px; background: #090909; color: #c0ffd0;
-        box-shadow: 0 8px 24px rgba(0,0,0,.22); cursor: pointer;
-        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        transition: border-color .2s ease, background .2s ease;
+        position: fixed; right: 14px; top: 50%; width: 28px; height: 28px; cursor: pointer;
+        border: 1px solid #161616; border-radius: 50%; background: #090909;
+        box-shadow: 0 3px 12px rgba(0,0,0,.18); pointer-events: auto; transition: opacity .2s ease;
       }
-      #arrow { color: #c0ffd0; font: 700 58px/1 system-ui, sans-serif; opacity: 0; transform: scale(.72); transition: opacity .15s ease, transform .15s ease, text-shadow .15s ease; }
-      #indicator.is-gesture { border-color: #3e7450; background: #0e1710; }
-      #indicator.is-gesture #arrow { opacity: 1; transform: scale(1); text-shadow: 0 0 18px #65d985; }
-      #status { position: absolute; bottom: 13px; width: 100%; color: #85827a; font: 700 9px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; transition: opacity .15s ease; text-align: center; }
-      #indicator.is-gesture #status { opacity: 0; }
-      @media (prefers-reduced-motion: reduce) { #indicator, #arrow, #status { transition: none; } }
+      #indicator:focus-visible { outline: 2px solid #7ee49a; outline-offset: 3px; }
+      @media (prefers-reduced-motion: reduce) { #indicator { transition: none; } }
     </style>
-    <canvas id="hand-overlay" aria-hidden="true"></canvas>
+    <canvas id="feedback-overlay" aria-hidden="true"></canvas>
     <div id="indicator" aria-label="手势浏览识别状态，点击查看摄像头" role="button" tabindex="0">
-      <span id="arrow" aria-hidden="true"></span>
-      <span id="status">未启动</span>
     </div>
   `;
   document.documentElement.append(host);
 
   const root = shadow.querySelector<HTMLElement>("#indicator");
-  const arrow = shadow.querySelector<HTMLElement>("#arrow");
-  const status = shadow.querySelector<HTMLElement>("#status");
-  const handOverlay = shadow.querySelector<HTMLCanvasElement>("#hand-overlay");
-  const handContext = handOverlay?.getContext("2d");
-  if (!root || !arrow || !status || !handOverlay || !handContext) throw new Error("无法创建手势状态提示。");
+  const feedbackOverlay = shadow.querySelector<HTMLCanvasElement>("#feedback-overlay");
+  const handContext = feedbackOverlay?.getContext("2d");
+  if (!root || !feedbackOverlay || !handContext) throw new Error("无法创建手势状态提示。");
 
   let tracking = false;
   let gestureTimer: number | null = null;
   let latestHandState: HandControlState | null = null;
+  let activeDirection: Extract<SwipeDirection, "left" | "right"> | null = null;
   const openController = (): void => {
     const request: ExtensionRequest = { type: "open-controller" };
     void chrome.runtime.sendMessage(request).catch(() => undefined);
@@ -102,93 +85,87 @@ function createIndicator(): GestureIndicator {
     }
   });
 
-  const drawHand = (state: HandControlState): void => {
-    latestHandState = state;
+  const renderFeedback = (): void => {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const pixelRatio = window.devicePixelRatio || 1;
     const targetWidth = Math.max(1, Math.round(width * pixelRatio));
     const targetHeight = Math.max(1, Math.round(height * pixelRatio));
-    if (handOverlay.width !== targetWidth || handOverlay.height !== targetHeight) {
-      handOverlay.width = targetWidth;
-      handOverlay.height = targetHeight;
+    if (feedbackOverlay.width !== targetWidth || feedbackOverlay.height !== targetHeight) {
+      feedbackOverlay.width = targetWidth;
+      feedbackOverlay.height = targetHeight;
     }
     handContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     handContext.clearRect(0, 0, width, height);
-    if (!state.detected || state.landmarks.length === 0) return;
-
-    const pointAt = (index: number): { x: number; y: number } | null => {
-      const landmark = state.landmarks[index];
-      return landmark ? { x: (1 - landmark.x) * width, y: landmark.y * height } : null;
-    };
-    handContext.save();
-    handContext.globalAlpha = state.stale ? 0.28 : 0.5;
-    handContext.strokeStyle = "#71d78d";
-    handContext.lineWidth = 2;
-    handContext.lineCap = "round";
-    handContext.lineJoin = "round";
-    for (const [startIndex, endIndex] of HAND_CONNECTIONS) {
-      const start = pointAt(startIndex);
-      const end = pointAt(endIndex);
-      if (!start || !end) continue;
-      handContext.beginPath();
-      handContext.moveTo(start.x, start.y);
-      handContext.lineTo(end.x, end.y);
-      handContext.stroke();
-    }
-    handContext.fillStyle = "#b7f5c7";
-    for (let index = 0; index < state.landmarks.length; index += 1) {
-      const point = pointAt(index);
-      if (!point) continue;
-      handContext.beginPath();
-      handContext.arc(point.x, point.y, index === 0 ? 4 : 2.5, 0, Math.PI * 2);
-      handContext.fill();
-    }
-    if (state.gesture === "Pinch") {
-      const thumb = pointAt(4);
-      const index = pointAt(8);
-      if (thumb && index) {
-        const x = (thumb.x + index.x) / 2;
-        const y = (thumb.y + index.y) / 2;
-        handContext.globalAlpha = 1;
-        handContext.beginPath();
-        handContext.arc(x, y, 11, 0, Math.PI * 2);
-        handContext.fillStyle = "#f8d84e";
-        handContext.shadowColor = "#f8d84e";
-        handContext.shadowBlur = 20;
-        handContext.fill();
-        handContext.lineWidth = 2;
-        handContext.strokeStyle = "#fff6b0";
-        handContext.stroke();
+    const state = latestHandState;
+    if (state?.detected && !state.stale && state.landmarks.length > 0) {
+      const pointAt = (index: number): { x: number; y: number } | null => {
+        const landmark = state.landmarks[index];
+        return landmark ? { x: (1 - landmark.x) * width, y: landmark.y * height } : null;
+      };
+      if (state.gesture === "Pinch") {
+        const thumb = pointAt(4);
+        const index = pointAt(8);
+        if (thumb && index) {
+          const x = (thumb.x + index.x) / 2;
+          const y = (thumb.y + index.y) / 2;
+          handContext.beginPath();
+          handContext.arc(x, y, 9, 0, Math.PI * 2);
+          handContext.fillStyle = "rgba(101, 217, 133, .62)";
+          handContext.fill();
+        }
       }
     }
+    if (activeDirection === null) return;
+    const size = Math.min(width * 0.34, height * 0.34);
+    handContext.save();
+    handContext.translate(width / 2, height / 2);
+    if (activeDirection === "right") handContext.rotate(Math.PI);
+    handContext.beginPath();
+    handContext.moveTo(0, -size * 0.52);
+    handContext.lineTo(-size * 0.42, -size * 0.1);
+    handContext.lineTo(-size * 0.18, -size * 0.1);
+    handContext.lineTo(-size * 0.18, size * 0.5);
+    handContext.lineTo(size * 0.18, size * 0.5);
+    handContext.lineTo(size * 0.18, -size * 0.1);
+    handContext.lineTo(size * 0.42, -size * 0.1);
+    handContext.closePath();
+    handContext.strokeStyle = "rgba(101, 217, 133, .82)";
+    handContext.lineWidth = Math.max(4, Math.min(11, size * 0.028));
+    handContext.lineCap = "round";
+    handContext.lineJoin = "round";
+    handContext.stroke();
     handContext.restore();
   };
+
+  const drawHand = (state: HandControlState): void => {
+    latestHandState = state;
+    renderFeedback();
+  };
   window.addEventListener("resize", () => {
-    if (latestHandState) drawHand(latestHandState);
+    if (latestHandState) renderFeedback();
   });
 
   const indicator: GestureIndicator = {
-    setTracking(active, detail): void {
+    setTracking(active, _detail): void {
       tracking = active;
-      status.textContent = active ? "手势识别中" : "已停止";
       root.setAttribute("aria-label", active ? "手势识别中，点击查看摄像头" : "手势识别已停止，点击打开控制窗口");
       if (!active) {
-        root.classList.remove("is-gesture");
-        arrow.textContent = "";
+        activeDirection = null;
+        latestHandState = null;
+        if (gestureTimer !== null) window.clearTimeout(gestureTimer);
+        renderFeedback();
       }
-      if (detail && active) root.title = detail;
     },
     flash(direction): void {
-      if (!tracking) return;
-      const arrows: Record<SwipeDirection, string> = { up: "↑", down: "↓", left: "←", right: "→" };
-      arrow.textContent = arrows[direction];
-      root.classList.add("is-gesture");
+      if (!tracking || (direction !== "left" && direction !== "right")) return;
+      activeDirection = direction;
+      renderFeedback();
       if (gestureTimer !== null) window.clearTimeout(gestureTimer);
       gestureTimer = window.setTimeout(() => {
-        root.classList.remove("is-gesture");
-        arrow.textContent = "";
-      }, 620);
+        activeDirection = null;
+        renderFeedback();
+      }, 550);
     },
     drawHand,
   };
@@ -213,22 +190,6 @@ function isEditable(element: Element | null): boolean {
   );
 }
 
-function dispatchArrow(key: "ArrowLeft" | "ArrowRight"): void {
-  const target = document.activeElement instanceof HTMLElement ? document.activeElement : document.body;
-  const keyCode = key === "ArrowLeft" ? 37 : 39;
-  const options: KeyboardEventInit = {
-    key,
-    code: key,
-    keyCode,
-    which: keyCode,
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-  };
-  target.dispatchEvent(new KeyboardEvent("keydown", options));
-  target.dispatchEvent(new KeyboardEvent("keyup", options));
-}
-
 const genericAdapter: PageActionAdapter = {
   id: "generic-page",
   canHandle: () => true,
@@ -238,8 +199,7 @@ const genericAdapter: PageActionAdapter = {
       window.scrollBy({ top: direction * window.innerHeight * 0.75, behavior: "smooth" });
       return true;
     }
-    dispatchArrow(action === "page-prev" ? "ArrowLeft" : "ArrowRight");
-    return true;
+    return false;
   },
 };
 
@@ -256,7 +216,7 @@ function executeAction(action: GestureAction): ExtensionResponse {
   }
   return {
     ok: true,
-    message: action.startsWith("scroll") ? "页面已滚动。" : "已发送左右翻页动作。",
+    message: "页面已滚动。",
     adapterId: adapter.id,
   };
 }

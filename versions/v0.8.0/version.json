@@ -1,0 +1,20 @@
+{
+  "version": "0.8.0",
+  "date": "2026-07-14",
+  "tag": "v0.8.0",
+  "summary": "Replace persistent hand-grid feedback with a minimal pinch point and vertical swipe scrolling feedback on the webpage.",
+  "scope": [
+    "draw a plain translucent green point only while pinching",
+    "render central outline arrows for horizontal swipe results",
+    "map left swipe to scroll-up and right swipe to scroll-down",
+    "remove the controller action panel and synthetic arrow-key navigation"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "The right swipe and upward pinch drag both move the reading view toward lower page content."
+  ]
+}

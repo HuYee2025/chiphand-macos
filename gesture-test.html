@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="手势浏览插件的滚动与左右翻页验收页面。" />
+    <meta name="description" content="手势浏览插件的捏合与左右挥动滚动验收页面。" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>手势浏览插件测试页</title>
   </head>
@@ -13,24 +13,24 @@
         <p>GESTURE CONTROL / TEST PAGE</p>
         <h1>浏览动作验收</h1>
       </div>
-      <div class="page-counter">第 <strong id="page-number">1</strong> / 5 页</div>
+      <div class="page-counter">捏合与左右挥动测试</div>
     </header>
 
     <main>
       <section class="hero">
         <span class="index">01</span>
-        <h2>向上、向下挥动手掌</h2>
-        <p>页面每次应平滑滚动约四分之三屏。继续向下测试三个章节，再测试左右翻页。</p>
+        <h2>捏合上拖：向下浏览</h2>
+        <p>拇指食指捏住后把手向上拖，绿色圆点会跟随手指，页面应连续显示下方内容。</p>
       </section>
       <section class="chapter chapter--warm">
         <span class="index">02</span>
-        <h2>向左挥：上一页</h2>
-        <p>测试页监听 ArrowLeft。页码应减少一次，不应该连续跳页。</p>
+        <h2>向左挥：向上翻一屏</h2>
+        <p>识别后中央显示绿色空心向上箭头，页面应平滑上滚约四分之三屏。</p>
       </section>
       <section class="chapter chapter--cool">
         <span class="index">03</span>
-        <h2>向右挥：下一页</h2>
-        <p>测试页监听 ArrowRight。页码应增加一次，最大为第 5 页。</p>
+        <h2>向右挥：向下翻一屏</h2>
+        <p>识别后中央显示绿色空心向下箭头，页面应平滑下滚约四分之三屏。</p>
       </section>
       <section class="chapter chapter--dark">
         <span class="index">04</span>
@@ -40,7 +40,6 @@
       </section>
     </main>
 
-    <div id="action-toast" class="action-toast" role="status">等待左右翻页动作</div>
     <script type="module" src="/src/gesture-test.ts"></script>
   </body>
 </html>

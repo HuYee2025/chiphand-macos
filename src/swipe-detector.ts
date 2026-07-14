@@ -32,8 +32,8 @@ const DEFAULTS = {
 export function swipeDirectionToAction(direction: SwipeDirection): GestureAction {
   if (direction === "up") return "scroll-up";
   if (direction === "down") return "scroll-down";
-  if (direction === "left") return "page-prev";
-  return "page-next";
+  if (direction === "left") return "scroll-up";
+  return "scroll-down";
 }
 
 export class SwipeDetector {

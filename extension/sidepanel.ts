@@ -1,6 +1,6 @@
 import "./sidepanel.css";
 import { CameraOverlay } from "../src/camera-overlay";
-import { EMPTY_HAND_STATE, type SwipeDirection } from "../src/types";
+import { EMPTY_HAND_STATE } from "../src/types";
 import { isTrackerEvent, type ExtensionRequest, type ExtensionResponse } from "./message-types";
 
 function required<T extends Element>(selector: string): T {
@@ -17,7 +17,6 @@ const toggle = required<HTMLButtonElement>("#camera-toggle");
 const runtimeStatus = required<HTMLElement>("#runtime-status");
 const handStatus = required<HTMLElement>("#hand-status");
 const gestureStatus = required<HTMLElement>("#gesture-status");
-const lastAction = required<HTMLElement>("#last-action");
 const message = required<HTMLElement>("#panel-message");
 const panelShell = required<HTMLElement>("#panel-shell");
 const cameraOverlay = new CameraOverlay(previewVideo, previewCanvas);
@@ -32,13 +31,6 @@ const targetTabId = (() => {
   const value = Number(new URLSearchParams(window.location.search).get("tabId"));
   return Number.isInteger(value) && value > 0 ? value : null;
 })();
-
-const directionArrow: Record<SwipeDirection, string> = {
-  up: "↑",
-  down: "↓",
-  left: "←",
-  right: "→",
-};
 
 function clearAutoClose(): void {
   if (closeTimer !== null) window.clearTimeout(closeTimer);
@@ -61,15 +53,6 @@ function setStatus(text: string, state: "idle" | "active" | "error" = "idle"): v
 function showMessage(text: string, isError = false): void {
   message.textContent = isError ? text : "";
   message.classList.toggle("is-error", isError);
-}
-
-function flashDirection(direction: SwipeDirection): void {
-  lastAction.textContent = directionArrow[direction];
-  lastAction.classList.add("is-active");
-  window.setTimeout(() => {
-    lastAction.classList.remove("is-active");
-    lastAction.textContent = "";
-  }, 620);
 }
 
 async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse> {
@@ -222,7 +205,6 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
     }
     return;
   }
-  flashDirection(event.direction);
   showMessage(event.message, !event.ok);
 });
 

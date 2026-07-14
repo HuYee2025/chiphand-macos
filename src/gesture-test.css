@@ -31,10 +31,3 @@ section p { max-width: 600px; margin: 0; color: #625d55; font-size: clamp(14px, 
 label { display: grid; gap: 8px; max-width: 520px; margin-top: 26px; color: #aaa49a; font-size: 11px; }
 input { height: 46px; padding: 0 13px; border: 1px solid #514e48; border-radius: 8px; background: #24221f; color: #eee9dc; font: inherit; }
 input:focus { border-color: #eee9dc; outline: none; }
-
-.action-toast {
-  position: fixed; z-index: 6; left: 50%; bottom: 24px; padding: 11px 15px; transform: translate(-50%, 16px);
-  border-radius: 99px; background: #151412; color: #eee9dc; font-size: 11px; opacity: 0; pointer-events: none;
-  transition: opacity .18s ease, transform .18s ease;
-}
-.action-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
