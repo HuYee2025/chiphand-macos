@@ -248,7 +248,12 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
     cameraOverlay.draw(event.state);
     if (event.state.detected) {
       handStatus.textContent = `已检测到${event.state.handedness === "Left" ? "左手" : "右手"} ${Math.round(event.state.confidence * 100)}%`;
-      gestureStatus.textContent = event.state.gesture === "Open_Palm" ? "张开手掌，可以挥动" : "请张开手掌";
+      gestureStatus.textContent =
+        event.state.gesture === "Pinch"
+          ? "已捏合 · 上下拖动页面"
+          : event.state.gesture === "Open_Palm"
+            ? "张开手掌，可左右挥动翻页"
+            : "张开手掌翻页，或拇指食指捏合滚动";
     } else {
       handStatus.textContent = "寻找手掌";
       gestureStatus.textContent = "请把一只手完整放入画面";

@@ -1,4 +1,5 @@
 import type { HandControlState } from "./types";
+import { pinchCenter } from "./hand-gesture-math";
 
 const HAND_COLORS = {
   Left: "#ff4555",
@@ -59,6 +60,24 @@ export class CameraOverlay {
       this.context.arc(landmark.x * width, landmark.y * height, Math.max(2.5, radius), 0, Math.PI * 2);
       this.context.fillStyle = index === 0 ? "#f1ead9" : color;
       this.context.fill();
+    }
+
+    if (state.gesture === "Pinch") {
+      const center = pinchCenter(state.landmarks);
+      if (center) {
+        const radius = Math.max(6, width * 0.017);
+        this.context.save();
+        this.context.beginPath();
+        this.context.arc(center.x * width, center.y * height, radius, 0, Math.PI * 2);
+        this.context.fillStyle = "#f8d84e";
+        this.context.shadowColor = "#f8d84e";
+        this.context.shadowBlur = radius * 1.5;
+        this.context.fill();
+        this.context.lineWidth = Math.max(1.5, width * 0.003);
+        this.context.strokeStyle = "#fff5aa";
+        this.context.stroke();
+        this.context.restore();
+      }
     }
   }
 }

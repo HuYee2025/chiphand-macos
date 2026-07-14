@@ -149,6 +149,17 @@ function executeAction(action: GestureAction): ExtensionResponse {
   };
 }
 
+function executePinchScroll(deltaY: number): ExtensionResponse {
+  if (isEditable(document.activeElement)) {
+    return { ok: false, message: "正在编辑文字，已忽略捏合滚动。" };
+  }
+  const boundedDelta = Math.max(-0.12, Math.min(0.12, deltaY));
+  if (Math.abs(boundedDelta) < 0.003) return { ok: true, message: "捏合已就位。" };
+  // Preserve the original extension mapping: move hand up to move the page up.
+  window.scrollBy({ top: boundedDelta * window.innerHeight * 1.8, behavior: "auto" });
+  return { ok: true, message: "捏合滚动中。", adapterId: "generic-page" };
+}
+
 if (!window.__gestureBrowserControlInstalled) {
   window.__gestureBrowserControlInstalled = true;
   const indicator = createIndicator();
@@ -166,6 +177,10 @@ if (!window.__gestureBrowserControlInstalled) {
       if (request.type === "gesture-overlay-gesture") {
         indicator.flash(request.direction);
         sendResponse({ ok: true, message: "页面内手势提示已更新。" });
+        return;
+      }
+      if (request.type === "execute-pinch-scroll") {
+        sendResponse(executePinchScroll(request.deltaY));
         return;
       }
       sendResponse(executeAction(request.action));

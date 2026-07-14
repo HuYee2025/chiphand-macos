@@ -1,0 +1,20 @@
+{
+  "version": "0.5.0",
+  "date": "2026-07-14",
+  "tag": "v0.5.0",
+  "summary": "Replace ambiguous vertical swipes with a thumb-index pinch-and-drag continuous scrolling control.",
+  "scope": [
+    "recognize thumb-index pinch and draw its yellow midpoint marker",
+    "scroll the controlled page continuously while the pinch is held",
+    "reserve open-palm swipes for left and right page navigation"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Hold a thumb-index pinch for about 80ms before moving vertically.",
+    "Move hand up to move the page up; release the pinch to stop immediately."
+  ]
+}

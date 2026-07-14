@@ -5,6 +5,7 @@ const THUMB_TIP = 4;
 const INDEX_TIP = 8;
 const NON_THUMB_TIPS = [8, 12, 16, 20];
 const MCPs = [5, 9, 13, 17];
+const PINCH_DISTANCE_THRESHOLD = 0.34;
 
 export function pointDistance(a: Point2D, b: Point2D): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -85,8 +86,20 @@ export function pinchStrength(landmarks: ReadonlyArray<Point2D>): number {
   return pointDistance(thumb, index) / handScale(landmarks);
 }
 
+export function pinchCenter(landmarks: ReadonlyArray<Point2D>): Point2D | null {
+  const thumb = landmarks[THUMB_TIP];
+  const index = landmarks[INDEX_TIP];
+  if (!thumb || !index) return null;
+  return { x: (thumb.x + index.x) / 2, y: (thumb.y + index.y) / 2 };
+}
+
+export function isPinching(landmarks: ReadonlyArray<Point2D>, threshold = PINCH_DISTANCE_THRESHOLD): boolean {
+  return pinchStrength(landmarks) <= threshold;
+}
+
 export function classifyHandGesture(landmarks: ReadonlyArray<Point2D>): ControlGesture {
   if (isClosedFist(landmarks)) return "Closed_Fist";
+  if (isPinching(landmarks)) return "Pinch";
   if (handOpenness(landmarks) >= 0.38) return "Open_Palm";
   return "Other";
 }

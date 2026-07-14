@@ -42,6 +42,7 @@ let fpsFrames = 0;
 function gestureText(gesture: ControlGesture): string {
   if (gesture === "Open_Palm") return "张开手掌 · 前进";
   if (gesture === "Closed_Fist") return "握拳 · 暂停";
+  if (gesture === "Pinch") return "拇指食指捏合";
   return "移动手掌控制方向";
 }
 

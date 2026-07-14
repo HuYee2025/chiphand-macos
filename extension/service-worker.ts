@@ -105,6 +105,12 @@ async function handleRequest(request: ExtensionRequest): Promise<ExtensionRespon
   await ensureContentScript(tabId);
   if (request.type === "activate-tab") return { ok: true, message: "当前标签页已连接。" };
 
+  if (request.type === "pinch-scroll") {
+    const pinchRequest: ContentScriptRequest = { type: "execute-pinch-scroll", deltaY: request.deltaY };
+    const response = (await chrome.tabs.sendMessage(tabId, pinchRequest)) as ExtensionResponse | undefined;
+    return response ?? { ok: false, message: "网页没有返回捏合滚动结果。" };
+  }
+
   const contentRequest: ContentScriptRequest = {
     type: "execute-gesture-action",
     action: request.action,

@@ -11,11 +11,19 @@ export type ExtensionRequest =
       direction: SwipeDirection;
       timestamp: number;
       tabId?: number;
+    }
+  | {
+      type: "pinch-scroll";
+      deltaY: number;
+      direction: Extract<SwipeDirection, "up" | "down">;
+      timestamp: number;
+      tabId?: number;
     };
 
 export type ContentScriptRequest =
   | { type: "gesture-control-ping" }
   | { type: "execute-gesture-action"; action: GestureAction }
+  | { type: "execute-pinch-scroll"; deltaY: number }
   | { type: "gesture-overlay-status"; active: boolean; message: string }
   | { type: "gesture-overlay-gesture"; direction: SwipeDirection };
 
@@ -52,7 +60,8 @@ export function isExtensionRequest(message: unknown): message is ExtensionReques
     type === "start-background-tracking" ||
     type === "stop-background-tracking" ||
     type === "get-background-tracker-status" ||
-    type === "gesture-action"
+    type === "gesture-action" ||
+    type === "pinch-scroll"
   );
 }
 

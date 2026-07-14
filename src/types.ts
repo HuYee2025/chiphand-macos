@@ -1,7 +1,7 @@
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 
 export type Handedness = "Left" | "Right";
-export type ControlGesture = "Open_Palm" | "Closed_Fist" | "Other";
+export type ControlGesture = "Open_Palm" | "Closed_Fist" | "Pinch" | "Other";
 export type SwipeDirection = "up" | "down" | "left" | "right";
 export type GestureAction = "scroll-up" | "scroll-down" | "page-prev" | "page-next";
 

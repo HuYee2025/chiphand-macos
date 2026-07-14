@@ -178,7 +178,7 @@ export class HandTracker {
       roll: this.rotationCalibrator.update(smoothed),
       speedScale: distance.speedScale,
       distanceCalibrating: distance.calibrating,
-      gesture: classifyHandGesture(landmarks),
+      gesture: classifyHandGesture(smoothed),
       gestureConfidence: 1,
       landmarks: smoothed,
     };

@@ -112,6 +112,12 @@ test("SwipeDetector recognizes ten intentional swipes per direction without dupl
   }
 });
 
+test("SwipeDetector can reserve vertical movement for another control mode", () => {
+  const detector = new SwipeDetector({ allowedDirections: ["left", "right"] });
+  assert.deepEqual(feed(detector, trajectories.up), []);
+  assert.deepEqual(feed(detector, trajectories.left, 1_000), ["left"]);
+});
+
 test("SwipeDetector ignores two minutes of stationary jitter and diagonal movement", () => {
   const detector = new SwipeDetector();
   const jitter = Array.from({ length: Math.ceil(120_000 / 33) }, (_, index) => ({

@@ -5,6 +5,8 @@ import {
   HandDistanceCalibrator,
   handOpenness,
   isClosedFist,
+  isPinching,
+  pinchCenter,
   pinchStrength,
 } from "../src/hand-gesture-math";
 import { PalmRotationCalibrator } from "../src/input-controller";
@@ -38,6 +40,15 @@ test("fist and pinch use normalized joint distances", () => {
   for (const index of [8, 12, 16, 20]) landmarks[index] = { x: 0.5, y: 0.74 };
   assert.equal(isClosedFist(landmarks), true);
   assert.equal(classifyHandGesture(landmarks), "Closed_Fist");
+});
+
+test("thumb-index contact is classified as a pinch with a midpoint", () => {
+  const landmarks = openHand();
+  landmarks[4] = { x: 0.42, y: 0.28 };
+  landmarks[8] = { x: 0.42, y: 0.28 };
+  assert.equal(isPinching(landmarks), true);
+  assert.equal(classifyHandGesture(landmarks), "Pinch");
+  assert.deepEqual(pinchCenter(landmarks), { x: 0.42, y: 0.28 });
 });
 
 test("PalmRotationCalibrator treats the first seen orientation as neutral", () => {

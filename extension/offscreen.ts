@@ -1,4 +1,5 @@
 import { HandTracker } from "../src/hand-tracker";
+import { PinchScrollDetector } from "../src/pinch-scroll-detector";
 import { SwipeDetector, swipeDirectionToAction } from "../src/swipe-detector";
 import type { HandControlState, SwipeDirection } from "../src/types";
 import {
@@ -13,13 +14,16 @@ const video = document.querySelector<HTMLVideoElement>("#background-camera");
 if (!video) throw new Error("缺少后台摄像头元素。");
 const backgroundVideo = video;
 
-const detector = new SwipeDetector();
+const detector = new SwipeDetector({ allowedDirections: ["left", "right"] });
+const pinchScrollDetector = new PinchScrollDetector();
 let tracker: HandTracker | null = null;
 let running = false;
 let targetTabId: number | null = null;
 let handPresent: boolean | null = null;
 let lastPreviewUpdateAt = 0;
 const PREVIEW_UPDATE_INTERVAL_MS = 1000 / 15;
+const PINCH_FEEDBACK_INTERVAL_MS = 180;
+let lastPinchFeedbackAt = 0;
 
 function statusResponse(message: string, ok = true): OffscreenResponse {
   return { ok, active: running, message, ...(targetTabId === null ? {} : { tabId: targetTabId }) };
@@ -62,6 +66,39 @@ async function executeDirection(direction: SwipeDirection): Promise<void> {
   }
 }
 
+async function executePinchScroll(deltaY: number, direction: Extract<SwipeDirection, "up" | "down">): Promise<void> {
+  if (targetTabId === null) return;
+  const request: ExtensionRequest = {
+    type: "pinch-scroll",
+    deltaY,
+    direction,
+    timestamp: Date.now(),
+    tabId: targetTabId,
+  };
+  try {
+    const response = (await chrome.runtime.sendMessage(request)) as ExtensionResponse | undefined;
+    const now = performance.now();
+    if (now - lastPinchFeedbackAt >= PINCH_FEEDBACK_INTERVAL_MS) {
+      lastPinchFeedbackAt = now;
+      publish({
+        type: "background-gesture-feedback",
+        direction,
+        ok: response?.ok ?? false,
+        message: response?.message ?? "网页没有返回捏合滚动结果。",
+        ...(targetTabId === null ? {} : { tabId: targetTabId }),
+      });
+    }
+  } catch {
+    publish({
+      type: "background-gesture-feedback",
+      direction,
+      ok: false,
+      message: "插件后台连接失败。",
+      ...(targetTabId === null ? {} : { tabId: targetTabId }),
+    });
+  }
+}
+
 function handleHandState(state: HandControlState): void {
   const now = performance.now();
   if (now - lastPreviewUpdateAt >= PREVIEW_UPDATE_INTERVAL_MS) {
@@ -73,9 +110,11 @@ function handleHandState(state: HandControlState): void {
     publishStatus(
       state.detected
         ? `已检测到${state.handedness === "Left" ? "左手" : "右手"}，${Math.round(state.confidence * 100)}%。`
-        : "正在寻找张开的手掌。",
+        : "正在寻找手掌。",
     );
   }
+  const pinchUpdate = pinchScrollDetector.update(state, now);
+  if (pinchUpdate.direction !== null) void executePinchScroll(pinchUpdate.deltaY, pinchUpdate.direction);
   const direction = detector.update(state, now);
   if (direction) void executeDirection(direction);
 }
@@ -84,9 +123,11 @@ function handleTrackerError(message: string): void {
   tracker?.stop();
   tracker = null;
   detector.reset();
+  pinchScrollDetector.reset();
   running = false;
   handPresent = null;
   lastPreviewUpdateAt = 0;
+  lastPinchFeedbackAt = 0;
   publishStatus(`后台识别失败：${message}`);
 }
 
@@ -101,6 +142,7 @@ async function startTracking(tabId: number): Promise<OffscreenResponse> {
     await tracker.start();
     running = true;
     lastPreviewUpdateAt = 0;
+    lastPinchFeedbackAt = 0;
     publishStatus("后台识别中；点击网页不会中断手势。");
     return statusResponse("后台识别已启动。现在可以直接点击网页。");
   } catch (error) {
@@ -117,9 +159,11 @@ function stopTracking(): OffscreenResponse {
   tracker?.stop();
   tracker = null;
   detector.reset();
+  pinchScrollDetector.reset();
   running = false;
   handPresent = null;
   lastPreviewUpdateAt = 0;
+  lastPinchFeedbackAt = 0;
   publishStatus("摄像头已停止。");
   return statusResponse("摄像头已停止。");
 }

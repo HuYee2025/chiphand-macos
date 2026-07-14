@@ -14,6 +14,7 @@ export type SwipeDetectorOptions = {
   stableMilliseconds?: number;
   stableStepDistance?: number;
   minimumConfidence?: number;
+  allowedDirections?: readonly SwipeDirection[];
 };
 
 const DEFAULTS = {
@@ -45,6 +46,7 @@ export class SwipeDetector {
   private readonly stableMilliseconds: number;
   private readonly stableStepDistance: number;
   private readonly minimumConfidence: number;
+  private readonly allowedDirections: readonly SwipeDirection[];
   private samples: SwipeSample[] = [];
   private armed = true;
   private cooldownUntil = 0;
@@ -64,6 +66,7 @@ export class SwipeDetector {
     this.stableMilliseconds = options.stableMilliseconds ?? DEFAULTS.stableMilliseconds;
     this.stableStepDistance = options.stableStepDistance ?? DEFAULTS.stableStepDistance;
     this.minimumConfidence = options.minimumConfidence ?? DEFAULTS.minimumConfidence;
+    this.allowedDirections = options.allowedDirections ?? ["up", "down", "left", "right"];
   }
 
   update(state: HandControlState, now: number): SwipeDirection | null {
@@ -103,7 +106,7 @@ export class SwipeDetector {
       direction = deltaY < 0 ? "up" : "down";
     }
 
-    if (!direction) return null;
+    if (!direction || !this.allowedDirections.includes(direction)) return null;
     this.armed = false;
     this.cooldownUntil = now + this.cooldownMilliseconds;
     this.samples = [];
