@@ -19,7 +19,7 @@
 - `CameraOverlay`：镜像摄像头和红蓝手部骨架；Extension 后台每秒 15 次同步关键点给控制窗口预览，仅在本机扩展上下文传递。
 - `PinchScrollDetector`：拇指食指接触稳定 80ms 后接管垂直控制；接触/释放阈值采用迟滞，连续输出受跳变保护的归一化拖动量。网页侧将其反向映射为文档滚动，遵循“手向上拖、查看下方内容”。
 - `SwipeDetector`：保存最近 360ms 手掌中心轨迹；Extension 仅检测左右挥动，其中左挥映射上滚、右挥映射下滚，保留 650ms 冷却和稳定/离手重新激活。默认最小位移 `0.16`，可由本机高级设置在 `0.10–0.22` 内微调。
-- Extension 控制窗口：负责首次请求摄像头权限、实时预览、显示启动状态和停止控制；后台识别已运行时重新打开窗口会自动恢复预览。窗口为 300×350、16:9 视频和满宽圆角的“开启摄像头 / 关闭摄像头”按钮；摄像头启动后，按钮下方才显示可展开的“高级模式”，展开时窗口升至 300×640。高级模式包含左右挥手、手指捏合灵敏度滑杆，以及网页手部网格/捏合圆点两个调试开关。打开时右缘贴齐受控 Chrome 窗口，鼠标离开后直接关闭，失焦或关闭不停止后台识别；关闭时 Service Worker 再次确认网页控制脚本与后台状态。
+- Extension 控制窗口：负责首次请求摄像头权限、实时预览、显示启动状态和停止控制；后台识别已运行时重新打开窗口会自动恢复预览。窗口为 300×350、16:9 视频和满宽圆角的“开启摄像头 / 关闭摄像头”按钮；按钮下方始终显示可展开的“高级设置”，展开时窗口升至 300×640。高级设置包含左右挥手、手指捏合灵敏度滑杆，以及网页手部网格/捏合圆点两个调试开关。打开时右缘贴齐受控 Chrome 窗口；仅 `pointerleave` 会关闭窗口，窗口失焦不关闭也不停止后台识别；关闭时 Service Worker 再次确认网页控制脚本与后台状态。
 - Extension Offscreen Document：持有 `HandTracker`、`SwipeDetector` 和摄像头轨道；不依赖可见 Chrome 窗口，持续把动作发送给关联网页。
 - Offscreen 识别状态：看到手掌时向控制窗口和网页内提示条报告左右手与置信度；未看到时明确报告“正在寻找张开的手掌”。
 - Extension Service Worker：在插件图标点击时绑定当前网页、动态注入网页控制脚本、创建 Offscreen Document，并转发后台状态和动作反馈。动态注入后必须 ping 确认网页接收器可用；页面跳转导致脚本消失时，下一次网页消息会补注入并只重试一次。
@@ -78,7 +78,7 @@ npm run preview
 - `predev`、`prebuild` 会把 MediaPipe WASM 和模型同步到本地静态资源目录。
 - `dist/` 为黑洞 Demo 与验收页；`dist-extension/` 为可加载的 Chrome 解压扩展。
 - Extension 使用 Chrome 114+，只申请 `activeTab`、`scripting`、`offscreen`，不申请 `<all_urls>`。
-- 当前未发布 Chrome Web Store；通过 `chrome://extensions/` 加载 `dist-extension/`。
+- 当前可用 `npm run package:extension` 生成 `releases/gesture-browser-control-v1.0.0.zip`，用于 Chrome Web Store 和 Microsoft Edge Add-ons；本机仍通过 `chrome://extensions/` 或 `edge://extensions/` 加载 `dist-extension/`。
 
 ## 技术限制
 

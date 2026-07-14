@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "date": "2026-07-14",
+  "tag": "v1.0.0",
+  "summary": "First distributable browser-extension release for Chrome and Chromium-based Microsoft Edge.",
+  "scope": [
+    "Keep Advanced Settings visible below the camera control at all times.",
+    "Close the controller only after the pointer leaves the controller window.",
+    "Add a repeatable ZIP packaging command for Chrome Web Store and Microsoft Edge Add-ons."
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build",
+    "npm run package:extension",
+    "ZIP manifest-root inspection",
+    "Static controller layout inspection at 300x350 and 300x640"
+  ],
+  "notes": [
+    "The ZIP is for store submission; use dist-extension for local developer-mode installation.",
+    "Microsoft Edge officially supports the MV3 offscreen, scripting, storage, and sidePanel APIs used by this project."
+  ]
+}

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-extension/
+releases/*.zip
 public/mediapipe/
 .playwright-cli/
 output/playwright/

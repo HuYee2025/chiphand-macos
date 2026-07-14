@@ -31,7 +31,6 @@ const panelShell = required<HTMLElement>("#panel-shell");
 const cameraOverlay = new CameraOverlay(previewVideo, previewCanvas);
 
 let running = false;
-let pointerInside = false;
 let closeTimer: number | null = null;
 let previewStream: MediaStream | null = null;
 let previewStarting: Promise<void> | null = null;
@@ -51,7 +50,7 @@ function clearAutoClose(): void {
 function scheduleAutoClose(delay = LEAVE_CLOSE_MS): void {
   clearAutoClose();
   closeTimer = window.setTimeout(() => {
-    if (running && !pointerInside && !panelShell.matches(":hover")) window.close();
+    if (running && !panelShell.matches(":hover")) window.close();
   }, delay);
 }
 
@@ -129,7 +128,6 @@ async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse
 function setRunning(active: boolean, detail?: string): void {
   running = active;
   if (active) {
-    advancedToggle.hidden = false;
     placeholder.classList.toggle("is-hidden", previewStream !== null);
     placeholderLabel.textContent = "BACKGROUND ACTIVE";
     setCameraToggle(true);
@@ -150,8 +148,6 @@ function setRunning(active: boolean, detail?: string): void {
     return;
   }
   clearAutoClose();
-  if (advancedOpen) setAdvancedOpen(false);
-  advancedToggle.hidden = true;
   stopPreview();
   placeholder.classList.remove("is-hidden");
   placeholderLabel.textContent = "CAMERA OFF";
@@ -242,12 +238,10 @@ for (const control of [swipeSensitivity, pinchSensitivity, showHandGrid, showPin
 }
 
 panelShell.addEventListener("pointerenter", () => {
-  pointerInside = true;
   clearAutoClose();
 });
 
 panelShell.addEventListener("pointerleave", () => {
-  pointerInside = false;
   if (running) scheduleAutoClose(LEAVE_CLOSE_MS);
 });
 
@@ -285,9 +279,6 @@ window.addEventListener("pagehide", () => {
   clearAutoClose();
   if (settingsSaveTimer !== null) window.clearTimeout(settingsSaveTimer);
   stopPreview();
-});
-window.addEventListener("blur", () => {
-  if (running) scheduleAutoClose(120);
 });
 void (async () => {
   const response = await sendRequest({ type: "get-gesture-settings" });
