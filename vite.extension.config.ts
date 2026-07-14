@@ -28,6 +28,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         sidepanel: resolve(extensionRoot, "sidepanel.html"),
+        offscreen: resolve(extensionRoot, "offscreen.html"),
         "service-worker": resolve(extensionRoot, "service-worker.ts"),
         "content-script": resolve(extensionRoot, "content-script.ts"),
       },

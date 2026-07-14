@@ -45,6 +45,7 @@ export class HandTracker {
   private worker: Worker | null = null;
   private stream: MediaStream | null = null;
   private animationFrame = 0;
+  private videoFrameCallback = 0;
   private lastInferenceAt = 0;
   private lastVideoTime = -1;
   private workerBusy = false;
@@ -90,12 +91,14 @@ export class HandTracker {
     }
 
     this.active = true;
-    this.loop(performance.now());
+    this.scheduleLoop();
   }
 
   stop(): void {
     this.active = false;
     cancelAnimationFrame(this.animationFrame);
+    if (this.videoFrameCallback) this.video.cancelVideoFrameCallback(this.videoFrameCallback);
+    this.videoFrameCallback = 0;
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
     this.video.srcObject = null;
@@ -111,7 +114,7 @@ export class HandTracker {
 
   private readonly loop = (now: number): void => {
     if (!this.active || !this.worker) return;
-    this.animationFrame = requestAnimationFrame(this.loop);
+    this.scheduleLoop();
     this.emitExpiredState(now);
     const adaptiveInterval = Math.max(
       MIN_INFERENCE_INTERVAL_MS,
@@ -140,6 +143,15 @@ export class HandTracker {
         this.stop();
       });
   };
+
+  private scheduleLoop(): void {
+    if (!this.active) return;
+    if ("requestVideoFrameCallback" in this.video) {
+      this.videoFrameCallback = this.video.requestVideoFrameCallback((now) => this.loop(now));
+      return;
+    }
+    this.animationFrame = requestAnimationFrame(this.loop);
+  }
 
   private handleResult(result: HandLandmarkerResult, workerDurationMs: number): void {
     this.workerBusy = false;

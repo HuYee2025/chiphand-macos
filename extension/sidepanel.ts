@@ -1,9 +1,6 @@
 import "./sidepanel.css";
-import { CameraOverlay } from "../src/camera-overlay";
-import { HandTracker } from "../src/hand-tracker";
-import { SwipeDetector, swipeDirectionToAction } from "../src/swipe-detector";
-import type { HandControlState, SwipeDirection } from "../src/types";
-import type { ExtensionRequest, ExtensionResponse } from "./message-types";
+import type { SwipeDirection } from "../src/types";
+import { isTrackerEvent, type ExtensionRequest, type ExtensionResponse } from "./message-types";
 
 function required<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -11,9 +8,8 @@ function required<T extends Element>(selector: string): T {
   return element;
 }
 
-const video = required<HTMLVideoElement>("#camera-video");
-const canvas = required<HTMLCanvasElement>("#landmark-canvas");
 const placeholder = required<HTMLElement>("#camera-placeholder");
+const placeholderLabel = required<HTMLElement>("#camera-placeholder-label");
 const toggle = required<HTMLButtonElement>("#camera-toggle");
 const runtimeStatus = required<HTMLElement>("#runtime-status");
 const handStatus = required<HTMLElement>("#hand-status");
@@ -24,9 +20,6 @@ const panelShell = required<HTMLElement>("#panel-shell");
 const compactActiveGesture = required<HTMLElement>("#compact-active-gesture");
 const directionIndicators = Array.from(document.querySelectorAll<HTMLElement>("[data-direction]"));
 
-const overlay = new CameraOverlay(video, canvas);
-const detector = new SwipeDetector();
-let tracker: HandTracker | null = null;
 let running = false;
 let compact = false;
 let collapseTimer: number | null = null;
@@ -67,7 +60,7 @@ async function resizeController(compactMode: boolean): Promise<void> {
     const top = Math.round(Math.max(72, (window.screen.availHeight - size.height) / 2));
     await chrome.windows.update(currentWindow.id, { ...size, left, top });
   } catch {
-    // 窗口在关闭或系统拒绝改尺寸时，仍保留可点击的页面内收起状态。
+    // 窗口关闭或系统拒绝改尺寸时，后台识别仍会继续。
   }
 }
 
@@ -122,88 +115,55 @@ async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse
     const response = (await chrome.runtime.sendMessage(request)) as ExtensionResponse | undefined;
     return response ?? { ok: false, message: "插件后台没有响应。" };
   } catch {
-    return { ok: false, message: "插件后台连接失败，请重新打开侧边栏。" };
+    return { ok: false, message: "插件后台连接失败，请重新打开插件。" };
   }
 }
 
-async function executeDirection(direction: SwipeDirection): Promise<void> {
-  if (targetTabId === null) {
-    showMessage("没有关联网页。请回到目标网页后，从插件图标重新打开控制窗口。", true);
+function setRunning(active: boolean, detail?: string): void {
+  running = active;
+  if (active) {
+    placeholder.classList.remove("is-hidden");
+    placeholderLabel.textContent = "BACKGROUND ACTIVE";
+    toggle.textContent = "停止摄像头";
+    handStatus.textContent = "后台识别中";
+    gestureStatus.textContent = "点击网页不会中断手势";
+    setStatus("识别中", "active");
+    if (detail) showMessage(detail);
+    scheduleAutoCollapse();
     return;
   }
-  const request: ExtensionRequest = {
-    type: "gesture-action",
-    action: swipeDirectionToAction(direction),
-    direction,
-    timestamp: Date.now(),
-    tabId: targetTabId,
-  };
-  const response = await sendRequest(request);
-  lastAction.textContent = directionText[direction];
-  flashDirection(direction);
-  showMessage(response.message, !response.ok);
-}
-
-function handleHandState(state: HandControlState): void {
-  overlay.draw(state);
-  if (!state.detected) {
-    handStatus.textContent = "寻找手掌";
-    gestureStatus.textContent = "请把一只手放入画面";
-    detector.update(state, performance.now());
-    return;
-  }
-  handStatus.textContent = `${state.handedness === "Left" ? "左手" : "右手"} · ${Math.round(state.confidence * 100)}%${state.stale ? " · 续帧" : ""}`;
-  gestureStatus.textContent = state.gesture === "Open_Palm" ? "张开手掌，可以挥动" : "请张开手掌";
-  const direction = detector.update(state, performance.now());
-  if (direction) void executeDirection(direction);
-}
-
-function stopCamera(): void {
   clearAutoCollapse();
-  tracker?.stop();
-  detector.reset();
-  running = false;
   placeholder.classList.remove("is-hidden");
+  placeholderLabel.textContent = "CAMERA OFF";
   toggle.textContent = "启动摄像头";
   handStatus.textContent = "等待摄像头";
   gestureStatus.textContent = "挥动手掌控制网页";
   setStatus("已停止");
   if (compact) void setCompact(false);
+  if (detail) showMessage(detail);
 }
 
-function handleTrackerError(text: string): void {
-  stopCamera();
-  setStatus("启动失败", "error");
-  showMessage(text, true);
-}
-
-async function connectCurrentTab(): Promise<void> {
-  if (targetTabId === null) {
-    showMessage("摄像头已启动，但没有关联网页。请从目标网页点击插件图标。", true);
-    return;
-  }
-  const activation = await sendRequest({ type: "activate-tab", tabId: targetTabId });
-  if (activation.ok) {
-    showMessage("摄像头和当前网页已连接，张开手掌开始挥动。");
-    return;
-  }
-  showMessage(`摄像头已启动，但网页暂未连接。${activation.message}`, true);
+async function requestCameraPermission(): Promise<void> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 } },
+  });
+  stream.getTracks().forEach((track) => track.stop());
 }
 
 async function startCamera(): Promise<void> {
+  if (targetTabId === null) {
+    showMessage("没有关联网页。请回到目标网页后，从插件图标重新打开控制窗口。", true);
+    return;
+  }
   toggle.disabled = true;
-  setStatus("加载模型");
-  showMessage("正在请求摄像头权限并加载本机模型…");
+  setStatus("授权摄像头");
+  showMessage("正在授权摄像头，并把识别移入后台…");
   try {
-    tracker ??= new HandTracker(video, handleHandState, handleTrackerError);
-    await tracker.start();
-    running = true;
-    placeholder.classList.add("is-hidden");
-    toggle.textContent = "停止摄像头";
-    setStatus("识别中", "active");
-    showMessage("摄像头已启动，正在连接当前网页…");
-    void connectCurrentTab();
-    scheduleAutoCollapse();
+    await requestCameraPermission();
+    const response = await sendRequest({ type: "start-background-tracking", tabId: targetTabId });
+    if (!response.ok) throw new Error(response.message);
+    setRunning(true, "后台识别已启动。现在可以直接点击网页。\n");
   } catch (error) {
     const text =
       error instanceof DOMException && error.name === "NotAllowedError"
@@ -211,14 +171,28 @@ async function startCamera(): Promise<void> {
         : error instanceof Error
           ? error.message
           : String(error);
-    handleTrackerError(text);
+    setRunning(false);
+    setStatus("启动失败", "error");
+    showMessage(text, true);
   } finally {
     toggle.disabled = false;
   }
 }
 
+async function stopCamera(): Promise<void> {
+  toggle.disabled = true;
+  const response = await sendRequest({ type: "stop-background-tracking" });
+  setRunning(false, response.message);
+  toggle.disabled = false;
+}
+
+async function refreshBackgroundStatus(): Promise<void> {
+  const response = await sendRequest({ type: "get-background-tracker-status" });
+  if (response.trackingActive) setRunning(true, response.message);
+}
+
 toggle.addEventListener("click", () => {
-  if (running) stopCamera();
+  if (running) void stopCamera();
   else void startCamera();
 });
 
@@ -230,7 +204,21 @@ panelShell.addEventListener("pointerleave", () => {
   if (running && !compact) scheduleAutoCollapse(LEAVE_COLLAPSE_MS);
 });
 
-window.addEventListener("pagehide", () => {
-  clearAutoCollapse();
-  stopCamera();
+chrome.runtime.onMessage.addListener((event: unknown) => {
+  if (!isTrackerEvent(event)) return;
+  if (event.type === "background-tracker-status") {
+    if (event.active) setRunning(true, event.message);
+    else {
+      setRunning(false);
+      setStatus("启动失败", "error");
+      showMessage(event.message, true);
+    }
+    return;
+  }
+  lastAction.textContent = directionText[event.direction];
+  flashDirection(event.direction);
+  showMessage(event.message, !event.ok);
 });
+
+window.addEventListener("pagehide", clearAutoCollapse);
+void refreshBackgroundStatus();

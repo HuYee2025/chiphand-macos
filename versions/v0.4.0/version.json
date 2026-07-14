@@ -1,0 +1,21 @@
+{
+  "version": "0.4.0",
+  "date": "2026-07-14",
+  "tag": "v0.4.0",
+  "summary": "Move gesture tracking to a Chrome offscreen document and keep feedback inside the controlled webpage.",
+  "scope": [
+    "request camera permission in the visible controller, then run camera tracking in an offscreen document",
+    "use video frame callbacks so tracking does not depend on a focused popup window",
+    "inject a persistent black status indicator into the controlled webpage and flash directional feedback there"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Reload the unpacked extension and refresh the controlled webpage before testing.",
+    "The offscreen document keeps recognition active after the controller popup loses focus or closes.",
+    "Protected Chrome pages cannot host the in-page indicator or receive gestures."
+  ]
+}
