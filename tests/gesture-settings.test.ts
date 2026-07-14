@@ -26,5 +26,18 @@ test("gesture sensitivity values are clamped before they reach detectors", () =>
   assert.deepEqual(normalizeGestureSettings({ swipeSensitivity: -10, pinchSensitivity: 140 }), {
     swipeSensitivity: 0,
     pinchSensitivity: 100,
+    showHandGrid: false,
+    showPinchDot: false,
+  });
+});
+
+test("developer overlays default to hidden and preserve explicit choices", () => {
+  assert.equal(DEFAULT_GESTURE_SETTINGS.showHandGrid, false);
+  assert.equal(DEFAULT_GESTURE_SETTINGS.showPinchDot, false);
+  assert.deepEqual(normalizeGestureSettings({ showHandGrid: true, showPinchDot: true }), {
+    swipeSensitivity: 50,
+    pinchSensitivity: 50,
+    showHandGrid: true,
+    showPinchDot: true,
   });
 });

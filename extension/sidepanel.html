@@ -32,11 +32,11 @@
       </section>
 
       <button id="camera-toggle" class="primary-button" type="button">开启摄像头</button>
-      <button id="advanced-toggle" class="advanced-toggle" type="button" aria-expanded="false" aria-controls="advanced-settings">
-        高级设置
+      <button id="advanced-toggle" class="advanced-toggle" type="button" aria-expanded="false" aria-controls="advanced-settings" hidden>
+        高级模式
         <span aria-hidden="true">＋</span>
       </button>
-      <section id="advanced-settings" class="advanced-settings" hidden aria-label="手势灵敏度设置">
+      <section id="advanced-settings" class="advanced-settings" hidden aria-label="高级模式设置">
         <label class="setting-row" for="swipe-sensitivity">
           <span>左右挥手灵敏度 <output id="swipe-sensitivity-value" for="swipe-sensitivity">50 · 标准</output></span>
           <input id="swipe-sensitivity" type="range" min="0" max="100" step="1" value="50" />
@@ -47,6 +47,18 @@
           <input id="pinch-sensitivity" type="range" min="0" max="100" step="1" value="50" />
           <small>数值越大，允许拇指与食指留有更小间隙。</small>
         </label>
+        <div class="overlay-options" aria-label="网页开发者叠层">
+          <label class="toggle-row" for="show-hand-grid">
+            <span><strong>显示手部网格</strong><small>在网页上显示 21 点骨架，仅用于调试。</small></span>
+            <input id="show-hand-grid" type="checkbox" />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row" for="show-pinch-dot">
+            <span><strong>显示捏合控制圆点</strong><small>在网页上显示反色定位点，仅用于调试。</small></span>
+            <input id="show-pinch-dot" type="checkbox" />
+            <i aria-hidden="true"></i>
+          </label>
+        </div>
       </section>
       <p id="panel-message" class="panel-message" role="status"></p>
     </main>

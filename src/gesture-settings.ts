@@ -3,11 +3,17 @@ export type GestureSettings = {
   swipeSensitivity: number;
   /** 0 = fingertips must touch very tightly, 100 = allows a small gap. */
   pinchSensitivity: number;
+  /** Developer overlay: show the 21-point hand mesh on the controlled page. */
+  showHandGrid: boolean;
+  /** Developer overlay: show the pinch cursor on the controlled page. */
+  showPinchDot: boolean;
 };
 
 export const DEFAULT_GESTURE_SETTINGS: GestureSettings = {
   swipeSensitivity: 50,
   pinchSensitivity: 50,
+  showHandGrid: false,
+  showPinchDot: false,
 };
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -18,10 +24,16 @@ function asSensitivity(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? Math.round(clamp(value, 0, 100)) : fallback;
 }
 
+function asBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
 export function normalizeGestureSettings(value: Partial<GestureSettings> | undefined | null): GestureSettings {
   return {
     swipeSensitivity: asSensitivity(value?.swipeSensitivity, DEFAULT_GESTURE_SETTINGS.swipeSensitivity),
     pinchSensitivity: asSensitivity(value?.pinchSensitivity, DEFAULT_GESTURE_SETTINGS.pinchSensitivity),
+    showHandGrid: asBoolean(value?.showHandGrid, DEFAULT_GESTURE_SETTINGS.showHandGrid),
+    showPinchDot: asBoolean(value?.showPinchDot, DEFAULT_GESTURE_SETTINGS.showPinchDot),
   };
 }
 

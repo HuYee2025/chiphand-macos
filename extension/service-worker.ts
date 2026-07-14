@@ -13,7 +13,7 @@ import { normalizeGestureSettings, type GestureSettings } from "../src/gesture-s
 const OFFSCREEN_DOCUMENT = "offscreen.html";
 const CONTROLLER_WIDTH = 300;
 const CONTROLLER_HEIGHT = 350;
-const CONTROLLER_ADVANCED_HEIGHT = 540;
+const CONTROLLER_ADVANCED_HEIGHT = 640;
 const GESTURE_SETTINGS_KEY = "gestureSettings";
 let creatingOffscreenDocument: Promise<void> | null = null;
 const controllerWindowByTab = new Map<number, number>();
@@ -100,6 +100,14 @@ async function saveGestureSettings(settings: GestureSettings): Promise<GestureSe
   return normalized;
 }
 
+async function syncPageDeveloperOverlays(tabId: number, settings: GestureSettings): Promise<void> {
+  await sendToPage(tabId, {
+    type: "gesture-overlay-settings",
+    showHandGrid: settings.showHandGrid,
+    showPinchDot: settings.showPinchDot,
+  });
+}
+
 function toExtensionResponse(response: OffscreenResponse): ExtensionResponse {
   return {
     ok: response.ok,
@@ -113,7 +121,9 @@ async function startBackgroundTracking(request: Extract<ExtensionRequest, { type
   const tabId = request.tabId ?? (await getActiveTabId());
   await ensureContentScript(tabId);
   await ensureOffscreenDocument();
-  await sendToOffscreen({ type: "offscreen-update-gesture-settings", settings: await getGestureSettings() });
+  const settings = await getGestureSettings();
+  await sendToOffscreen({ type: "offscreen-update-gesture-settings", settings });
+  await syncPageDeveloperOverlays(tabId, settings);
   return toExtensionResponse(await sendToOffscreen({ type: "offscreen-start-tracking", tabId }));
 }
 
@@ -151,6 +161,12 @@ async function handleRequest(request: ExtensionRequest): Promise<ExtensionRespon
   }
   if (request.type === "update-gesture-settings") {
     const settings = await saveGestureSettings(request.settings);
+    let tabId = request.tabId;
+    if (tabId === undefined) {
+      const status = await getBackgroundTrackingStatus();
+      tabId = status.tabId;
+    }
+    if (tabId !== undefined) await syncPageDeveloperOverlays(tabId, settings);
     return { ok: true, message: "手势灵敏度已更新。", settings };
   }
   if (request.type === "set-controller-advanced") {
@@ -223,6 +239,7 @@ async function openControllerWindow(tab: chrome.tabs.Tab): Promise<void> {
   if (tab.id === undefined) return;
   try {
     await ensureContentScript(tab.id);
+    await syncPageDeveloperOverlays(tab.id, await getGestureSettings());
   } catch {
     // 后台识别仍可启动，控制窗口会明确提示当前网页不能执行动作。
   }
@@ -291,6 +308,7 @@ async function restorePageAfterControllerClose(tabId: number): Promise<void> {
   }
   try {
     await ensureContentScript(tabId);
+    await syncPageDeveloperOverlays(tabId, await getGestureSettings());
     await sendToPage(tabId, { type: "gesture-overlay-controller", expanded: false });
     await sendToPage(tabId, { type: "gesture-overlay-status", active, message });
   } catch {

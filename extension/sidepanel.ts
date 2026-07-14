@@ -19,6 +19,8 @@ const advancedToggle = required<HTMLButtonElement>("#advanced-toggle");
 const advancedSettings = required<HTMLElement>("#advanced-settings");
 const swipeSensitivity = required<HTMLInputElement>("#swipe-sensitivity");
 const pinchSensitivity = required<HTMLInputElement>("#pinch-sensitivity");
+const showHandGrid = required<HTMLInputElement>("#show-hand-grid");
+const showPinchDot = required<HTMLInputElement>("#show-pinch-dot");
 const swipeSensitivityValue = required<HTMLOutputElement>("#swipe-sensitivity-value");
 const pinchSensitivityValue = required<HTMLOutputElement>("#pinch-sensitivity-value");
 const runtimeStatus = required<HTMLElement>("#runtime-status");
@@ -79,6 +81,8 @@ function readSettingsFromControls(): GestureSettings {
   return normalizeGestureSettings({
     swipeSensitivity: Number(swipeSensitivity.value),
     pinchSensitivity: Number(pinchSensitivity.value),
+    showHandGrid: showHandGrid.checked,
+    showPinchDot: showPinchDot.checked,
   });
 }
 
@@ -86,6 +90,8 @@ function renderSettings(settings: GestureSettings): void {
   const normalized = normalizeGestureSettings(settings);
   swipeSensitivity.value = String(normalized.swipeSensitivity);
   pinchSensitivity.value = String(normalized.pinchSensitivity);
+  showHandGrid.checked = normalized.showHandGrid;
+  showPinchDot.checked = normalized.showPinchDot;
   swipeSensitivityValue.value = formatSensitivity(normalized.swipeSensitivity);
   pinchSensitivityValue.value = formatSensitivity(normalized.pinchSensitivity);
 }
@@ -101,7 +107,11 @@ function scheduleSettingsSave(): void {
   if (settingsSaveTimer !== null) window.clearTimeout(settingsSaveTimer);
   settingsSaveTimer = window.setTimeout(() => {
     settingsSaveTimer = null;
-    void sendRequest({ type: "update-gesture-settings", settings: readSettingsFromControls() }).then((response) => {
+    void sendRequest({
+      type: "update-gesture-settings",
+      settings: readSettingsFromControls(),
+      ...(targetTabId === null ? {} : { tabId: targetTabId }),
+    }).then((response) => {
       if (!response.ok) showMessage(response.message, true);
     });
   }, 90);
@@ -119,6 +129,7 @@ async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse
 function setRunning(active: boolean, detail?: string): void {
   running = active;
   if (active) {
+    advancedToggle.hidden = false;
     placeholder.classList.toggle("is-hidden", previewStream !== null);
     placeholderLabel.textContent = "BACKGROUND ACTIVE";
     setCameraToggle(true);
@@ -139,6 +150,8 @@ function setRunning(active: boolean, detail?: string): void {
     return;
   }
   clearAutoClose();
+  if (advancedOpen) setAdvancedOpen(false);
+  advancedToggle.hidden = true;
   stopPreview();
   placeholder.classList.remove("is-hidden");
   placeholderLabel.textContent = "CAMERA OFF";
@@ -221,7 +234,7 @@ toggle.addEventListener("click", () => {
 });
 
 advancedToggle.addEventListener("click", () => setAdvancedOpen(!advancedOpen));
-for (const control of [swipeSensitivity, pinchSensitivity]) {
+for (const control of [swipeSensitivity, pinchSensitivity, showHandGrid, showPinchDot]) {
   control.addEventListener("input", () => {
     renderSettings(readSettingsFromControls());
     scheduleSettingsSave();

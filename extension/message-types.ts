@@ -8,7 +8,7 @@ export type ExtensionRequest =
   | { type: "stop-background-tracking" }
   | { type: "get-background-tracker-status" }
   | { type: "get-gesture-settings" }
-  | { type: "update-gesture-settings"; settings: GestureSettings }
+  | { type: "update-gesture-settings"; settings: GestureSettings; tabId?: number }
   | { type: "set-controller-advanced"; expanded: boolean; tabId?: number }
   | {
       type: "gesture-action";
@@ -32,7 +32,8 @@ export type ContentScriptRequest =
   | { type: "gesture-overlay-status"; active: boolean; message: string }
   | { type: "gesture-overlay-gesture"; direction: SwipeDirection }
   | { type: "gesture-overlay-hand-state"; state: HandControlState }
-  | { type: "gesture-overlay-controller"; expanded: boolean };
+  | { type: "gesture-overlay-controller"; expanded: boolean }
+  | { type: "gesture-overlay-settings"; showHandGrid: boolean; showPinchDot: boolean };
 
 export type ExtensionResponse = {
   ok: boolean;

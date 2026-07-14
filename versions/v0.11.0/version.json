@@ -1,0 +1,21 @@
+{
+  "version": "0.11.0",
+  "date": "2026-07-14",
+  "tag": "v0.11.0",
+  "summary": "Hide page overlays by default and place developer controls in an active-camera advanced mode.",
+  "scope": [
+    "Hide the pinch cursor and hand mesh by default.",
+    "Add persistent developer switches for the mesh and cursor.",
+    "Show advanced controls only after the camera starts."
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build",
+    "Static controller layout inspection at 300x350 and 300x640"
+  ],
+  "notes": [
+    "The two developer overlays are intentionally opt-in and local-only.",
+    "The verified test page for this project is http://127.0.0.1:4173/gesture-test.html."
+  ]
+}

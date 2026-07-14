@@ -22,7 +22,8 @@ function isContentScriptRequest(message: unknown): message is ContentScriptReque
     type === "gesture-overlay-status" ||
     type === "gesture-overlay-gesture" ||
     type === "gesture-overlay-hand-state" ||
-    type === "gesture-overlay-controller"
+    type === "gesture-overlay-controller" ||
+    type === "gesture-overlay-settings"
   );
 }
 
@@ -36,7 +37,17 @@ type GestureIndicator = {
   flash(direction: SwipeDirection): void;
   drawHand(state: HandControlState): void;
   setControllerExpanded(expanded: boolean): void;
+  setDeveloperOverlays(showHandGrid: boolean, showPinchDot: boolean): void;
 };
+
+const HAND_CONNECTIONS: ReadonlyArray<readonly [number, number]> = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [0, 9], [9, 10], [10, 11], [11, 12],
+  [0, 13], [13, 14], [14, 15], [15, 16],
+  [0, 17], [17, 18], [18, 19], [19, 20],
+  [5, 9], [9, 13], [13, 17],
+];
 
 function createIndicator(): GestureIndicator {
   const existing = document.getElementById(OVERLAY_ID);
@@ -106,6 +117,8 @@ function createIndicator(): GestureIndicator {
   let targetPinchPoint: { x: number; y: number } | null = null;
   let renderedPinchPoint: { x: number; y: number } | null = null;
   let renderFrame: number | null = null;
+  let showHandGrid = false;
+  let showPinchDot = false;
   const openController = (): void => {
     const request: ExtensionRequest = { type: "open-controller" };
     void chrome.runtime.sendMessage(request).catch(() => undefined);
@@ -130,6 +143,29 @@ function createIndicator(): GestureIndicator {
     }
     handContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     handContext.clearRect(0, 0, width, height);
+    const landmarks = latestHandState?.landmarks;
+    if (showHandGrid && latestHandState?.detected && !latestHandState.stale && landmarks && landmarks.length >= 21) {
+      handContext.save();
+      handContext.strokeStyle = "rgba(80, 154, 255, .8)";
+      handContext.fillStyle = "rgba(112, 178, 255, .9)";
+      handContext.lineWidth = 2;
+      handContext.lineCap = "round";
+      for (const [from, to] of HAND_CONNECTIONS) {
+        const first = landmarks[from];
+        const second = landmarks[to];
+        if (!first || !second) continue;
+        handContext.beginPath();
+        handContext.moveTo((1 - first.x) * width, first.y * height);
+        handContext.lineTo((1 - second.x) * width, second.y * height);
+        handContext.stroke();
+      }
+      for (const point of landmarks) {
+        handContext.beginPath();
+        handContext.arc((1 - point.x) * width, point.y * height, 3, 0, Math.PI * 2);
+        handContext.fill();
+      }
+      handContext.restore();
+    }
     if (activeDirection === null) return;
     const size = Math.min(width * 0.34, height * 0.34);
     handContext.save();
@@ -184,7 +220,7 @@ function createIndicator(): GestureIndicator {
         renderedPinchPoint.y += (targetPinchPoint.y - renderedPinchPoint.y) * 0.52;
         needsAnotherFrame = distance > 0.35;
       }
-      if (renderedPinchPoint) {
+      if (renderedPinchPoint && showPinchDot) {
         pinchDot.style.transform = `translate3d(${renderedPinchPoint.x}px, ${renderedPinchPoint.y}px, 0) translate(-50%, -50%)`;
         pinchDot.style.opacity = "1";
       } else {
@@ -232,6 +268,11 @@ function createIndicator(): GestureIndicator {
     drawHand,
     setControllerExpanded(expanded): void {
       root.classList.toggle("is-expanded", expanded);
+    },
+    setDeveloperOverlays(handGrid, pinchDotVisible): void {
+      showHandGrid = handGrid;
+      showPinchDot = pinchDotVisible;
+      scheduleRender();
     },
   };
   root.__gestureIndicator = indicator;
@@ -327,6 +368,11 @@ if (!window.__gestureBrowserControlInstalled) {
       if (request.type === "gesture-overlay-controller") {
         indicator.setControllerExpanded(request.expanded);
         sendResponse({ ok: true, message: "控制窗口动效已更新。" });
+        return;
+      }
+      if (request.type === "gesture-overlay-settings") {
+        indicator.setDeveloperOverlays(request.showHandGrid, request.showPinchDot);
+        sendResponse({ ok: true, message: "网页开发者叠层已更新。" });
         return;
       }
       if (request.type === "execute-pinch-scroll") {
