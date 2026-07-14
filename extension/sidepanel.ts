@@ -56,8 +56,8 @@ function showMessage(text: string, isError = false): void {
 }
 
 function setCameraToggle(active: boolean): void {
-  toggle.textContent = active ? "■" : "▶";
-  const label = active ? "停止摄像头" : "启动摄像头";
+  const label = active ? "关闭摄像头" : "开启摄像头";
+  toggle.textContent = label;
   toggle.setAttribute("aria-label", label);
   toggle.title = label;
 }

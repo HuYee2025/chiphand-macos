@@ -1,0 +1,20 @@
+{
+  "version": "0.9.1",
+  "date": "2026-07-14",
+  "tag": "v0.9.1",
+  "summary": "Polish the inverse pinch cursor and compact controller handoff.",
+  "scope": [
+    "Use a 28px inverse-color pinch cursor with no shadow.",
+    "Hide the page entry under the compact native controller.",
+    "Restore full-width Chinese camera control buttons."
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "The pinch cursor uses CSS mix-blend-mode: difference so it adapts to the page beneath it.",
+    "A real Chrome window cannot be embedded in the webpage; the page entry is hidden while it is expanded."
+  ]
+}

@@ -11,7 +11,7 @@ import {
 
 const OFFSCREEN_DOCUMENT = "offscreen.html";
 const CONTROLLER_WIDTH = 300;
-const CONTROLLER_HEIGHT = 400;
+const CONTROLLER_HEIGHT = 350;
 let creatingOffscreenDocument: Promise<void> | null = null;
 const controllerWindowByTab = new Map<number, number>();
 
@@ -190,7 +190,7 @@ async function openControllerWindow(tab: chrome.tabs.Tab): Promise<void> {
       typeof parentWindow.width === "number" &&
       typeof parentWindow.height === "number"
     ) {
-      options.left = parentWindow.left + parentWindow.width - CONTROLLER_WIDTH - 20;
+      options.left = parentWindow.left + parentWindow.width - CONTROLLER_WIDTH;
       options.top = parentWindow.top + Math.round((parentWindow.height - CONTROLLER_HEIGHT) / 2);
     }
   } catch {

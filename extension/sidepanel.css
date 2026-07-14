@@ -42,9 +42,8 @@ h1 { margin: 0; font-size: 18px; line-height: 1; letter-spacing: -.05em; }
 .camera-meta strong { overflow: hidden; color: #d9d4c8; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
 
 .primary-button {
-  width: 52px; height: 52px; justify-self: center; display: grid; place-items: center;
-  border: 1px solid #eee9dc; border-radius: 50%; background: #eee9dc;
-  color: #11110f; font-size: 17px; font-weight: 800; cursor: pointer;
+  width: 100%; height: 46px; border: 1px solid #eee9dc; border-radius: 11px; background: #eee9dc;
+  color: #11110f; font-size: 14px; font-weight: 800; cursor: pointer;
 }
 .primary-button:hover { background: #fffaf0; }
 .primary-button:disabled { cursor: wait; opacity: .58; }

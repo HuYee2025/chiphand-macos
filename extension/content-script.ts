@@ -52,8 +52,14 @@ function createIndicator(): GestureIndicator {
     <style>
       :host { all: initial; }
       #feedback-overlay { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      #pinch-dot {
+        position: fixed; width: 28px; height: 28px; border-radius: 50%; pointer-events: none;
+        background: #fff; mix-blend-mode: difference; opacity: 0;
+        transform: translate3d(-100px, -100px, 0) translate(-50%, -50%);
+      }
+      #pinch-dot.is-visible { opacity: 1; }
       #indicator {
-        position: fixed; right: 14px; top: 50%; width: 28px; height: 28px; cursor: pointer;
+        position: fixed; right: 6px; top: calc(50% + 132px); width: 28px; height: 28px; cursor: pointer;
         border: 1px solid #161616; border-radius: 50%; background: #090909;
         box-shadow: 0 3px 12px rgba(0,0,0,.18); pointer-events: auto; transform: scale(1);
         transform-origin: center; transition: opacity .24s ease, transform .24s cubic-bezier(.2,.9,.25,1);
@@ -63,6 +69,7 @@ function createIndicator(): GestureIndicator {
       @media (prefers-reduced-motion: reduce) { #indicator { transition: none; } }
     </style>
     <canvas id="feedback-overlay" aria-hidden="true"></canvas>
+    <div id="pinch-dot" aria-hidden="true"></div>
     <div id="indicator" aria-label="手势浏览识别状态，点击查看摄像头" role="button" tabindex="0">
     </div>
   `;
@@ -70,8 +77,9 @@ function createIndicator(): GestureIndicator {
 
   const root = shadow.querySelector<HTMLElement>("#indicator");
   const feedbackOverlay = shadow.querySelector<HTMLCanvasElement>("#feedback-overlay");
+  const pinchDot = shadow.querySelector<HTMLElement>("#pinch-dot");
   const handContext = feedbackOverlay?.getContext("2d");
-  if (!root || !feedbackOverlay || !handContext) throw new Error("无法创建手势状态提示。");
+  if (!root || !feedbackOverlay || !pinchDot || !handContext) throw new Error("无法创建手势状态提示。");
 
   let tracking = false;
   let gestureTimer: number | null = null;
@@ -104,15 +112,6 @@ function createIndicator(): GestureIndicator {
     }
     handContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     handContext.clearRect(0, 0, width, height);
-    if (renderedPinchPoint) {
-      handContext.beginPath();
-      handContext.arc(renderedPinchPoint.x, renderedPinchPoint.y, 18, 0, Math.PI * 2);
-      handContext.fillStyle = "#65d985";
-      handContext.shadowColor = "rgba(41, 121, 66, .42)";
-      handContext.shadowBlur = 5;
-      handContext.fill();
-      handContext.shadowBlur = 0;
-    }
     if (activeDirection === null) return;
     const size = Math.min(width * 0.34, height * 0.34);
     handContext.save();
@@ -166,6 +165,12 @@ function createIndicator(): GestureIndicator {
         renderedPinchPoint.x += (targetPinchPoint.x - renderedPinchPoint.x) * 0.52;
         renderedPinchPoint.y += (targetPinchPoint.y - renderedPinchPoint.y) * 0.52;
         needsAnotherFrame = distance > 0.35;
+      }
+      if (renderedPinchPoint) {
+        pinchDot.style.transform = `translate3d(${renderedPinchPoint.x}px, ${renderedPinchPoint.y}px, 0) translate(-50%, -50%)`;
+        pinchDot.classList.add("is-visible");
+      } else {
+        pinchDot.classList.remove("is-visible");
       }
       renderFeedback();
       if (needsAnotherFrame) scheduleRender();
