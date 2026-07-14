@@ -1,6 +1,4 @@
-import type { ExtensionRequest, ExtensionResponse } from "./message-types";
-import { isContentScriptRequest } from "./message-types";
-import { pinchDeltaToScrollPixels } from "../src/pinch-scroll-detector";
+import type { ContentScriptRequest, ExtensionRequest, ExtensionResponse } from "./message-types";
 import type { GestureAction, HandControlState, PageActionAdapter, SwipeDirection } from "../src/types";
 
 declare global {
@@ -10,6 +8,26 @@ declare global {
 }
 
 const OVERLAY_ID = "__gesture_browser_indicator__";
+
+// Content Script 通过 chrome.scripting.executeScript 注入。保持它不依赖
+// 运行时 import，确保每次注入都是独立、可执行的单文件。
+function isContentScriptRequest(message: unknown): message is ContentScriptRequest {
+  if (!message || typeof message !== "object" || !("type" in message)) return false;
+  const type = (message as { type?: unknown }).type;
+  return (
+    type === "gesture-control-ping" ||
+    type === "execute-gesture-action" ||
+    type === "execute-pinch-scroll" ||
+    type === "gesture-overlay-status" ||
+    type === "gesture-overlay-gesture" ||
+    type === "gesture-overlay-hand-state"
+  );
+}
+
+function pinchDeltaToScrollPixels(deltaY: number, viewportHeight: number): number {
+  const bounded = Math.max(-0.12, Math.min(0.12, deltaY));
+  return -bounded * viewportHeight * 1.8;
+}
 
 type GestureIndicator = {
   setTracking(active: boolean, message: string): void;

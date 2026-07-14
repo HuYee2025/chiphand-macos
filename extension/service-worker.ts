@@ -19,8 +19,8 @@ async function getActiveTabId(): Promise<number> {
 }
 
 async function ensureContentScript(tabId: number): Promise<void> {
+  const ping: ContentScriptRequest = { type: "gesture-control-ping" };
   try {
-    const ping: ContentScriptRequest = { type: "gesture-control-ping" };
     await chrome.tabs.sendMessage(tabId, ping);
     return;
   } catch {
@@ -29,9 +29,23 @@ async function ensureContentScript(tabId: number): Promise<void> {
         target: { tabId },
         files: ["content-script.js"],
       });
+      // executeScript 完成不表示接收器已经就绪；再 ping 一次才能确认。
+      await chrome.tabs.sendMessage(tabId, ping);
     } catch {
       throw new Error("当前页面不允许插件控制。请打开普通网页，并在该标签页重新点击插件图标。");
     }
+  }
+}
+
+async function sendToPage(tabId: number, request: ContentScriptRequest): Promise<ExtensionResponse> {
+  try {
+    const response = (await chrome.tabs.sendMessage(tabId, request)) as ExtensionResponse | undefined;
+    return response ?? { ok: false, message: "网页没有返回动作结果。" };
+  } catch {
+    // 页面可能刚跳转，旧脚本已随文档销毁。补注入后只重试一次。
+    await ensureContentScript(tabId);
+    const response = (await chrome.tabs.sendMessage(tabId, request)) as ExtensionResponse | undefined;
+    return response ?? { ok: false, message: "网页没有返回动作结果。" };
   }
 }
 
@@ -108,21 +122,21 @@ async function handleRequest(request: ExtensionRequest): Promise<ExtensionRespon
   if (request.type === "get-background-tracker-status") return getBackgroundTrackingStatus();
 
   const tabId = request.tabId ?? (await getActiveTabId());
-  await ensureContentScript(tabId);
-  if (request.type === "activate-tab") return { ok: true, message: "当前标签页已连接。" };
+  if (request.type === "activate-tab") {
+    await ensureContentScript(tabId);
+    return { ok: true, message: "当前标签页已连接。" };
+  }
 
   if (request.type === "pinch-scroll") {
     const pinchRequest: ContentScriptRequest = { type: "execute-pinch-scroll", deltaY: request.deltaY };
-    const response = (await chrome.tabs.sendMessage(tabId, pinchRequest)) as ExtensionResponse | undefined;
-    return response ?? { ok: false, message: "网页没有返回捏合滚动结果。" };
+    return sendToPage(tabId, pinchRequest);
   }
 
   const contentRequest: ContentScriptRequest = {
     type: "execute-gesture-action",
     action: request.action,
   };
-  const response = (await chrome.tabs.sendMessage(tabId, contentRequest)) as ExtensionResponse | undefined;
-  return response ?? { ok: false, message: "网页没有返回动作结果。" };
+  return sendToPage(tabId, contentRequest);
 }
 
 async function forwardTrackerEvent(event: TrackerEvent): Promise<void> {
@@ -134,7 +148,7 @@ async function forwardTrackerEvent(event: TrackerEvent): Promise<void> {
         ? { type: "gesture-overlay-status", active: event.active, message: event.message }
         : { type: "gesture-overlay-gesture", direction: event.direction };
   try {
-    await chrome.tabs.sendMessage(event.tabId, request);
+    await sendToPage(event.tabId, request);
   } catch {
     // 页面已关闭、跳转或受保护时，后台识别仍继续，只是没有页面内反馈。
   }

@@ -1,0 +1,19 @@
+{
+  "version": "0.7.2",
+  "date": "2026-07-14",
+  "tag": "v0.7.2",
+  "summary": "Recover the webpage receiver reliably when Chrome reports that no content-script endpoint exists.",
+  "scope": [
+    "make the injected page-control script self-contained without runtime imports",
+    "ping after injection and retry one page command after a receiver is recovered",
+    "avoid per-frame ping checks during normal continuous scrolling"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Reloading the unpacked extension and refreshing the controlled tab is required once to replace the previous injected script."
+  ]
+}

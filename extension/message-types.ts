@@ -29,24 +29,6 @@ export type ContentScriptRequest =
   | { type: "gesture-overlay-gesture"; direction: SwipeDirection }
   | { type: "gesture-overlay-hand-state"; state: HandControlState };
 
-/**
- * Chrome 会把同一扩展内的 runtime 消息也送到 content script。
- * 这里必须只接收真正由 service worker 发往网页的消息，不能让
- * offscreen 的识别状态或动作请求落入网页动作处理器。
- */
-export function isContentScriptRequest(message: unknown): message is ContentScriptRequest {
-  if (!message || typeof message !== "object" || !("type" in message)) return false;
-  const type = (message as { type?: unknown }).type;
-  return (
-    type === "gesture-control-ping" ||
-    type === "execute-gesture-action" ||
-    type === "execute-pinch-scroll" ||
-    type === "gesture-overlay-status" ||
-    type === "gesture-overlay-gesture" ||
-    type === "gesture-overlay-hand-state"
-  );
-}
-
 export type ExtensionResponse = {
   ok: boolean;
   message: string;
