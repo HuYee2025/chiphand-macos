@@ -21,13 +21,7 @@ h1 { margin: 0; font-size: 22px; line-height: 1; letter-spacing: -.04em; }
 }
 .status-chip.is-active { border-color: #3e7450; color: #9be0b0; }
 .status-chip.is-error { border-color: #783f3f; color: #ffaaaa; }
-.compact-toggle {
-  border: 0; padding: 0; color: #77736b; background: transparent; cursor: pointer;
-  font: 700 9px/1 ui-monospace, monospace; letter-spacing: .08em; transition: color .2s ease, transform .2s ease;
-}
-.compact-toggle:hover { color: #eee9dc; }
-.compact-toggle:active { transform: scale(.95); }
-.compact-toggle:focus-visible, .primary-button:focus-visible { outline: 2px solid #9be0b0; outline-offset: 3px; }
+.primary-button:focus-visible { outline: 2px solid #9be0b0; outline-offset: 3px; }
 
 .camera-card, .direction-card { overflow: hidden; border: 1px solid #2d2c28; border-radius: 12px; background: #11110f; }
 .camera-stage { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: #060606; }
@@ -78,12 +72,16 @@ html:has(.panel-shell.is-compact), body:has(.panel-shell.is-compact) { min-width
 .panel-shell.is-compact .panel-header { height: calc(100vh - 16px); align-items: stretch; }
 .panel-shell.is-compact .panel-header > div:first-child,
 .panel-shell.is-compact #runtime-status { display: none; }
-.panel-shell.is-compact .header-actions { width: 100%; display: block; }
-.panel-shell.is-compact .compact-toggle {
-  width: 100%; height: 100%; border: 1px solid #3e7450; border-radius: 10px; color: #9be0b0;
-  background: radial-gradient(circle at 50% 18%, #183420, #11110f 68%); font-size: 10px;
+.panel-shell.is-compact .header-actions { width: 100%; height: 100%; display: block; }
+.compact-gesture { display: none; }
+.panel-shell.is-compact .compact-gesture {
+  width: 100%; height: 100%; display: grid; place-items: center; border: 1px solid #171717; border-radius: 10px;
+  background: #090909;
 }
-.panel-shell.is-compact .compact-toggle::before {
-  content: "●"; display: block; margin-bottom: 8px; color: #9be0b0; font-size: 12px;
-  text-shadow: 0 0 12px #5cb979;
+.compact-gesture span {
+  color: #c0ffd0; font: 700 56px/1 ui-sans-serif, system-ui, sans-serif; opacity: 0;
+  text-shadow: 0 0 0 transparent; transition: transform .18s ease, opacity .18s ease, text-shadow .18s ease;
+}
+.compact-gesture span.is-active {
+  opacity: 1; transform: scale(1.08); text-shadow: 0 0 18px #65d985;
 }

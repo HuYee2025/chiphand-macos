@@ -1,0 +1,20 @@
+{
+  "version": "0.3.2",
+  "date": "2026-07-14",
+  "tag": "v0.3.2",
+  "summary": "Make the compact controller hover-expand and show directional feedback only when a gesture fires.",
+  "scope": [
+    "expand the compact controller on pointer hover",
+    "collapse after pointer leave or five seconds of expanded idle time",
+    "keep the compact controller black until a gesture fires, then show its directional arrow"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Reload the unpacked extension before testing hover behavior.",
+    "The compact window remains a Chrome popup rather than a native macOS edge panel."
+  ]
+}

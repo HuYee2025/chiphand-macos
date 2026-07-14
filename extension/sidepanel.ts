@@ -21,8 +21,8 @@ const gestureStatus = required<HTMLElement>("#gesture-status");
 const lastAction = required<HTMLElement>("#last-action");
 const message = required<HTMLElement>("#panel-message");
 const panelShell = required<HTMLElement>("#panel-shell");
-const compactToggle = required<HTMLButtonElement>("#compact-toggle");
-const directionButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-direction]"));
+const compactActiveGesture = required<HTMLElement>("#compact-active-gesture");
+const directionIndicators = Array.from(document.querySelectorAll<HTMLElement>("[data-direction]"));
 
 const overlay = new CameraOverlay(video, canvas);
 const detector = new SwipeDetector();
@@ -31,6 +31,7 @@ let running = false;
 let compact = false;
 let collapseTimer: number | null = null;
 const AUTO_COLLAPSE_MS = 5_000;
+const LEAVE_COLLAPSE_MS = 450;
 const FULL_WINDOW = { width: 390, height: 720 };
 const COMPACT_WINDOW = { width: 92, height: 142 };
 const targetTabId = (() => {
@@ -45,6 +46,13 @@ const directionText: Record<SwipeDirection, string> = {
   right: "向右",
 };
 
+const directionArrow: Record<SwipeDirection, string> = {
+  up: "↑",
+  down: "↓",
+  left: "←",
+  right: "→",
+};
+
 function clearAutoCollapse(): void {
   if (collapseTimer !== null) window.clearTimeout(collapseTimer);
   collapseTimer = null;
@@ -56,10 +64,8 @@ async function resizeController(compactMode: boolean): Promise<void> {
     if (currentWindow.id === undefined) return;
     const size = compactMode ? COMPACT_WINDOW : FULL_WINDOW;
     const left = Math.round(window.screen.availWidth - size.width);
-    const top = compactMode
-      ? Math.round(Math.max(72, (window.screen.availHeight - size.height) / 2))
-      : undefined;
-    await chrome.windows.update(currentWindow.id, { ...size, left, ...(top === undefined ? {} : { top }) });
+    const top = Math.round(Math.max(72, (window.screen.availHeight - size.height) / 2));
+    await chrome.windows.update(currentWindow.id, { ...size, left, top });
   } catch {
     // 窗口在关闭或系统拒绝改尺寸时，仍保留可点击的页面内收起状态。
   }
@@ -68,16 +74,21 @@ async function resizeController(compactMode: boolean): Promise<void> {
 async function setCompact(nextCompact: boolean): Promise<void> {
   compact = nextCompact;
   panelShell.classList.toggle("is-compact", compact);
-  compactToggle.textContent = compact ? "展开" : "收起";
-  compactToggle.setAttribute("aria-label", compact ? "展开手势控制" : "收起手势控制");
   await resizeController(compact);
 }
 
-function scheduleAutoCollapse(): void {
+function scheduleAutoCollapse(delay = AUTO_COLLAPSE_MS): void {
   clearAutoCollapse();
   collapseTimer = window.setTimeout(() => {
     if (running && !compact) void setCompact(true);
-  }, AUTO_COLLAPSE_MS);
+  }, delay);
+}
+
+function expandOnHover(): void {
+  if (!compact) return;
+  clearAutoCollapse();
+  void setCompact(false);
+  scheduleAutoCollapse();
 }
 
 function setStatus(text: string, state: "idle" | "active" | "error" = "idle"): void {
@@ -92,12 +103,18 @@ function showMessage(text: string, isError = false): void {
 }
 
 function flashDirection(direction: SwipeDirection): void {
-  for (const button of directionButtons) {
-    button.classList.toggle("is-active", button.dataset.direction === direction);
+  for (const indicator of directionIndicators) {
+    indicator.classList.toggle("is-active", indicator.dataset.direction === direction);
   }
+  compactActiveGesture.textContent = directionArrow[direction];
+  compactActiveGesture.classList.add("is-active");
   window.setTimeout(() => {
-    for (const button of directionButtons) button.classList.remove("is-active");
-  }, 420);
+    for (const indicator of directionIndicators) indicator.classList.remove("is-active");
+    compactActiveGesture.classList.remove("is-active");
+  }, 620);
+  window.setTimeout(() => {
+    if (!compactActiveGesture.classList.contains("is-active")) compactActiveGesture.textContent = "";
+  }, 820);
 }
 
 async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse> {
@@ -205,14 +222,12 @@ toggle.addEventListener("click", () => {
   else void startCamera();
 });
 
-compactToggle.addEventListener("click", () => {
-  if (compact) {
-    void setCompact(false);
-    if (running) scheduleAutoCollapse();
-    return;
-  }
-  clearAutoCollapse();
-  void setCompact(true);
+panelShell.addEventListener("pointerenter", () => {
+  if (running) expandOnHover();
+});
+
+panelShell.addEventListener("pointerleave", () => {
+  if (running && !compact) scheduleAutoCollapse(LEAVE_COLLAPSE_MS);
 });
 
 window.addEventListener("pagehide", () => {
