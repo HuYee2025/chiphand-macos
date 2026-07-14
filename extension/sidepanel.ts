@@ -26,6 +26,7 @@ let compact = false;
 let pointerInside = false;
 let collapseTimer: number | null = null;
 let previewStream: MediaStream | null = null;
+let previewStarting: Promise<void> | null = null;
 const AUTO_COLLAPSE_MS = 5_000;
 const LEAVE_COLLAPSE_MS = 450;
 const FULL_WINDOW = { width: 390, height: 720 };
@@ -131,6 +132,16 @@ function setRunning(active: boolean, detail?: string): void {
     gestureStatus.textContent = "点击网页不会中断手势";
     setStatus("识别中", "active");
     if (detail) showMessage(detail);
+    if (previewStream === null) {
+      void ensurePreview().then(
+        () => {
+          if (running) setRunning(true);
+        },
+        () => {
+          if (running) showMessage("后台识别正在运行，但这个控制窗口暂时无法显示预览。请点击“停止摄像头”后重新启动。", true);
+        },
+      );
+    }
     if (!pointerInside && !panelShell.matches(":hover")) scheduleAutoCollapse();
     return;
   }
@@ -146,20 +157,28 @@ function setRunning(active: boolean, detail?: string): void {
   if (detail) showMessage(detail);
 }
 
-async function requestCameraPermission(): Promise<void> {
-  previewStream?.getTracks().forEach((track) => track.stop());
-  previewStream = await navigator.mediaDevices.getUserMedia({
-    audio: false,
-    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 } },
+async function ensurePreview(): Promise<void> {
+  if (previewStream !== null) return;
+  if (previewStarting !== null) return previewStarting;
+  previewStarting = (async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 } },
+    });
+    previewStream = stream;
+    previewVideo.srcObject = stream;
+    await previewVideo.play();
+    placeholder.classList.add("is-hidden");
+  })().finally(() => {
+    previewStarting = null;
   });
-  previewVideo.srcObject = previewStream;
-  await previewVideo.play();
-  placeholder.classList.add("is-hidden");
+  return previewStarting;
 }
 
 function stopPreview(): void {
   previewStream?.getTracks().forEach((track) => track.stop());
   previewStream = null;
+  previewStarting = null;
   previewVideo.srcObject = null;
 }
 
@@ -172,7 +191,7 @@ async function startCamera(): Promise<void> {
   setStatus("授权摄像头");
   showMessage("正在授权摄像头，并把识别移入后台…");
   try {
-    await requestCameraPermission();
+    await ensurePreview();
     const response = await sendRequest({ type: "start-background-tracking", tabId: targetTabId });
     if (!response.ok) throw new Error(response.message);
     setRunning(true, "摄像头预览已打开；后台识别已启动。现在可以直接点击网页。");

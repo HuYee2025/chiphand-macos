@@ -1,0 +1,19 @@
+{
+  "version": "0.4.2",
+  "date": "2026-07-14",
+  "tag": "v0.4.2",
+  "summary": "Reconnect the live preview when reopening a controller while background tracking is active.",
+  "scope": [
+    "reacquire the local preview stream after background-tracker status restoration",
+    "keep background gesture tracking unchanged while the controller reconnects"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Reload the unpacked extension and refresh the controlled webpage before testing.",
+    "The test page remains available at http://127.0.0.1:5173/gesture-test.html."
+  ]
+}
