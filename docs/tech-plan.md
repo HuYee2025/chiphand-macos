@@ -11,7 +11,7 @@
 ## 架构/模块
 
 - `TunnelController`：虫洞生成、循环、暂停、视角和整体旋转。
-- `HandTracker`：摄像头生命周期、摄像头视频帧回调驱动的 24–30 FPS 自适应抽帧、220ms 丢失续帧、逐点平滑和 Worker 通信。
+- `HandTracker`：摄像头生命周期、独立定时轮询驱动的 24–30 FPS 自适应抽帧、220ms 丢失续帧、逐点平滑和 Worker 通信；不依赖可见窗口动画帧。
 - `gesture-worker`：在工作线程加载 `HandLandmarker`；GPU 优先，CPU 自动备用。
 - `hand-gesture-math`：用关节距离判断张手、握拳和捏合，不依赖内置手势分类标签。
 - `InputController`：位置映射、10% 中央死区、6° 旋转死区、首次出现校准旋转零点和平滑；手掌倾斜量映射为持续旋转速度。
@@ -20,6 +20,7 @@
 - `SwipeDetector`：保存最近 360ms 手掌中心轨迹，按位移、持续时间和主方向识别四方向挥动；650ms 冷却后以稳定手掌或离手重新激活。
 - Extension 控制窗口：负责首次请求摄像头权限、实时预览、显示启动状态和停止控制；后台识别已运行时重新打开窗口会自动恢复预览。失焦或关闭不停止后台识别。鼠标停留窗口内时保持展开，只在移出后收起。
 - Extension Offscreen Document：持有 `HandTracker`、`SwipeDetector` 和摄像头轨道；不依赖可见 Chrome 窗口，持续把动作发送给关联网页。
+- Offscreen 识别状态：看到手掌时向控制窗口和网页内提示条报告左右手与置信度；未看到时明确报告“正在寻找张开的手掌”。
 - Extension Service Worker：在插件图标点击时绑定当前网页、动态注入网页控制脚本、创建 Offscreen Document，并转发后台状态和动作反馈。
 - 网页内状态提示条：通过 Content Script 固定在受控网页右侧；平时极细黑色、悬停展开，识别动作时短暂显示对应绿色箭头。
 - `PageActionAdapter`：通用适配器负责 75% 视口滚动和 ArrowLeft / ArrowRight；站点适配器后续按注册顺序扩展。

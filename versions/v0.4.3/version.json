@@ -1,0 +1,19 @@
+{
+  "version": "0.4.3",
+  "date": "2026-07-14",
+  "tag": "v0.4.3",
+  "summary": "Make offscreen hand tracking independent of hidden-page frame callbacks and expose hand-detection status.",
+  "scope": [
+    "poll camera frames on a timer in HandTracker",
+    "report whether the offscreen tracker sees an open hand"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Reload the unpacked extension and refresh the controlled webpage before testing.",
+    "The control window reports whether it sees a hand before a swipe is attempted."
+  ]
+}

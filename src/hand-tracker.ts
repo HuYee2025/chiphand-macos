@@ -44,8 +44,7 @@ function selectHandIndex(result: HandLandmarkerResult, preferred: Handedness | n
 export class HandTracker {
   private worker: Worker | null = null;
   private stream: MediaStream | null = null;
-  private animationFrame = 0;
-  private videoFrameCallback = 0;
+  private loopTimer: number | null = null;
   private lastInferenceAt = 0;
   private lastVideoTime = -1;
   private workerBusy = false;
@@ -96,9 +95,8 @@ export class HandTracker {
 
   stop(): void {
     this.active = false;
-    cancelAnimationFrame(this.animationFrame);
-    if (this.videoFrameCallback) this.video.cancelVideoFrameCallback(this.videoFrameCallback);
-    this.videoFrameCallback = 0;
+    if (this.loopTimer !== null) window.clearTimeout(this.loopTimer);
+    this.loopTimer = null;
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
     this.video.srcObject = null;
@@ -146,11 +144,9 @@ export class HandTracker {
 
   private scheduleLoop(): void {
     if (!this.active) return;
-    if ("requestVideoFrameCallback" in this.video) {
-      this.videoFrameCallback = this.video.requestVideoFrameCallback((now) => this.loop(now));
-      return;
-    }
-    this.animationFrame = requestAnimationFrame(this.loop);
+    // Offscreen Document 没有可见渲染帧，requestAnimationFrame / requestVideoFrameCallback
+    // 可能完全不触发。用定时轮询读取 video.currentTime，并由下方节流控制推理频率。
+    this.loopTimer = window.setTimeout(() => this.loop(performance.now()), 16);
   }
 
   private handleResult(result: HandLandmarkerResult, workerDurationMs: number): void {

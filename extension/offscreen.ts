@@ -17,6 +17,7 @@ const detector = new SwipeDetector();
 let tracker: HandTracker | null = null;
 let running = false;
 let targetTabId: number | null = null;
+let handPresent: boolean | null = null;
 
 function statusResponse(message: string, ok = true): OffscreenResponse {
   return { ok, active: running, message, ...(targetTabId === null ? {} : { tabId: targetTabId }) };
@@ -60,6 +61,14 @@ async function executeDirection(direction: SwipeDirection): Promise<void> {
 }
 
 function handleHandState(state: HandControlState): void {
+  if (state.detected !== handPresent) {
+    handPresent = state.detected;
+    publishStatus(
+      state.detected
+        ? `已检测到${state.handedness === "Left" ? "左手" : "右手"}，${Math.round(state.confidence * 100)}%。`
+        : "正在寻找张开的手掌。",
+    );
+  }
   const direction = detector.update(state, performance.now());
   if (direction) void executeDirection(direction);
 }
@@ -69,6 +78,7 @@ function handleTrackerError(message: string): void {
   tracker = null;
   detector.reset();
   running = false;
+  handPresent = null;
   publishStatus(`后台识别失败：${message}`);
 }
 
@@ -99,6 +109,7 @@ function stopTracking(): OffscreenResponse {
   tracker = null;
   detector.reset();
   running = false;
+  handPresent = null;
   publishStatus("摄像头已停止。");
   return statusResponse("摄像头已停止。");
 }
