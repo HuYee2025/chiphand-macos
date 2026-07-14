@@ -1,4 +1,5 @@
-import type { ContentScriptRequest, ExtensionRequest, ExtensionResponse } from "./message-types";
+import type { ExtensionRequest, ExtensionResponse } from "./message-types";
+import { isContentScriptRequest } from "./message-types";
 import { pinchDeltaToScrollPixels } from "../src/pinch-scroll-detector";
 import type { GestureAction, HandControlState, PageActionAdapter, SwipeDirection } from "../src/types";
 
@@ -256,11 +257,11 @@ if (!window.__gestureBrowserControlInstalled) {
   const indicator = createIndicator();
   chrome.runtime.onMessage.addListener(
     (
-      request: ContentScriptRequest | Extract<ExtensionRequest, { type: "open-controller" }>,
+      request: unknown,
       _sender,
       sendResponse: (response: ExtensionResponse) => void,
     ) => {
-      if (request.type === "open-controller") return;
+      if (!isContentScriptRequest(request)) return;
       if (request.type === "gesture-control-ping") {
         sendResponse({ ok: true, message: "网页控制已连接。" });
         return;

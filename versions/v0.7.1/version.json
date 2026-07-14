@@ -1,0 +1,18 @@
+{
+  "version": "0.7.1",
+  "date": "2026-07-14",
+  "tag": "v0.7.1",
+  "summary": "Fix page-control message routing so the hand-grid overlay cannot block pinch scrolling or swipe navigation.",
+  "scope": [
+    "filter Content Script runtime messages with an explicit page-message whitelist",
+    "ignore Offscreen tracker events and extension action requests in the webpage receiver"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Users must reload the unpacked extension and refresh the controlled page to get the new content script."
+  ]
+}
