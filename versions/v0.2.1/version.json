@@ -1,0 +1,19 @@
+{
+  "version": "0.2.1",
+  "date": "2026-07-14",
+  "tag": "v0.2.1",
+  "summary": "Fix camera startup so page connection cannot block getUserMedia.",
+  "scope": [
+    "start the local camera and hand model before attempting active-tab connection",
+    "show a clear page-connection warning while keeping camera tracking available"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Reload the unpacked extension from chrome://extensions after rebuilding.",
+    "Chrome appears in macOS Camera privacy only after this request is made."
+  ]
+}

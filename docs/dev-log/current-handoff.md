@@ -9,8 +9,8 @@
 6. `docs/decision-log.md`
 
 当前版本状态：
-- `0.2.0` Chrome 手势浏览插件 MVP 已实现；第 03 阶段等待用户真实摄像头验收。
-- `v0.1.0` 是原始 Demo 回滚点；`v0.2.0` 保存 Chrome 插件 MVP 实现。
+- `0.2.1` Chrome 手势浏览插件已修复摄像头启动顺序；第 03 阶段等待用户真实摄像头验收。
+- `v0.1.0` 是原始 Demo 回滚点；`v0.2.0` 保存 Chrome 插件 MVP，`v0.2.1` 保存启动修复。
 - GitHub 仓库：`https://github.com/HuYee2025/black-hole-gesture-control`。
 
 最近完成：
@@ -19,6 +19,7 @@
 - 上下动作滚动 75% 视口；左右动作发送 ArrowLeft / ArrowRight；输入框获得焦点时忽略动作。
 - 新增 `gesture-test.html`，用于确定性验证滚动、翻页和输入保护。
 - `npm run build` 同时生成 `dist/` 与 `dist-extension/`。
+- 修复 Side Panel 先连接网页导致摄像头没有被请求的问题；现在先请求摄像头、后连接网页。
 
 本次验证：
 - `npm run typecheck` 通过。
@@ -27,7 +28,7 @@
 - Playwright 真实 Chromium：测试页布局、ArrowLeft / ArrowRight 页码变化和页面滚动通过。
 
 当前未完成：
-- 用户在目标 MacBook 上加载 `dist-extension/` 并用真实手掌测试四个方向。
+- 用户在目标 MacBook 上重新加载 `dist-extension/` 并用真实手掌测试四个方向。
 - 每方向 10 次成功率、重复触发次数、两分钟静止误触需要真实手势记录。
 - 收集拒绝合成左右方向键的网站，再添加站点适配器。
 - 未得到发布请求前不要推送 GitHub 或发布 Chrome 商店。

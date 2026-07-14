@@ -107,20 +107,19 @@ function handleTrackerError(text: string): void {
   showMessage(text, true);
 }
 
-async function startCamera(): Promise<void> {
-  toggle.disabled = true;
-  setStatus("连接网页");
-  showMessage("正在连接当前标签页…");
+async function connectCurrentTab(): Promise<void> {
   const activation = await sendRequest({ type: "activate-tab" });
-  if (!activation.ok) {
-    toggle.disabled = false;
-    setStatus("页面不可用", "error");
-    showMessage(activation.message, true);
+  if (activation.ok) {
+    showMessage("摄像头和当前网页已连接，张开手掌开始挥动。");
     return;
   }
+  showMessage(`摄像头已启动，但网页暂未连接。${activation.message}`, true);
+}
 
+async function startCamera(): Promise<void> {
+  toggle.disabled = true;
   setStatus("加载模型");
-  showMessage("正在启动本机手势模型…");
+  showMessage("正在请求摄像头权限并加载本机模型…");
   try {
     tracker ??= new HandTracker(video, handleHandState, handleTrackerError);
     await tracker.start();
@@ -128,7 +127,8 @@ async function startCamera(): Promise<void> {
     placeholder.classList.add("is-hidden");
     toggle.textContent = "停止摄像头";
     setStatus("识别中", "active");
-    showMessage("当前标签页已连接，张开手掌开始挥动。");
+    showMessage("摄像头已启动，正在连接当前网页…");
+    void connectCurrentTab();
   } catch (error) {
     const text =
       error instanceof DOMException && error.name === "NotAllowedError"
