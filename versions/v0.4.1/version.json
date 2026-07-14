@@ -1,0 +1,20 @@
+{
+  "version": "0.4.1",
+  "date": "2026-07-14",
+  "tag": "v0.4.1",
+  "summary": "Restore a live camera preview and make compacting depend only on pointer leave.",
+  "scope": [
+    "keep a local camera preview in the controller while offscreen tracking remains active",
+    "keep the controller expanded while the pointer stays inside it",
+    "collapse only after the pointer leaves the controller"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Chrome does not show a second camera permission prompt when the extension origin is already allowed.",
+    "Reload the unpacked extension and refresh the controlled webpage before testing."
+  ]
+}

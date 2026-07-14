@@ -9,7 +9,7 @@
 6. `docs/decision-log.md`
 
 当前版本状态：
-- `0.4.0` Chrome 手势浏览插件以独立控制窗口完成首次摄像头授权，再由 Offscreen Document 持续识别；点击网页不会停止手势，网页右侧提示条会保留反馈；第 03 阶段等待用户真实手势验收。
+- `0.4.1` Chrome 手势浏览插件以独立控制窗口完成首次摄像头授权和实时预览，再由 Offscreen Document 持续识别；点击网页不会停止手势，网页右侧提示条会保留反馈；第 03 阶段等待用户真实手势验收。
 - `v0.1.0` 是原始 Demo 回滚点；`v0.2.0` 保存 Chrome 插件 MVP，`v0.2.1` 保存启动顺序修复，`v0.3.0` 保存控制窗口架构。
 - GitHub 仓库：`https://github.com/HuYee2025/black-hole-gesture-control`。
 
@@ -22,13 +22,14 @@
 - 识别到 macOS Chrome Side Panel 无法请求摄像头；改为由独立控制窗口请求权限，并透传原网页 tabId。
 - 摄像头与 HandLandmarker 已迁入 Offscreen Document；控制窗口失焦或关闭时，后台识别仍继续。
 - 新增网页内右侧提示条：平时极细纯黑，悬停展开；识别到动作时，短暂显示对应的绿色大箭头。
+- 控制窗口恢复实时摄像头预览；鼠标停在窗口内不收起，只在移出后收起。
 
 本次验证：
 - `npm run typecheck` 通过。
 - `npm test`：20/20 通过，包含每方向 10 次轨迹和两分钟静止抖动模拟。
 - `npm run build` 通过，模型、WASM、控制窗口、Offscreen Document、Service Worker 和 Content Script 产物齐全。
 - Playwright 真实 Chromium：测试页布局、ArrowLeft / ArrowRight 页码变化和页面滚动通过。
-- `0.4.0` 后台识别、网页内提示条和视频帧回调通过 TypeScript、20 项手势测试及完整构建；首次摄像头授权后的真实 Chrome Offscreen 运行仍需用户 MacBook 验收。
+- `0.4.1` 实时预览和鼠标收起规则通过 TypeScript、20 项手势测试及完整构建；首次摄像头授权后的真实 Chrome Offscreen 运行仍需用户 MacBook 验收。
 
 当前未完成：
 - 用户在目标 MacBook 上重新加载 `dist-extension/`，从测试页点击插件图标打开控制窗口，再用真实手掌测试四个方向。
@@ -38,7 +39,7 @@
 - 未得到发布请求前不要推送 GitHub 或发布 Chrome 商店。
 
 下一步建议：
-- 按 README 重新加载 `dist-extension/`，启动摄像头后点击测试页；确认网页右侧提示条留在原处，再悬停、移开并挥动四个方向验收。
+- 按 README 重新加载 `dist-extension/`，启动摄像头后确认控制窗口显示实时画面；鼠标停留窗口内不会收起，移出后才收起；再点击测试页验证后台识别和网页内提示条。
 - 如真实 Chrome 中 Offscreen Document 的摄像头授权行为有差异，优先调整首次授权和后台接力顺序，不退回依赖前台控制窗口的架构。
 
 重要限制：

@@ -10,6 +10,7 @@ function required<T extends Element>(selector: string): T {
 
 const placeholder = required<HTMLElement>("#camera-placeholder");
 const placeholderLabel = required<HTMLElement>("#camera-placeholder-label");
+const previewVideo = required<HTMLVideoElement>("#camera-video");
 const toggle = required<HTMLButtonElement>("#camera-toggle");
 const runtimeStatus = required<HTMLElement>("#runtime-status");
 const handStatus = required<HTMLElement>("#hand-status");
@@ -22,7 +23,9 @@ const directionIndicators = Array.from(document.querySelectorAll<HTMLElement>("[
 
 let running = false;
 let compact = false;
+let pointerInside = false;
 let collapseTimer: number | null = null;
+let previewStream: MediaStream | null = null;
 const AUTO_COLLAPSE_MS = 5_000;
 const LEAVE_COLLAPSE_MS = 450;
 const FULL_WINDOW = { width: 390, height: 720 };
@@ -81,7 +84,6 @@ function expandOnHover(): void {
   if (!compact) return;
   clearAutoCollapse();
   void setCompact(false);
-  scheduleAutoCollapse();
 }
 
 function setStatus(text: string, state: "idle" | "active" | "error" = "idle"): void {
@@ -122,17 +124,18 @@ async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse
 function setRunning(active: boolean, detail?: string): void {
   running = active;
   if (active) {
-    placeholder.classList.remove("is-hidden");
+    placeholder.classList.toggle("is-hidden", previewStream !== null);
     placeholderLabel.textContent = "BACKGROUND ACTIVE";
     toggle.textContent = "停止摄像头";
     handStatus.textContent = "后台识别中";
     gestureStatus.textContent = "点击网页不会中断手势";
     setStatus("识别中", "active");
     if (detail) showMessage(detail);
-    scheduleAutoCollapse();
+    if (!pointerInside && !panelShell.matches(":hover")) scheduleAutoCollapse();
     return;
   }
   clearAutoCollapse();
+  stopPreview();
   placeholder.classList.remove("is-hidden");
   placeholderLabel.textContent = "CAMERA OFF";
   toggle.textContent = "启动摄像头";
@@ -144,11 +147,20 @@ function setRunning(active: boolean, detail?: string): void {
 }
 
 async function requestCameraPermission(): Promise<void> {
-  const stream = await navigator.mediaDevices.getUserMedia({
+  previewStream?.getTracks().forEach((track) => track.stop());
+  previewStream = await navigator.mediaDevices.getUserMedia({
     audio: false,
     video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 } },
   });
-  stream.getTracks().forEach((track) => track.stop());
+  previewVideo.srcObject = previewStream;
+  await previewVideo.play();
+  placeholder.classList.add("is-hidden");
+}
+
+function stopPreview(): void {
+  previewStream?.getTracks().forEach((track) => track.stop());
+  previewStream = null;
+  previewVideo.srcObject = null;
 }
 
 async function startCamera(): Promise<void> {
@@ -163,7 +175,7 @@ async function startCamera(): Promise<void> {
     await requestCameraPermission();
     const response = await sendRequest({ type: "start-background-tracking", tabId: targetTabId });
     if (!response.ok) throw new Error(response.message);
-    setRunning(true, "后台识别已启动。现在可以直接点击网页。\n");
+    setRunning(true, "摄像头预览已打开；后台识别已启动。现在可以直接点击网页。");
   } catch (error) {
     const text =
       error instanceof DOMException && error.name === "NotAllowedError"
@@ -197,10 +209,13 @@ toggle.addEventListener("click", () => {
 });
 
 panelShell.addEventListener("pointerenter", () => {
+  pointerInside = true;
+  clearAutoCollapse();
   if (running) expandOnHover();
 });
 
 panelShell.addEventListener("pointerleave", () => {
+  pointerInside = false;
   if (running && !compact) scheduleAutoCollapse(LEAVE_COLLAPSE_MS);
 });
 
@@ -220,5 +235,8 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
   showMessage(event.message, !event.ok);
 });
 
-window.addEventListener("pagehide", clearAutoCollapse);
+window.addEventListener("pagehide", () => {
+  clearAutoCollapse();
+  stopPreview();
+});
 void refreshBackgroundStatus();
