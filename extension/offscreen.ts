@@ -103,7 +103,7 @@ function handleHandState(state: HandControlState): void {
   const now = performance.now();
   if (now - lastPreviewUpdateAt >= PREVIEW_UPDATE_INTERVAL_MS) {
     lastPreviewUpdateAt = now;
-    publish({ type: "background-hand-state", state });
+    publish({ type: "background-hand-state", state, ...(targetTabId === null ? {} : { tabId: targetTabId }) });
   }
   if (state.detected !== handPresent) {
     handPresent = state.detected;

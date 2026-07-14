@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PinchScrollDetector } from "../src/pinch-scroll-detector";
+import { PinchScrollDetector, pinchDeltaToScrollPixels } from "../src/pinch-scroll-detector";
 import type { HandControlState } from "../src/types";
 
 function pinchState(y: number, gap = 0, overrides: Partial<HandControlState> = {}): HandControlState {
@@ -67,4 +67,9 @@ test("a fist does not accidentally become a pinch scroll clutch", () => {
     detector.update(pinchState(0.3, 0, { gesture: "Closed_Fist" }), 0),
     { active: false, deltaY: 0, direction: null },
   );
+});
+
+test("moving a pinched hand upward reveals content below", () => {
+  assert.ok(pinchDeltaToScrollPixels(-0.05, 800) > 0);
+  assert.ok(pinchDeltaToScrollPixels(0.05, 800) < 0);
 });

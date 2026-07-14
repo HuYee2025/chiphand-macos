@@ -1,0 +1,20 @@
+{
+  "version": "0.7.0",
+  "date": "2026-07-14",
+  "tag": "v0.7.0",
+  "summary": "Reverse pinch scrolling to match direct manipulation and project the hand skeleton plus pinch pointer onto the controlled webpage.",
+  "scope": [
+    "move the page toward lower content when the pinched hand moves upward",
+    "draw a mirrored 21-point hand grid on the webpage",
+    "draw the thumb-index pinch midpoint as a yellow page-space pointer"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "The projected grid is a local visual overlay and does not intercept page clicks.",
+    "The yellow point is a camera-to-viewport mapping, not a macOS mouse cursor."
+  ]
+}

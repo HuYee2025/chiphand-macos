@@ -26,7 +26,8 @@ export type ContentScriptRequest =
   | { type: "execute-gesture-action"; action: GestureAction }
   | { type: "execute-pinch-scroll"; deltaY: number }
   | { type: "gesture-overlay-status"; active: boolean; message: string }
-  | { type: "gesture-overlay-gesture"; direction: SwipeDirection };
+  | { type: "gesture-overlay-gesture"; direction: SwipeDirection }
+  | { type: "gesture-overlay-hand-state"; state: HandControlState };
 
 export type ExtensionResponse = {
   ok: boolean;
@@ -51,7 +52,7 @@ export type OffscreenResponse = {
 export type TrackerEvent =
   | { type: "background-tracker-status"; active: boolean; message: string; tabId?: number }
   | { type: "background-gesture-feedback"; direction: SwipeDirection; ok: boolean; message: string; tabId?: number }
-  | { type: "background-hand-state"; state: HandControlState };
+  | { type: "background-hand-state"; state: HandControlState; tabId?: number };
 
 export function isExtensionRequest(message: unknown): message is ExtensionRequest {
   if (!message || typeof message !== "object" || !("type" in message)) return false;

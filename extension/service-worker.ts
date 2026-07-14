@@ -126,12 +126,13 @@ async function handleRequest(request: ExtensionRequest): Promise<ExtensionRespon
 }
 
 async function forwardTrackerEvent(event: TrackerEvent): Promise<void> {
-  if (event.type === "background-hand-state") return;
   if (event.tabId === undefined) return;
   const request: ContentScriptRequest =
-    event.type === "background-tracker-status"
-      ? { type: "gesture-overlay-status", active: event.active, message: event.message }
-      : { type: "gesture-overlay-gesture", direction: event.direction };
+    event.type === "background-hand-state"
+      ? { type: "gesture-overlay-hand-state", state: event.state }
+      : event.type === "background-tracker-status"
+        ? { type: "gesture-overlay-status", active: event.active, message: event.message }
+        : { type: "gesture-overlay-gesture", direction: event.direction };
   try {
     await chrome.tabs.sendMessage(event.tabId, request);
   } catch {

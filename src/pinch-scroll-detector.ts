@@ -26,6 +26,16 @@ const DEFAULTS = {
 } as const;
 
 const IDLE_UPDATE: PinchScrollUpdate = { active: false, deltaY: 0, direction: null };
+const MAX_NORMALIZED_SCROLL_DELTA = 0.12;
+const PINCH_SCROLL_GAIN = 1.8;
+
+/** Maps a camera-space pinch drag to a document scroll delta.
+ * Moving the hand upward drags page content upward and therefore reveals
+ * the content below, matching trackpad and touchscreen scrolling. */
+export function pinchDeltaToScrollPixels(deltaY: number, viewportHeight: number): number {
+  const boundedDelta = Math.max(-MAX_NORMALIZED_SCROLL_DELTA, Math.min(MAX_NORMALIZED_SCROLL_DELTA, deltaY));
+  return -boundedDelta * viewportHeight * PINCH_SCROLL_GAIN;
+}
 
 /**
  * Treats thumb-index contact as a clutch: while pinched, vertical movement
