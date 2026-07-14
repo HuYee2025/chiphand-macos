@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "手势浏览控制",
   "description": "使用本机摄像头和手掌挥动控制网页滚动与左右翻页。",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "minimum_chrome_version": "114",
   "permissions": ["activeTab", "scripting", "offscreen"],
   "action": {

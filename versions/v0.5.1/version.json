@@ -1,0 +1,19 @@
+{
+  "version": "0.5.1",
+  "date": "2026-07-14",
+  "tag": "v0.5.1",
+  "summary": "Remove the redundant compact controller window and keep only the in-page gesture feedback square.",
+  "scope": [
+    "close the controller window after pointer leaves instead of compacting it",
+    "remove the compact window UI and duplicate gesture indicator"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Closing the controller only stops its preview stream; offscreen tracking continues.",
+    "Reopen the controller from the extension icon to stop the camera."
+  ]
+}

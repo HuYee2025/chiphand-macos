@@ -20,20 +20,16 @@ const gestureStatus = required<HTMLElement>("#gesture-status");
 const lastAction = required<HTMLElement>("#last-action");
 const message = required<HTMLElement>("#panel-message");
 const panelShell = required<HTMLElement>("#panel-shell");
-const compactActiveGesture = required<HTMLElement>("#compact-active-gesture");
 const directionIndicators = Array.from(document.querySelectorAll<HTMLElement>("[data-direction]"));
 const cameraOverlay = new CameraOverlay(previewVideo, previewCanvas);
 
 let running = false;
-let compact = false;
 let pointerInside = false;
-let collapseTimer: number | null = null;
+let closeTimer: number | null = null;
 let previewStream: MediaStream | null = null;
 let previewStarting: Promise<void> | null = null;
-const AUTO_COLLAPSE_MS = 5_000;
-const LEAVE_COLLAPSE_MS = 450;
-const FULL_WINDOW = { width: 390, height: 720 };
-const COMPACT_WINDOW = { width: 92, height: 142 };
+const AUTO_CLOSE_MS = 5_000;
+const LEAVE_CLOSE_MS = 450;
 const targetTabId = (() => {
   const value = Number(new URLSearchParams(window.location.search).get("tabId"));
   return Number.isInteger(value) && value > 0 ? value : null;
@@ -46,48 +42,16 @@ const directionText: Record<SwipeDirection, string> = {
   right: "向右",
 };
 
-const directionArrow: Record<SwipeDirection, string> = {
-  up: "↑",
-  down: "↓",
-  left: "←",
-  right: "→",
-};
-
-function clearAutoCollapse(): void {
-  if (collapseTimer !== null) window.clearTimeout(collapseTimer);
-  collapseTimer = null;
+function clearAutoClose(): void {
+  if (closeTimer !== null) window.clearTimeout(closeTimer);
+  closeTimer = null;
 }
 
-async function resizeController(compactMode: boolean): Promise<void> {
-  try {
-    const currentWindow = await chrome.windows.getCurrent();
-    if (currentWindow.id === undefined) return;
-    const size = compactMode ? COMPACT_WINDOW : FULL_WINDOW;
-    const left = Math.round(window.screen.availWidth - size.width);
-    const top = Math.round(Math.max(72, (window.screen.availHeight - size.height) / 2));
-    await chrome.windows.update(currentWindow.id, { ...size, left, top });
-  } catch {
-    // 窗口关闭或系统拒绝改尺寸时，后台识别仍会继续。
-  }
-}
-
-async function setCompact(nextCompact: boolean): Promise<void> {
-  compact = nextCompact;
-  panelShell.classList.toggle("is-compact", compact);
-  await resizeController(compact);
-}
-
-function scheduleAutoCollapse(delay = AUTO_COLLAPSE_MS): void {
-  clearAutoCollapse();
-  collapseTimer = window.setTimeout(() => {
-    if (running && !compact) void setCompact(true);
+function scheduleAutoClose(delay = AUTO_CLOSE_MS): void {
+  clearAutoClose();
+  closeTimer = window.setTimeout(() => {
+    if (running && !pointerInside && !panelShell.matches(":hover")) window.close();
   }, delay);
-}
-
-function expandOnHover(): void {
-  if (!compact) return;
-  clearAutoCollapse();
-  void setCompact(false);
 }
 
 function setStatus(text: string, state: "idle" | "active" | "error" = "idle"): void {
@@ -105,15 +69,9 @@ function flashDirection(direction: SwipeDirection): void {
   for (const indicator of directionIndicators) {
     indicator.classList.toggle("is-active", indicator.dataset.direction === direction);
   }
-  compactActiveGesture.textContent = directionArrow[direction];
-  compactActiveGesture.classList.add("is-active");
   window.setTimeout(() => {
     for (const indicator of directionIndicators) indicator.classList.remove("is-active");
-    compactActiveGesture.classList.remove("is-active");
   }, 620);
-  window.setTimeout(() => {
-    if (!compactActiveGesture.classList.contains("is-active")) compactActiveGesture.textContent = "";
-  }, 820);
 }
 
 async function sendRequest(request: ExtensionRequest): Promise<ExtensionResponse> {
@@ -145,10 +103,10 @@ function setRunning(active: boolean, detail?: string): void {
         },
       );
     }
-    if (!pointerInside && !panelShell.matches(":hover")) scheduleAutoCollapse();
+    if (!pointerInside && !panelShell.matches(":hover")) scheduleAutoClose();
     return;
   }
-  clearAutoCollapse();
+  clearAutoClose();
   stopPreview();
   placeholder.classList.remove("is-hidden");
   placeholderLabel.textContent = "CAMERA OFF";
@@ -156,7 +114,6 @@ function setRunning(active: boolean, detail?: string): void {
   handStatus.textContent = "等待摄像头";
   gestureStatus.textContent = "挥动手掌控制网页";
   setStatus("已停止");
-  if (compact) void setCompact(false);
   if (detail) showMessage(detail);
 }
 
@@ -233,13 +190,12 @@ toggle.addEventListener("click", () => {
 
 panelShell.addEventListener("pointerenter", () => {
   pointerInside = true;
-  clearAutoCollapse();
-  if (running) expandOnHover();
+  clearAutoClose();
 });
 
 panelShell.addEventListener("pointerleave", () => {
   pointerInside = false;
-  if (running && !compact) scheduleAutoCollapse(LEAVE_COLLAPSE_MS);
+  if (running) scheduleAutoClose(LEAVE_CLOSE_MS);
 });
 
 chrome.runtime.onMessage.addListener((event: unknown) => {
@@ -275,7 +231,7 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
 });
 
 window.addEventListener("pagehide", () => {
-  clearAutoCollapse();
+  clearAutoClose();
   stopPreview();
 });
 void refreshBackgroundStatus();
