@@ -9,7 +9,6 @@
     <main id="panel-shell" class="panel-shell">
       <header class="panel-header">
         <div>
-          <p class="eyebrow">LOCAL CAMERA CONTROL</p>
           <h1>手势浏览</h1>
         </div>
         <div class="header-actions">
@@ -32,28 +31,12 @@
         </div>
       </section>
 
-      <section class="direction-card" aria-label="最近识别动作">
-        <p class="section-label">LAST ACTION</p>
-        <div class="direction-grid">
-          <span></span>
-          <button data-direction="up" type="button" tabindex="-1">↑<small>上滚</small></button>
-          <span></span>
-          <button data-direction="left" type="button" tabindex="-1">←<small>上一页</small></button>
-          <div id="last-action" class="last-action">—</div>
-          <button data-direction="right" type="button" tabindex="-1">→<small>下一页</small></button>
-          <span></span>
-          <button data-direction="down" type="button" tabindex="-1">↓<small>下滚</small></button>
-          <span></span>
-        </div>
+      <section class="action-card" aria-label="最近识别动作">
+        <span id="last-action" class="last-action" aria-live="polite"></span>
       </section>
 
       <button id="camera-toggle" class="primary-button" type="button">启动摄像头</button>
-      <p id="panel-message" class="panel-message" role="status">画面只在本机处理，不会上传。</p>
-
-      <footer class="panel-help">
-        <p>捏住拇指与食指，上下拖动页面。</p>
-        <p>张开手掌向左/右挥动翻页；需要停止时重新点击插件图标。</p>
-      </footer>
+      <p id="panel-message" class="panel-message" role="status"></p>
     </main>
     <script type="module" src="./sidepanel.ts"></script>
   </body>

@@ -1,4 +1,4 @@
-import type { ContentScriptRequest, ExtensionResponse } from "./message-types";
+import type { ContentScriptRequest, ExtensionRequest, ExtensionResponse } from "./message-types";
 import type { GestureAction, PageActionAdapter, SwipeDirection } from "../src/types";
 
 declare global {
@@ -23,7 +23,7 @@ function createIndicator(): GestureIndicator {
 
   const host = document.createElement("div");
   host.id = OVERLAY_ID;
-  host.style.cssText = "position:fixed;right:14px;top:50%;z-index:2147483647;pointer-events:none;";
+  host.style.cssText = "position:fixed;right:14px;top:50%;z-index:2147483647;pointer-events:auto;";
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
@@ -31,7 +31,7 @@ function createIndicator(): GestureIndicator {
       #indicator {
         width: 88px; height: 88px; display: grid; place-items: center; overflow: hidden;
         border: 1px solid #171717; border-radius: 9px; background: #090909; color: #c0ffd0;
-        box-shadow: 0 8px 24px rgba(0,0,0,.22);
+        box-shadow: 0 8px 24px rgba(0,0,0,.22); cursor: pointer;
         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         transition: border-color .2s ease, background .2s ease;
       }
@@ -42,7 +42,7 @@ function createIndicator(): GestureIndicator {
       #indicator.is-gesture #status { opacity: 0; }
       @media (prefers-reduced-motion: reduce) { #indicator, #arrow, #status { transition: none; } }
     </style>
-    <div id="indicator" aria-label="手势浏览识别状态" role="status">
+    <div id="indicator" aria-label="手势浏览识别状态，点击查看摄像头" role="button" tabindex="0">
       <span id="arrow" aria-hidden="true"></span>
       <span id="status">未启动</span>
     </div>
@@ -56,12 +56,23 @@ function createIndicator(): GestureIndicator {
 
   let tracking = false;
   let gestureTimer: number | null = null;
+  const openController = (): void => {
+    const request: ExtensionRequest = { type: "open-controller" };
+    void chrome.runtime.sendMessage(request).catch(() => undefined);
+  };
+  root.addEventListener("click", openController);
+  root.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openController();
+    }
+  });
 
   const indicator: GestureIndicator = {
     setTracking(active, detail): void {
       tracking = active;
       status.textContent = active ? "手势识别中" : "已停止";
-      root.setAttribute("aria-label", active ? "手势识别中" : "手势识别已停止");
+      root.setAttribute("aria-label", active ? "手势识别中，点击查看摄像头" : "手势识别已停止，点击打开控制窗口");
       if (!active) {
         root.classList.remove("is-gesture");
         arrow.textContent = "";
@@ -164,7 +175,12 @@ if (!window.__gestureBrowserControlInstalled) {
   window.__gestureBrowserControlInstalled = true;
   const indicator = createIndicator();
   chrome.runtime.onMessage.addListener(
-    (request: ContentScriptRequest, _sender, sendResponse: (response: ExtensionResponse) => void) => {
+    (
+      request: ContentScriptRequest | Extract<ExtensionRequest, { type: "open-controller" }>,
+      _sender,
+      sendResponse: (response: ExtensionResponse) => void,
+    ) => {
+      if (request.type === "open-controller") return;
       if (request.type === "gesture-control-ping") {
         sendResponse({ ok: true, message: "网页控制已连接。" });
         return;

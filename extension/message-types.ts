@@ -2,6 +2,7 @@ import type { GestureAction, HandControlState, SwipeDirection } from "../src/typ
 
 export type ExtensionRequest =
   | { type: "activate-tab"; tabId?: number }
+  | { type: "open-controller"; tabId?: number }
   | { type: "start-background-tracking"; tabId?: number }
   | { type: "stop-background-tracking" }
   | { type: "get-background-tracker-status" }
@@ -57,6 +58,7 @@ export function isExtensionRequest(message: unknown): message is ExtensionReques
   const type = (message as { type?: unknown }).type;
   return (
     type === "activate-tab" ||
+    type === "open-controller" ||
     type === "start-background-tracking" ||
     type === "stop-background-tracking" ||
     type === "get-background-tracker-status" ||

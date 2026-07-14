@@ -20,7 +20,6 @@ const gestureStatus = required<HTMLElement>("#gesture-status");
 const lastAction = required<HTMLElement>("#last-action");
 const message = required<HTMLElement>("#panel-message");
 const panelShell = required<HTMLElement>("#panel-shell");
-const directionIndicators = Array.from(document.querySelectorAll<HTMLElement>("[data-direction]"));
 const cameraOverlay = new CameraOverlay(previewVideo, previewCanvas);
 
 let running = false;
@@ -28,18 +27,17 @@ let pointerInside = false;
 let closeTimer: number | null = null;
 let previewStream: MediaStream | null = null;
 let previewStarting: Promise<void> | null = null;
-const AUTO_CLOSE_MS = 5_000;
 const LEAVE_CLOSE_MS = 450;
 const targetTabId = (() => {
   const value = Number(new URLSearchParams(window.location.search).get("tabId"));
   return Number.isInteger(value) && value > 0 ? value : null;
 })();
 
-const directionText: Record<SwipeDirection, string> = {
-  up: "向上",
-  down: "向下",
-  left: "向左",
-  right: "向右",
+const directionArrow: Record<SwipeDirection, string> = {
+  up: "↑",
+  down: "↓",
+  left: "←",
+  right: "→",
 };
 
 function clearAutoClose(): void {
@@ -47,7 +45,7 @@ function clearAutoClose(): void {
   closeTimer = null;
 }
 
-function scheduleAutoClose(delay = AUTO_CLOSE_MS): void {
+function scheduleAutoClose(delay = LEAVE_CLOSE_MS): void {
   clearAutoClose();
   closeTimer = window.setTimeout(() => {
     if (running && !pointerInside && !panelShell.matches(":hover")) window.close();
@@ -61,16 +59,16 @@ function setStatus(text: string, state: "idle" | "active" | "error" = "idle"): v
 }
 
 function showMessage(text: string, isError = false): void {
-  message.textContent = text;
+  message.textContent = isError ? text : "";
   message.classList.toggle("is-error", isError);
 }
 
 function flashDirection(direction: SwipeDirection): void {
-  for (const indicator of directionIndicators) {
-    indicator.classList.toggle("is-active", indicator.dataset.direction === direction);
-  }
+  lastAction.textContent = directionArrow[direction];
+  lastAction.classList.add("is-active");
   window.setTimeout(() => {
-    for (const indicator of directionIndicators) indicator.classList.remove("is-active");
+    lastAction.classList.remove("is-active");
+    lastAction.textContent = "";
   }, 620);
 }
 
@@ -103,7 +101,6 @@ function setRunning(active: boolean, detail?: string): void {
         },
       );
     }
-    if (!pointerInside && !panelShell.matches(":hover")) scheduleAutoClose();
     return;
   }
   clearAutoClose();
@@ -225,7 +222,6 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
     }
     return;
   }
-  lastAction.textContent = directionText[event.direction];
   flashDirection(event.direction);
   showMessage(event.message, !event.ok);
 });
@@ -233,5 +229,8 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
 window.addEventListener("pagehide", () => {
   clearAutoClose();
   stopPreview();
+});
+window.addEventListener("blur", () => {
+  if (running) scheduleAutoClose(120);
 });
 void refreshBackgroundStatus();

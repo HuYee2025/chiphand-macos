@@ -1,0 +1,20 @@
+{
+  "version": "0.6.0",
+  "date": "2026-07-14",
+  "tag": "v0.6.0",
+  "summary": "Make the in-page gesture square the primary controller entry point and reduce the controller to video plus a single action display.",
+  "scope": [
+    "open the controller from the in-page gesture square",
+    "remove the four-direction control grid",
+    "show only one green action arrow in the compact black display"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "The extension icon remains the first-run and fallback entry point.",
+    "Clicking the in-page square only reopens the preview; background tracking keeps running."
+  ]
+}

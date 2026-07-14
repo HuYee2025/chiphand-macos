@@ -97,6 +97,12 @@ async function getBackgroundTrackingStatus(): Promise<ExtensionResponse> {
 }
 
 async function handleRequest(request: ExtensionRequest): Promise<ExtensionResponse> {
+  if (request.type === "open-controller") {
+    const tabId = request.tabId ?? (await getActiveTabId());
+    const tab = await chrome.tabs.get(tabId);
+    await openControllerWindow(tab);
+    return { ok: true, message: "控制窗口已打开。", tabId };
+  }
   if (request.type === "start-background-tracking") return startBackgroundTracking(request);
   if (request.type === "stop-background-tracking") return stopBackgroundTracking();
   if (request.type === "get-background-tracker-status") return getBackgroundTrackingStatus();
@@ -143,8 +149,8 @@ async function openControllerWindow(tab: chrome.tabs.Tab): Promise<void> {
   await chrome.windows.create({
     url: chrome.runtime.getURL(`sidepanel.html?tabId=${tab.id}`),
     type: "popup",
-    width: 390,
-    height: 720,
+    width: 340,
+    height: 560,
     focused: true,
   });
 }
@@ -153,13 +159,15 @@ chrome.action.onClicked.addListener((tab) => {
   void openControllerWindow(tab);
 });
 
-chrome.runtime.onMessage.addListener((request: unknown, _sender, sendResponse: (response: ExtensionResponse) => void) => {
+chrome.runtime.onMessage.addListener((request: unknown, sender, sendResponse: (response: ExtensionResponse) => void) => {
   if (isTrackerEvent(request)) {
     void forwardTrackerEvent(request);
     return;
   }
   if (!isExtensionRequest(request)) return;
-  void handleRequest(request)
+  const resolvedRequest =
+    request.type === "open-controller" && sender.tab?.id !== undefined ? { ...request, tabId: sender.tab.id } : request;
+  void handleRequest(resolvedRequest)
     .then(sendResponse)
     .catch((error: unknown) => {
       sendResponse({
