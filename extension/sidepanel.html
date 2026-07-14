@@ -6,13 +6,16 @@
     <title>手势浏览控制</title>
   </head>
   <body>
-    <main class="panel-shell">
+    <main id="panel-shell" class="panel-shell">
       <header class="panel-header">
         <div>
           <p class="eyebrow">LOCAL CAMERA CONTROL</p>
           <h1>手势浏览</h1>
         </div>
-        <span id="runtime-status" class="status-chip">未启动</span>
+        <div class="header-actions">
+          <span id="runtime-status" class="status-chip">未启动</span>
+          <button id="compact-toggle" class="compact-toggle" type="button" aria-label="收起手势控制">收起</button>
+        </div>
       </header>
 
       <section class="camera-card" aria-label="摄像头识别画面">

@@ -1,0 +1,20 @@
+{
+  "version": "0.3.1",
+  "date": "2026-07-14",
+  "tag": "v0.3.1",
+  "summary": "Auto-collapse the camera controller into a right-edge compact status tab.",
+  "scope": [
+    "collapse the controller window five seconds after camera startup",
+    "keep camera tracking active while compact",
+    "restore the full controller when the compact tab is clicked"
+  ],
+  "validation": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "notes": [
+    "Reload the unpacked extension before testing the compact controller.",
+    "Chrome extensions cannot provide a reliable native macOS edge-reveal panel; this is a compact popup window."
+  ]
+}

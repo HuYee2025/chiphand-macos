@@ -20,12 +20,19 @@ const handStatus = required<HTMLElement>("#hand-status");
 const gestureStatus = required<HTMLElement>("#gesture-status");
 const lastAction = required<HTMLElement>("#last-action");
 const message = required<HTMLElement>("#panel-message");
+const panelShell = required<HTMLElement>("#panel-shell");
+const compactToggle = required<HTMLButtonElement>("#compact-toggle");
 const directionButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-direction]"));
 
 const overlay = new CameraOverlay(video, canvas);
 const detector = new SwipeDetector();
 let tracker: HandTracker | null = null;
 let running = false;
+let compact = false;
+let collapseTimer: number | null = null;
+const AUTO_COLLAPSE_MS = 5_000;
+const FULL_WINDOW = { width: 390, height: 720 };
+const COMPACT_WINDOW = { width: 92, height: 142 };
 const targetTabId = (() => {
   const value = Number(new URLSearchParams(window.location.search).get("tabId"));
   return Number.isInteger(value) && value > 0 ? value : null;
@@ -37,6 +44,41 @@ const directionText: Record<SwipeDirection, string> = {
   left: "向左",
   right: "向右",
 };
+
+function clearAutoCollapse(): void {
+  if (collapseTimer !== null) window.clearTimeout(collapseTimer);
+  collapseTimer = null;
+}
+
+async function resizeController(compactMode: boolean): Promise<void> {
+  try {
+    const currentWindow = await chrome.windows.getCurrent();
+    if (currentWindow.id === undefined) return;
+    const size = compactMode ? COMPACT_WINDOW : FULL_WINDOW;
+    const left = Math.round(window.screen.availWidth - size.width);
+    const top = compactMode
+      ? Math.round(Math.max(72, (window.screen.availHeight - size.height) / 2))
+      : undefined;
+    await chrome.windows.update(currentWindow.id, { ...size, left, ...(top === undefined ? {} : { top }) });
+  } catch {
+    // 窗口在关闭或系统拒绝改尺寸时，仍保留可点击的页面内收起状态。
+  }
+}
+
+async function setCompact(nextCompact: boolean): Promise<void> {
+  compact = nextCompact;
+  panelShell.classList.toggle("is-compact", compact);
+  compactToggle.textContent = compact ? "展开" : "收起";
+  compactToggle.setAttribute("aria-label", compact ? "展开手势控制" : "收起手势控制");
+  await resizeController(compact);
+}
+
+function scheduleAutoCollapse(): void {
+  clearAutoCollapse();
+  collapseTimer = window.setTimeout(() => {
+    if (running && !compact) void setCompact(true);
+  }, AUTO_COLLAPSE_MS);
+}
 
 function setStatus(text: string, state: "idle" | "active" | "error" = "idle"): void {
   runtimeStatus.textContent = text;
@@ -100,6 +142,7 @@ function handleHandState(state: HandControlState): void {
 }
 
 function stopCamera(): void {
+  clearAutoCollapse();
   tracker?.stop();
   detector.reset();
   running = false;
@@ -108,6 +151,7 @@ function stopCamera(): void {
   handStatus.textContent = "等待摄像头";
   gestureStatus.textContent = "挥动手掌控制网页";
   setStatus("已停止");
+  if (compact) void setCompact(false);
 }
 
 function handleTrackerError(text: string): void {
@@ -142,6 +186,7 @@ async function startCamera(): Promise<void> {
     setStatus("识别中", "active");
     showMessage("摄像头已启动，正在连接当前网页…");
     void connectCurrentTab();
+    scheduleAutoCollapse();
   } catch (error) {
     const text =
       error instanceof DOMException && error.name === "NotAllowedError"
@@ -160,4 +205,17 @@ toggle.addEventListener("click", () => {
   else void startCamera();
 });
 
-window.addEventListener("pagehide", stopCamera);
+compactToggle.addEventListener("click", () => {
+  if (compact) {
+    void setCompact(false);
+    if (running) scheduleAutoCollapse();
+    return;
+  }
+  clearAutoCollapse();
+  void setCompact(true);
+});
+
+window.addEventListener("pagehide", () => {
+  clearAutoCollapse();
+  stopCamera();
+});

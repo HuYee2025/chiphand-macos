@@ -24,6 +24,8 @@ npm run build:extension
 5. 打开普通网页，点击插件图标；它会弹出独立的手势控制窗口。
 6. 在控制窗口点击“启动摄像头”。
 
+摄像头启动 5 秒后，控制窗口会自动缩成屏幕右侧的小标签，识别不会中断；点击“展开”即可查看画面或停止摄像头。
+
 插件只申请 `activeTab` 和 `scripting`。控制窗口而非 Chrome Side Panel 负责请求摄像头权限，避免 macOS 上的 Side Panel 授权限制。切换到新标签页后，需要在新页面再次点击插件图标授权。Chrome 内置页面、Chrome 应用商店等受保护页面无法控制。
 
 部分网站会拒绝 JavaScript 合成的方向键事件；上下滚动为通用动作，左右翻页通过 `PageActionAdapter` 继续增加网站适配。
