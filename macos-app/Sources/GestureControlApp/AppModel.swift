@@ -12,6 +12,7 @@ final class AppModel: ObservableObject {
         category: "recognition"
     )
     @Published private(set) var isRunning = false
+    @Published private(set) var isPaused = false
     @Published private(set) var cameraPermission = PermissionService.cameraState
     @Published private(set) var accessibilityPermission = PermissionService.accessibilityState
     @Published private(set) var status = "已停止"
@@ -26,6 +27,8 @@ final class AppModel: ObservableObject {
         didSet {
             if isRunning && screenOverlayEnabled {
                 screenOverlayController.show()
+            } else if isPaused && screenOverlayEnabled {
+                screenOverlayController.showFeedbackOnly()
             } else {
                 screenOverlayController.hide()
             }
@@ -154,14 +157,22 @@ final class AppModel: ObservableObject {
     }
 
     var menuIcon: String {
-        isRunning ? "hand.raised.fill" : "hand.raised"
+        if isPaused { return "hand.raised.slash" }
+        return isRunning ? "hand.raised.fill" : "hand.raised"
     }
 
     func toggle() {
-        isRunning ? stop() : start()
+        if isPaused {
+            resume()
+        } else if isRunning {
+            stop()
+        } else {
+            start()
+        }
     }
 
     func start() {
+        isPaused = false
         pendingStart = true
         status = "检查权限…"
         Task {
@@ -183,6 +194,7 @@ final class AppModel: ObservableObject {
     func stop() {
         pendingStart = false
         isRunning = false
+        isPaused = false
         mediaPipeService.stop()
         usingAppleVisionFallback = false
         camera.stop()
@@ -197,6 +209,55 @@ final class AppModel: ObservableObject {
         actionFeedback = nil
         handStatus = "等待启动"
         status = "已停止"
+    }
+
+    func togglePauseFromFeedback() {
+        if isPaused {
+            resume()
+        } else if isRunning {
+            pause()
+        }
+    }
+
+    private func pause() {
+        guard isRunning else { return }
+        pendingStart = false
+        isRunning = false
+        isPaused = true
+        mediaPipeService.stop()
+        usingAppleVisionFallback = false
+        camera.stop()
+        cancelCurrentGesture()
+        processingFrame = false
+        latestPose = nil
+        recognitionFPS = 0
+        inferenceDurationMS = 0
+        actionFeedback = nil
+        debugWindowController.hide()
+        recognitionEngine = recognitionDelegate + " · 已暂停"
+        handStatus = "已暂停手势控制"
+        status = "已暂停手势控制"
+        if screenOverlayEnabled {
+            screenOverlayController.showFeedbackOnly()
+        } else {
+            screenOverlayController.hide()
+        }
+    }
+
+    private func resume() {
+        guard isPaused else { return }
+        refreshPermissions()
+        guard cameraPermission == .granted else {
+            status = "摄像头权限已失效"
+            handStatus = "已暂停 · 需要摄像头权限"
+            return
+        }
+        guard accessibilityPermission == .granted else {
+            status = "辅助功能权限已失效"
+            handStatus = "已暂停 · 需要辅助功能权限"
+            return
+        }
+        beginRunning()
     }
 
     func refreshPermissions() {
@@ -221,6 +282,10 @@ final class AppModel: ObservableObject {
     }
 
     func testPageDown() {
+        guard isRunning, !isPaused else {
+            handStatus = isPaused ? "已暂停手势控制" : "手势控制未开启"
+            return
+        }
         guard accessibilityPermission == .granted else {
             handStatus = "辅助功能未生效，无法发送滚动"
             return
@@ -395,6 +460,7 @@ final class AppModel: ObservableObject {
     private func beginRunning() {
         guard !isRunning else { return }
         pendingStart = false
+        isPaused = false
         isRunning = true
         handStatus = "正在启动 MediaPipe…"
         status = "正在加载 MediaPipe…"

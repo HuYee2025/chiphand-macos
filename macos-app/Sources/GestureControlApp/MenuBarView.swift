@@ -12,7 +12,9 @@ struct MenuBarView: View {
                         .font(.headline)
                     Text(model.status)
                         .font(.caption)
-                        .foregroundStyle(model.isRunning ? .green : .secondary)
+                        .foregroundStyle(
+                            model.isPaused ? .red : (model.isRunning ? .green : .secondary)
+                        )
                     Text("识别引擎：\(model.recognitionEngine)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -24,7 +26,11 @@ struct MenuBarView: View {
                 }
                 Spacer()
                 Circle()
-                    .fill(model.isRunning ? Color.green : Color.secondary.opacity(0.4))
+                    .fill(
+                        model.isPaused
+                            ? Color.red
+                            : (model.isRunning ? Color.green : Color.secondary.opacity(0.4))
+                    )
                     .frame(width: 9, height: 9)
             }
 
@@ -32,7 +38,7 @@ struct MenuBarView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Button(model.isRunning ? "停止手势控制" : "开启手势控制") {
+            Button(primaryButtonTitle) {
                 model.toggle()
             }
             .buttonStyle(.borderedProminent)
@@ -85,6 +91,11 @@ struct MenuBarView: View {
         .padding(14)
         .frame(width: 320)
         .onAppear { model.refreshPermissions() }
+    }
+
+    private var primaryButtonTitle: String {
+        if model.isPaused { return "恢复手势控制" }
+        return model.isRunning ? "停止手势控制" : "开启手势控制"
     }
 
     private func permissionRow(

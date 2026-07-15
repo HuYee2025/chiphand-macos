@@ -2,19 +2,12 @@ import AppKit
 import GestureControlCore
 import SwiftUI
 
-private enum FeedbackDockSide: String {
-    case left
-    case right
-}
-
 @MainActor
 private final class FeedbackPanelState: ObservableObject {
     @Published var isCollapsed: Bool
-    @Published var dockSide: FeedbackDockSide?
 
-    init(isCollapsed: Bool, dockSide: FeedbackDockSide?) {
+    init(isCollapsed: Bool) {
         self.isCollapsed = isCollapsed
-        self.dockSide = dockSide
     }
 }
 
@@ -27,30 +20,28 @@ private final class PassiveFeedbackPanel: NSPanel {
 final class ScreenGestureOverlayController {
     private enum PreferenceKey {
         static let collapsed = "feedbackPanelCollapsed"
-        static let dockSide = "feedbackPanelDockSide"
-        static let xFraction = "feedbackPanelXFraction"
         static let yFraction = "feedbackPanelYFraction"
+        static let legacyDockSide = "feedbackPanelDockSide"
+        static let legacyXFraction = "feedbackPanelXFraction"
     }
 
     private let expandedSize = CGSize(width: 390, height: 52)
-    private let collapsedSize = CGSize(width: 30, height: 52)
-    private let snapDistance: CGFloat = 72
+    private let collapsedSize = CGSize(width: 30, height: 44)
     private weak var model: AppModel?
     private var skeletonPanel: NSPanel?
     private var feedbackPanel: PassiveFeedbackPanel?
-    private var dragStartOrigin: CGPoint?
+    private var miniDragStart: (mouseY: CGFloat, panelY: CGFloat)?
     private var screenObserver: NSObjectProtocol?
     private let feedbackState: FeedbackPanelState
 
     init(model: AppModel) {
         self.model = model
         let defaults = UserDefaults.standard
-        let dockSide = defaults.string(forKey: PreferenceKey.dockSide)
-            .flatMap(FeedbackDockSide.init(rawValue:))
         feedbackState = FeedbackPanelState(
-            isCollapsed: dockSide != nil && defaults.bool(forKey: PreferenceKey.collapsed),
-            dockSide: dockSide
+            isCollapsed: defaults.bool(forKey: PreferenceKey.collapsed)
         )
+        defaults.removeObject(forKey: PreferenceKey.legacyDockSide)
+        defaults.removeObject(forKey: PreferenceKey.legacyXFraction)
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
@@ -67,22 +58,34 @@ final class ScreenGestureOverlayController {
     }
 
     func show() {
-        guard let model, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
-        makeSkeletonPanelIfNeeded(model: model, screen: screen)
-        makeFeedbackPanelIfNeeded(model: model)
+        present(showSkeleton: true)
+    }
 
-        skeletonPanel?.setFrame(screen.frame, display: true)
-        if let feedbackPanel, !feedbackPanel.isVisible {
-            feedbackPanel.setFrame(restoredFeedbackFrame(on: screen), display: true)
-        }
-        skeletonPanel?.orderFrontRegardless()
-        feedbackPanel?.orderFrontRegardless()
+    func showFeedbackOnly() {
+        present(showSkeleton: false)
     }
 
     func hide() {
         skeletonPanel?.orderOut(nil)
         feedbackPanel?.orderOut(nil)
-        dragStartOrigin = nil
+        miniDragStart = nil
+    }
+
+    private func present(showSkeleton: Bool) {
+        guard let model, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        makeSkeletonPanelIfNeeded(model: model, screen: screen)
+        makeFeedbackPanelIfNeeded(model: model)
+
+        skeletonPanel?.setFrame(screen.frame, display: true)
+        if showSkeleton {
+            skeletonPanel?.orderFrontRegardless()
+        } else {
+            skeletonPanel?.orderOut(nil)
+        }
+        if let feedbackPanel, !feedbackPanel.isVisible {
+            feedbackPanel.setFrame(restoredFeedbackFrame(on: screen), display: true)
+        }
+        feedbackPanel?.orderFrontRegardless()
     }
 
     private func makeSkeletonPanelIfNeeded(model: AppModel, screen: NSScreen) {
@@ -109,15 +112,12 @@ final class ScreenGestureOverlayController {
             rootView: FeedbackStatusView(
                 model: model,
                 state: feedbackState,
-                onDragChanged: { [weak self] translation in
-                    self?.dragFeedbackPanel(by: translation)
-                },
-                onDragEnded: { [weak self] translation in
-                    self?.finishDraggingFeedbackPanel(by: translation)
-                },
-                onTap: { [weak self] in
-                    self?.expandFeedbackPanel()
-                }
+                onCollapse: { [weak self] in self?.collapseFeedbackPanel() },
+                onTogglePause: { [weak model] in model?.togglePauseFromFeedback() },
+                onMiniMouseDown: { [weak self] mouseY in self?.beginMiniDrag(mouseY: mouseY) },
+                onMiniMouseDragged: { [weak self] mouseY in self?.dragMiniPanel(mouseY: mouseY) },
+                onMiniMouseUp: { [weak self] in self?.finishMiniDrag() },
+                onMiniDoubleClick: { [weak self] in self?.restoreDefaultFeedbackPanel() }
             )
         )
         hosting.view.wantsLayer = true
@@ -146,181 +146,116 @@ final class ScreenGestureOverlayController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
     }
 
-    private func dragFeedbackPanel(by translation: CGSize) {
-        guard let panel = feedbackPanel,
+    private func collapseFeedbackPanel() {
+        guard !feedbackState.isCollapsed,
+              let panel = feedbackPanel,
               let screen = screen(containing: panel.frame) else { return }
-
-        if feedbackState.isCollapsed {
-            dragCollapsedPanel(panel, on: screen, by: translation)
-            return
-        }
-
-        if dragStartOrigin == nil {
-            dragStartOrigin = panel.frame.origin
-        }
-        guard let dragStartOrigin else { return }
-        let proposedOrigin = CGPoint(
-            x: dragStartOrigin.x + translation.width,
-            y: dragStartOrigin.y - translation.height
-        )
-        panel.setFrameOrigin(clampedOrigin(proposedOrigin, size: panel.frame.size, on: screen))
-    }
-
-    private func dragCollapsedPanel(
-        _ panel: NSPanel,
-        on screen: NSScreen,
-        by translation: CGSize
-    ) {
-        if dragStartOrigin == nil {
-            dragStartOrigin = panel.frame.origin
-        }
-        guard let dragStartOrigin else { return }
-        let proposedOrigin = CGPoint(
-            x: dragStartOrigin.x,
-            y: dragStartOrigin.y - translation.height
-        )
-        panel.setFrameOrigin(clampedOrigin(proposedOrigin, size: panel.frame.size, on: screen))
-    }
-
-    private func finishDraggingFeedbackPanel(by translation: CGSize) {
-        guard let panel = feedbackPanel,
-              let screen = screen(containing: panel.frame) else {
-            dragStartOrigin = nil
-            return
-        }
-        defer { dragStartOrigin = nil }
-
-        if feedbackState.isCollapsed {
-            let shouldExpand = switch feedbackState.dockSide {
-            case .left: translation.width > 18
-            case .right: translation.width < -18
-            case nil: false
-            }
-            if shouldExpand {
-                expandFeedbackPanel()
-            } else {
-                snapCollapsedPanel(panel, to: feedbackState.dockSide ?? .right, on: screen)
-                saveFeedbackPosition(panel.frame, on: screen)
-            }
-            return
-        }
-
-        if panel.frame.minX <= screen.frame.minX + snapDistance {
-            collapseFeedbackPanel(to: .left, on: screen)
-        } else if panel.frame.maxX >= screen.frame.maxX - snapDistance {
-            collapseFeedbackPanel(to: .right, on: screen)
-        } else {
-            feedbackState.dockSide = nil
-            saveFeedbackPosition(panel.frame, on: screen)
-        }
-    }
-
-    private func collapseFeedbackPanel(to side: FeedbackDockSide, on screen: NSScreen) {
-        guard let panel = feedbackPanel else { return }
-        feedbackState.dockSide = side
         feedbackState.isCollapsed = true
         panel.hasShadow = false
-        var frame = panel.frame
-        frame.size = collapsedSize
-        panel.setFrame(frame, display: true, animate: true)
-        snapCollapsedPanel(panel, to: side, on: screen)
-        saveFeedbackPosition(panel.frame, on: screen)
+        let defaultMiniY = panel.frame.midY - collapsedSize.height / 2
+        panel.setFrame(
+            collapsedFeedbackFrame(on: screen, fallbackY: defaultMiniY),
+            display: true,
+            animate: true
+        )
+        saveCollapsedPosition(panel.frame, on: screen)
     }
 
-    private func expandFeedbackPanel() {
+    private func restoreDefaultFeedbackPanel() {
         guard feedbackState.isCollapsed,
               let panel = feedbackPanel,
-              let screen = screen(containing: panel.frame),
-              let side = feedbackState.dockSide else { return }
+              let screen = screen(containing: panel.frame) else { return }
+        miniDragStart = nil
         feedbackState.isCollapsed = false
         panel.hasShadow = true
-        var frame = panel.frame
-        frame.size = expandedSize
-        frame.origin.x = side == .left
-            ? screen.frame.minX + 12
-            : screen.frame.maxX - expandedSize.width - 12
-        frame.origin = clampedOrigin(frame.origin, size: frame.size, on: screen)
-        panel.setFrame(frame, display: true, animate: true)
-        saveFeedbackPosition(panel.frame, on: screen)
+        panel.setFrame(defaultFeedbackFrame(on: screen), display: true, animate: true)
+        UserDefaults.standard.set(false, forKey: PreferenceKey.collapsed)
     }
 
-    private func snapCollapsedPanel(
-        _ panel: NSPanel,
-        to side: FeedbackDockSide,
-        on screen: NSScreen
-    ) {
-        var origin = panel.frame.origin
-        origin.x = side == .left
-            ? screen.frame.minX
-            : screen.frame.maxX - collapsedSize.width
-        panel.setFrameOrigin(clampedOrigin(origin, size: collapsedSize, on: screen))
+    private func beginMiniDrag(mouseY: CGFloat) {
+        guard feedbackState.isCollapsed, let panel = feedbackPanel else { return }
+        miniDragStart = (mouseY: mouseY, panelY: panel.frame.minY)
+    }
+
+    private func dragMiniPanel(mouseY: CGFloat) {
+        guard feedbackState.isCollapsed,
+              let panel = feedbackPanel,
+              let start = miniDragStart,
+              let screen = screen(containing: panel.frame) else { return }
+        let proposedY = start.panelY + mouseY - start.mouseY
+        let visible = screen.visibleFrame
+        let clampedY = min(
+            max(proposedY, visible.minY),
+            max(visible.minY, visible.maxY - collapsedSize.height)
+        )
+        panel.setFrameOrigin(CGPoint(
+            x: screen.frame.maxX - collapsedSize.width,
+            y: clampedY
+        ))
+    }
+
+    private func finishMiniDrag() {
+        guard feedbackState.isCollapsed,
+              let panel = feedbackPanel,
+              let screen = screen(containing: panel.frame) else {
+            miniDragStart = nil
+            return
+        }
+        miniDragStart = nil
+        saveCollapsedPosition(panel.frame, on: screen)
     }
 
     private func restoredFeedbackFrame(on screen: NSScreen) -> CGRect {
-        let defaults = UserDefaults.standard
-        let size = feedbackState.isCollapsed ? collapsedSize : expandedSize
-        let visible = screen.visibleFrame
-        let horizontalBounds = screen.frame
-        let availableX = max(0, horizontalBounds.width - size.width)
-        let availableY = max(0, visible.height - size.height)
-        let storedX = defaults.object(forKey: PreferenceKey.xFraction) as? Double
-        let storedY = defaults.object(forKey: PreferenceKey.yFraction) as? Double
-        var origin = CGPoint(
-            x: storedX.map { horizontalBounds.minX + availableX * CGFloat($0) }
-                ?? horizontalBounds.midX - size.width / 2,
-            y: storedY.map { visible.minY + availableY * CGFloat($0) }
-                ?? max(visible.minY + 24, screen.frame.minY + 120)
-        )
-        origin = clampedOrigin(origin, size: size, on: screen)
-
-        if feedbackState.isCollapsed, let side = feedbackState.dockSide {
-            origin.x = side == .left
-                ? screen.frame.minX
-                : screen.frame.maxX - size.width
-        }
-        return CGRect(origin: origin, size: size)
+        feedbackState.isCollapsed
+            ? collapsedFeedbackFrame(on: screen, fallbackY: defaultFeedbackFrame(on: screen).minY)
+            : defaultFeedbackFrame(on: screen)
     }
 
-    private func saveFeedbackPosition(_ frame: CGRect, on screen: NSScreen) {
+    private func defaultFeedbackFrame(on screen: NSScreen) -> CGRect {
         let visible = screen.visibleFrame
-        let horizontalBounds = screen.frame
-        let availableX = max(1, horizontalBounds.width - frame.width)
-        let availableY = max(1, visible.height - frame.height)
-        let xFraction = min(1, max(0, (frame.minX - horizontalBounds.minX) / availableX))
+        let origin = CGPoint(
+            x: screen.frame.midX - expandedSize.width / 2,
+            y: max(visible.minY + 24, screen.frame.minY + 120)
+        )
+        return CGRect(origin: origin, size: expandedSize)
+    }
+
+    private func collapsedFeedbackFrame(on screen: NSScreen, fallbackY: CGFloat) -> CGRect {
+        let visible = screen.visibleFrame
+        let availableY = max(0, visible.height - collapsedSize.height)
+        let storedY = UserDefaults.standard.object(forKey: PreferenceKey.yFraction) as? Double
+        let proposedY = storedY.map { visible.minY + availableY * CGFloat($0) } ?? fallbackY
+        let y = min(
+            max(proposedY, visible.minY),
+            max(visible.minY, visible.maxY - collapsedSize.height)
+        )
+        return CGRect(
+            origin: CGPoint(x: screen.frame.maxX - collapsedSize.width, y: y),
+            size: collapsedSize
+        )
+    }
+
+    private func saveCollapsedPosition(_ frame: CGRect, on screen: NSScreen) {
+        let visible = screen.visibleFrame
+        let availableY = max(1, visible.height - collapsedSize.height)
         let yFraction = min(1, max(0, (frame.minY - visible.minY) / availableY))
         let defaults = UserDefaults.standard
-        defaults.set(xFraction, forKey: PreferenceKey.xFraction)
         defaults.set(yFraction, forKey: PreferenceKey.yFraction)
-        defaults.set(feedbackState.isCollapsed, forKey: PreferenceKey.collapsed)
-        defaults.set(feedbackState.dockSide?.rawValue, forKey: PreferenceKey.dockSide)
+        defaults.set(true, forKey: PreferenceKey.collapsed)
     }
 
     private func repositionForCurrentScreen() {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         skeletonPanel?.setFrame(screen.frame, display: true)
-        feedbackPanel?.setFrame(restoredFeedbackFrame(on: screen), display: true)
+        if feedbackPanel?.isVisible == true {
+            feedbackPanel?.setFrame(restoredFeedbackFrame(on: screen), display: true)
+        }
     }
 
     private func screen(containing frame: CGRect) -> NSScreen? {
         NSScreen.screens.first(where: { $0.frame.intersects(frame) })
             ?? NSScreen.main
             ?? NSScreen.screens.first
-    }
-
-    private func clampedOrigin(
-        _ origin: CGPoint,
-        size: CGSize,
-        on screen: NSScreen
-    ) -> CGPoint {
-        let visible = screen.visibleFrame
-        let horizontalBounds = screen.frame
-        return CGPoint(
-            x: min(
-                max(origin.x, horizontalBounds.minX),
-                max(horizontalBounds.minX, horizontalBounds.maxX - size.width)
-            ),
-            y: min(max(origin.y, visible.minY), max(visible.minY, visible.maxY - size.height))
-        )
     }
 }
 
@@ -349,9 +284,12 @@ private struct ScreenGestureOverlayView: View {
 private struct FeedbackStatusView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var state: FeedbackPanelState
-    let onDragChanged: (CGSize) -> Void
-    let onDragEnded: (CGSize) -> Void
-    let onTap: () -> Void
+    let onCollapse: () -> Void
+    let onTogglePause: () -> Void
+    let onMiniMouseDown: (CGFloat) -> Void
+    let onMiniMouseDragged: (CGFloat) -> Void
+    let onMiniMouseUp: () -> Void
+    let onMiniDoubleClick: () -> Void
 
     var body: some View {
         Group {
@@ -362,48 +300,158 @@ private struct FeedbackStatusView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 3, coordinateSpace: .global)
-                .onChanged { onDragChanged($0.translation) }
-                .onEnded { onDragEnded($0.translation) }
-        )
-        .onTapGesture(perform: onTap)
-        .accessibilityLabel(state.isCollapsed ? "展开手势反馈" : model.handStatus)
-        .help(state.isCollapsed ? "点击展开；向屏幕内拖动也可展开" : "拖到屏幕左侧或右侧可吸附隐藏")
     }
 
     private var expandedCapsule: some View {
         HStack(spacing: 10) {
-            statusDot
-            Text(model.handStatus)
-                .font(.system(size: 16, weight: .semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
-            Spacer(minLength: 0)
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white.opacity(0.58))
+            HStack(spacing: 10) {
+                statusDot
+                Text(model.handStatus)
+                    .font(.system(size: 16, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2, perform: onTogglePause)
+            .accessibilityLabel(model.isPaused ? "恢复手势控制" : "暂停手势控制")
+            .help(model.isPaused ? "双击恢复手势识别" : "双击暂停手势识别")
+
+            Button(action: onCollapse) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.66))
+                    .frame(width: 24, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("收起手势反馈")
+            .help("收起到屏幕右侧")
         }
         .foregroundStyle(.white)
-        .padding(.horizontal, 17)
+        .padding(.leading, 17)
+        .padding(.trailing, 12)
         .frame(height: 44)
         .background(.black.opacity(0.76), in: Capsule())
         .padding(4)
     }
 
     private var collapsedTab: some View {
-        statusDot
+        ZStack {
+            RightEdgeTabShape()
+                .fill(.black.opacity(0.78))
+            statusDot
+            MiniPanelInteractionView(
+                onMouseDown: onMiniMouseDown,
+                onMouseDragged: onMiniMouseDragged,
+                onMouseUp: onMiniMouseUp,
+                onDoubleClick: onMiniDoubleClick
+            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 15))
-            .padding(.vertical, 4)
+        }
+        .accessibilityLabel("迷你手势反馈")
+        .help("上下拖动调整高度；双击恢复默认位置")
     }
 
     private var statusDot: some View {
         Circle()
-            .fill(model.latestPose == nil ? Color.orange : Color.green)
+            .fill(statusColor)
             .frame(width: 12, height: 12)
             .overlay(Circle().stroke(.white.opacity(0.55), lineWidth: 1))
+    }
+
+    private var statusColor: Color {
+        if model.isPaused { return .red }
+        return model.latestPose == nil ? .orange : .green
+    }
+}
+
+private struct RightEdgeTabShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let radius = min(rect.height / 2, rect.width)
+        let kappa: CGFloat = 0.552_284_75
+        var path = Path()
+        path.move(to: CGPoint(x: radius, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: radius, y: rect.maxY))
+        path.addCurve(
+            to: CGPoint(x: rect.minX, y: rect.midY),
+            control1: CGPoint(x: radius - kappa * radius, y: rect.maxY),
+            control2: CGPoint(x: rect.minX, y: rect.midY + kappa * radius)
+        )
+        path.addCurve(
+            to: CGPoint(x: radius, y: rect.minY),
+            control1: CGPoint(x: rect.minX, y: rect.midY - kappa * radius),
+            control2: CGPoint(x: radius - kappa * radius, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct MiniPanelInteractionView: NSViewRepresentable {
+    let onMouseDown: (CGFloat) -> Void
+    let onMouseDragged: (CGFloat) -> Void
+    let onMouseUp: () -> Void
+    let onDoubleClick: () -> Void
+
+    func makeNSView(context: Context) -> MiniPanelInteractionNSView {
+        let view = MiniPanelInteractionNSView()
+        update(view)
+        return view
+    }
+
+    func updateNSView(_ nsView: MiniPanelInteractionNSView, context: Context) {
+        update(nsView)
+    }
+
+    private func update(_ view: MiniPanelInteractionNSView) {
+        view.onMouseDown = onMouseDown
+        view.onMouseDragged = onMouseDragged
+        view.onMouseUp = onMouseUp
+        view.onDoubleClick = onDoubleClick
+    }
+}
+
+private final class MiniPanelInteractionNSView: NSView {
+    var onMouseDown: ((CGFloat) -> Void)?
+    var onMouseDragged: ((CGFloat) -> Void)?
+    var onMouseUp: (() -> Void)?
+    var onDoubleClick: (() -> Void)?
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        let isDoubleClick = event.clickCount >= 2
+        var didDrag = false
+        onMouseDown?(screenY(for: event))
+        guard let window else {
+            onMouseUp?()
+            return
+        }
+        while true {
+            guard let nextEvent = window.nextEvent(
+                matching: [.leftMouseDragged, .leftMouseUp]
+            ) else {
+                onMouseUp?()
+                return
+            }
+            if nextEvent.type == .leftMouseUp {
+                onMouseUp?()
+                if isDoubleClick, !didDrag {
+                    onDoubleClick?()
+                }
+                return
+            }
+            didDrag = true
+            onMouseDragged?(screenY(for: nextEvent))
+        }
+    }
+
+    private func screenY(for event: NSEvent) -> CGFloat {
+        window?.convertPoint(toScreen: event.locationInWindow).y
+            ?? NSEvent.mouseLocation.y
     }
 }
 

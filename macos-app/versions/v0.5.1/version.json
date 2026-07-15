@@ -1,0 +1,23 @@
+{
+  "version": "0.5.1",
+  "date": "2026-07-15",
+  "tag": "macos-v0.5.1",
+  "summary": "Replace jittery free dragging with a fixed feedback capsule, a vertically movable right-edge tab, and double-click pause/resume.",
+  "scope": [
+    "Keep the collapse button on the right side of the expanded capsule and remove expanded-window dragging.",
+    "Collapse directly to a right-edge tab with a rounded left end and square screen-side edge.",
+    "Move the mini tab vertically with absolute AppKit mouse coordinates and restore the default frame on double-click.",
+    "Pause or resume recognition by double-clicking the expanded status content; keep a red paused indicator visible."
+  ],
+  "validation": [
+    "swift test passed 12 tests",
+    "Swift build with warnings-as-errors passed",
+    "GestureControlCoreChecks passed 10 checks",
+    "Release app build and strict codesign verification passed",
+    "Installed bundle reports version 0.5.1 build 8"
+  ],
+  "notes": [
+    "Pause stops camera capture, MediaPipe, active gestures, and system event output without persisting across app restarts.",
+    "macos-v0.5.0 remains the rollback point before this interaction correction."
+  ]
+}
