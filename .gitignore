@@ -5,6 +5,9 @@ releases/*.zip
 public/mediapipe/
 .playwright-cli/
 output/playwright/
+macos-app/.build/
+macos-app/build/
+macos-app/.swiftpm/
 .DS_Store
 **/.DS_Store
 

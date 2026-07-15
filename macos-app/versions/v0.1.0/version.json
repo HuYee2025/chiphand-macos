@@ -1,0 +1,22 @@
+{
+  "version": "0.1.0",
+  "date": "2026-07-15",
+  "tag": "macos-v0.1.0",
+  "summary": "Native macOS menu bar prototype for system-wide gesture scrolling.",
+  "scope": [
+    "Capture the Mac camera with AVFoundation and detect one-hand landmarks with Apple Vision.",
+    "Map left and right open-palm swipes to page scrolling in the frontmost app.",
+    "Map stable thumb-index pinch dragging to continuous system scrolling without moving the cursor.",
+    "Provide permission status, sensitivity controls, debug preview, packaging, and ad-hoc signing."
+  ],
+  "validation": [
+    "swift run GestureControlCoreChecks: 10 checks passed",
+    "swift build --target GestureControlApp",
+    "release .app build and ad-hoc codesign verification",
+    "packaged process launched successfully"
+  ],
+  "notes": [
+    "Real camera, Accessibility permission, gesture direction, and cross-app behavior still require user acceptance testing.",
+    "Full Xcode is not installed yet; the current prototype builds with Command Line Tools."
+  ]
+}

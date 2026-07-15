@@ -25,6 +25,31 @@
 
 ## 当前决策
 
+## 2026-07-15 系统级 macOS 原型替代浏览器多页面重构
+
+背景：
+- 浏览器插件多页面不稳定来自 `activeTab`、MV3 生命周期、页面注入和标签页绑定，不是手势识别算法本身。
+- 用户的真实目标是 MacBook 上跨应用阅读控制，而不是只控制 Chrome。
+
+决策：
+- 浏览器插件冻结在本地 `v1.0.1`，第 04 阶段改做原生 macOS 菜单栏 App。
+- 第一版使用 AVFoundation + Apple Vision + Core Graphics，只实现左挥上翻、右挥下翻和捏住上下拖动滚动。
+- 不移动系统光标，不做鼠标点击或 Air Mouse；系统事件只发给当前前台 App，切换 App 立即取消手势。
+
+原因：
+- 系统级事件消除标签页、网页权限和 Content Script 约束，能直接覆盖 Chrome、Safari、Preview、Notion 等场景。
+- Air Mouse 会引入光标映射、抖动、误点和疲劳，不能与最小翻页原型混在一起验证。
+
+影响：
+- 新增独立 `macos-app/` 版本线，原型版本从 `0.1.0` 开始。
+- 需要摄像头和辅助功能权限，不需要屏幕录制权限。
+- 浏览器插件代码和历史版本完整保留，但暂不继续多页面优化。
+
+相关文件：
+- `macos-app/`
+- `docs/production-blueprint.md`
+- `docs/dev-log/archive/03-browser-extension-v1-pivot.md`
+
 ## 2026-07-14 常驻高级设置的原生窗口高度
 
 背景：

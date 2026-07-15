@@ -2,6 +2,16 @@
 
 ## 技术栈
 
+### 当前主线：macOS 原型
+
+- Swift 6.3 / SwiftUI `MenuBarExtra`，部署目标 macOS 14+。
+- AVFoundation：640×480 摄像头会话与可选镜像预览。
+- Vision `VNDetectHumanHandPoseRequest`：单手关键点检测。
+- Core Graphics `CGEvent`：向前台 App PID 发送连续滚动事件。
+- ApplicationServices：检查辅助功能信任；AppKit `NSWorkspace`：跟踪前台 App 切换。
+
+### 冻结分支：Web / Extension
+
 - Vite 8 + TypeScript 6。
 - Three.js 0.185：虫洞渲染。
 - `@mediapipe/tasks-vision` 0.10.35：`HandLandmarker` 21 点关键点和左右手识别。
@@ -9,6 +19,17 @@
 - 原生 DOM/CSS、Web Worker、`getUserMedia`。
 
 ## 架构/模块
+
+### macOS 原型
+
+- `GestureControlCore`：平台无关的关键点归一化、捏合迟滞、左右挥动、650ms 冷却和稳定重新激活。
+- `CameraCaptureService`：后台队列持有 `AVCaptureSession`，丢弃迟到帧，不阻塞菜单栏 UI。
+- `HandPoseService`：串行执行 Apple Vision 单手关键点请求；只保留当前处理帧，避免积压。
+- `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；App 切换立即取消捏合。
+- `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件形成约 75% 屏幕的平滑滚动。
+- `MenuBarView`：启停、权限状态、两项灵敏度和调试预览；默认无 Dock 图标。
+
+### Web / Extension（冻结）
 
 - `TunnelController`：虫洞生成、循环、暂停、视角和整体旋转。
 - `HandTracker`：摄像头生命周期、独立定时轮询驱动的 24–30 FPS 自适应抽帧、220ms 丢失续帧、低延迟逐点平滑和 Worker 通信；不依赖可见窗口动画帧。
@@ -38,6 +59,12 @@ npm run build
 npm run build:demo
 npm run build:extension
 npm run preview
+
+cd macos-app
+swift run GestureControlCoreChecks
+swift build --target GestureControlApp
+./scripts/build-app.sh
+open build/GestureControl.app
 ```
 
 ## 质量门
@@ -74,6 +101,11 @@ npm run preview
 
 ## 部署/发布
 
+- macOS 原型通过 `macos-app/scripts/build-app.sh` 生成 `macos-app/build/GestureControl.app`；当前使用 ad-hoc 签名，只供本机测试。
+- 正式分发前必须改用 Developer ID 签名、Hardened Runtime 和 notarization；当前阶段不执行。
+
+### Web / Extension（冻结）
+
 - 静态 Web 应用，部署必须提供 HTTPS 才能使用摄像头。
 - `predev`、`prebuild` 会把 MediaPipe WASM 和模型同步到本地静态资源目录。
 - `dist/` 为黑洞 Demo 与验收页；`dist-extension/` 为可加载的 Chrome 解压扩展。
@@ -81,6 +113,11 @@ npm run preview
 - 当前可用 `npm run package:extension` 生成 `releases/gesture-browser-control-v1.0.1.zip`，用于 Chrome Web Store 和 Microsoft Edge Add-ons；本机仍通过 `chrome://extensions/` 或 `edge://extensions/` 加载 `dist-extension/`。
 
 ## 技术限制
+
+- macOS 原型必须由用户在系统设置中授予摄像头和辅助功能权限；无权限时只显示状态，不发送事件。
+- 当前本机只有 Command Line Tools；标准 Xcode 测试 Target、调试和正式签名需安装完整 Xcode。
+- 当前 `.app` 使用 ad-hoc 签名，仅供本机原型；重新构建后系统权限可能需要再次确认。
+- Core Graphics 滚动方向、不同 App 的滚动响应和 Vision 阈值仍需真实手势验收。
 
 - MediaPipe 控制台会输出 WebGL 初始化和 `NORM_RECT` 警告，已确认不影响识别。
 - Three.js 主包构建后约 539 kB，Vite 会给出 chunk 体积警告，但不影响构建与 60 FPS 实测。
