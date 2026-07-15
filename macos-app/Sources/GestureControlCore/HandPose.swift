@@ -46,9 +46,11 @@ public enum RecognizedGesture: String, Equatable, Sendable {
     case unknown = "Unknown"
 }
 
-public enum Handedness: Equatable, Sendable {
+public enum Handedness: String, CaseIterable, Identifiable, Equatable, Sendable {
     case left
     case right
+
+    public var id: Self { self }
 }
 
 public struct NormalizedPoint: Equatable, Sendable {
@@ -90,6 +92,14 @@ public struct HandPose: Equatable, Sendable {
     public func point(_ joint: HandJoint) -> NormalizedPoint? {
         points[joint]
     }
+}
+
+public func poseForControlHand(
+    _ pose: HandPose?,
+    controlHand: Handedness
+) -> HandPose? {
+    guard let pose, pose.handedness == controlHand else { return nil }
+    return pose
 }
 
 public func pointDistance(_ first: NormalizedPoint, _ second: NormalizedPoint) -> Double {

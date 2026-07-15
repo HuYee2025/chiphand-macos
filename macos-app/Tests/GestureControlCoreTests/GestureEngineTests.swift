@@ -8,7 +8,8 @@ final class GestureEngineTests: XCTestCase {
         indexX: Double = 0.46,
         pinchY: Double = 0.50,
         recognizedGesture: RecognizedGesture = .none,
-        gestureConfidence: Double = 0
+        gestureConfidence: Double = 0,
+        handedness: Handedness? = nil
     ) -> HandPose {
         HandPose(
             points: [
@@ -35,9 +36,25 @@ final class GestureEngineTests: XCTestCase {
                 .littleTip: .init(x: palmX + 0.11, y: 0.70),
             ],
             confidence: 0.95,
+            handedness: handedness,
             recognizedGesture: recognizedGesture,
             gestureConfidence: gestureConfidence
         )
+    }
+
+    func testControlHandAcceptsOnlySelectedHand() {
+        let rightPose = makePose(handedness: .right)
+        let leftPose = makePose(handedness: .left)
+
+        XCTAssertEqual(poseForControlHand(rightPose, controlHand: .right), rightPose)
+        XCTAssertNil(poseForControlHand(leftPose, controlHand: .right))
+        XCTAssertEqual(poseForControlHand(leftPose, controlHand: .left), leftPose)
+        XCTAssertNil(poseForControlHand(rightPose, controlHand: .left))
+    }
+
+    func testControlHandRejectsUnknownHandedness() {
+        XCTAssertNil(poseForControlHand(makePose(), controlHand: .right))
+        XCTAssertNil(poseForControlHand(nil, controlHand: .left))
     }
 
     func testPinchRequiresStabilityAndEndsWhenHandIsLost() {

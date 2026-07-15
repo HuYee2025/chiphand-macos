@@ -1,4 +1,5 @@
 import AppKit
+import GestureControlCore
 import SwiftUI
 
 struct MenuBarView: View {
@@ -82,6 +83,17 @@ struct MenuBarView: View {
 
             Toggle("全屏显示手掌骨架", isOn: $model.screenOverlayEnabled)
             Toggle("显示摄像头校准窗口", isOn: $model.debugWindowEnabled)
+            HStack {
+                Text("控制手")
+                Spacer()
+                Picker("控制手", selection: $model.controlHand) {
+                    Text("右手").tag(Handedness.right)
+                    Text("左手").tag(Handedness.left)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 132)
+            }
             HStack {
                 Button("刷新权限") { model.refreshPermissions() }
                 Spacer()

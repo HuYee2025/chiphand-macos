@@ -60,6 +60,9 @@ final class AppModel: ObservableObject {
     @Published var pinchSensitivity: Double {
         didSet { saveAndApplySettings() }
     }
+    @Published var controlHand: Handedness {
+        didSet { controlHandDidChange() }
+    }
 
     let camera = CameraCaptureService()
 
@@ -88,6 +91,7 @@ final class AppModel: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
+        controlHand = Handedness(rawValue: defaults.string(forKey: "controlHand") ?? "") ?? .right
         swipeSensitivity = defaults.object(forKey: "swipeSensitivity") as? Double ?? 50
         pinchSensitivity = defaults.object(forKey: "pinchSensitivity") as? Double ?? 50
         applySettings()
@@ -321,13 +325,15 @@ final class AppModel: ObservableObject {
 
     private func consume(pose: HandPose?) {
         guard isRunning else { return }
-        latestPose = pose
+        let controlledPose = poseForControlHand(pose, controlHand: controlHand)
+        let ignoredHand = pose?.handedness.flatMap { $0 == controlHand ? nil : $0 }
+        latestPose = controlledPose
         let now = CACurrentMediaTime()
-        let outputs = gestureEngine.update(pose: pose, at: now)
+        let outputs = gestureEngine.update(pose: controlledPose, at: now)
         isPinching = gestureEngine.isPinching()
         isThumbsUp = gestureEngine.isThumbsUpRecognized()
         for output in outputs { handle(output, at: now) }
-        updateHandStatus(for: pose, at: now)
+        updateHandStatus(for: controlledPose, ignoredHand: ignoredHand, at: now)
     }
 
     private func handle(_ output: GestureOutput, at now: TimeInterval) {
@@ -364,7 +370,11 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func updateHandStatus(for pose: HandPose?, at now: TimeInterval) {
+    private func updateHandStatus(
+        for pose: HandPose?,
+        ignoredHand: Handedness?,
+        at now: TimeInterval
+    ) {
         if let feedback = actionFeedback, now < feedback.until {
             handStatus = feedback.message
             return
@@ -372,23 +382,22 @@ final class AppModel: ObservableObject {
         actionFeedback = nil
 
         guard let pose else {
-            handStatus = "未检测到手掌"
+            if let ignoredHand {
+                handStatus = "已忽略\(handName(ignoredHand)) · 请使用\(handName(controlHand))"
+            } else {
+                handStatus = "等待\(handName(controlHand))"
+            }
             return
         }
-        let handName: String
-        switch pose.handedness {
-        case .left: handName = "左手 · "
-        case .right: handName = "右手 · "
-        case nil: handName = ""
-        }
+        let handPrefix = pose.handedness.map { handName($0) + " · " } ?? ""
         if isPinching {
-            handStatus = handName + (pinchTargetPID == nil
+            handStatus = handPrefix + (pinchTargetPID == nil
                 ? "已捏合 · 前台应用不可控制"
                 : "已捏合 · 上下移动滚动")
             return
         }
         if isThumbsUp {
-            handStatus = handName + "👍 点赞手势已识别（测试模式）"
+            handStatus = handPrefix + "👍 点赞手势已识别（测试模式）"
             return
         }
 
@@ -397,20 +406,37 @@ final class AppModel: ObservableObject {
             pinchThreshold: gestureEngine.configuration.pinchThreshold
         ) {
         case .openPalm:
-            handStatus = handName + "张开手掌 · 左右挥动翻页"
+            handStatus = handPrefix + "张开手掌 · 左右挥动翻页"
         case .fist:
-            handStatus = handName + "已握拳 · 不执行操作"
+            handStatus = handPrefix + "已握拳 · 不执行操作"
         case .pointing:
-            handStatus = handName + "食指伸出 · 不执行操作"
+            handStatus = handPrefix + "食指伸出 · 不执行操作"
         case .pinching:
-            handStatus = handName + "OK 手势·正在确认捏合…"
+            handStatus = handPrefix + "OK 手势·正在确认捏合…"
         case .victory:
-            handStatus = handName + "V 手势·向左挥动返回"
+            handStatus = handPrefix + "V 手势·向左挥动返回"
         case .thumbsUp:
-            handStatus = handName + "👍 正在确认点赞手势…"
+            handStatus = handPrefix + "👍 正在确认点赞手势…"
         case .other:
-            handStatus = handName + "已识别手掌姿态"
+            handStatus = handPrefix + "已识别手掌姿态"
         }
+    }
+
+    private func controlHandDidChange() {
+        UserDefaults.standard.set(controlHand.rawValue, forKey: "controlHand")
+        mediaPipeService.setControlHand(controlHand)
+        cancelCurrentGesture()
+        latestPose = nil
+        actionFeedback = nil
+        if isPaused {
+            handStatus = "已暂停手势控制"
+        } else if isRunning {
+            handStatus = "已切换为\(handName(controlHand))控制 · 等待\(handName(controlHand))"
+        }
+    }
+
+    private func handName(_ handedness: Handedness) -> String {
+        handedness == .right ? "右手" : "左手"
     }
 
     private func browserBackTargetIsFrontmost() -> Bool {
@@ -469,6 +495,7 @@ final class AppModel: ObservableObject {
         recognitionFPS = 0
         inferenceDurationMS = 0
         usingAppleVisionFallback = false
+        mediaPipeService.setControlHand(controlHand)
         mediaPipeService.start()
         mediaPipeService.setPreviewVisible(debugWindowEnabled)
         if screenOverlayEnabled { screenOverlayController.show() }

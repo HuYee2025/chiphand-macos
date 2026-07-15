@@ -30,6 +30,7 @@ declare global {
       };
     };
     stopRecognition?: () => void;
+    setControlHand?: (hand: Handedness) => void;
   }
 }
 
@@ -60,6 +61,7 @@ let timer: number | null = null;
 let lastVideoTime = -1;
 let lastInferenceAt = 0;
 let selectedHand: Handedness | null = null;
+let controlHand: Handedness = "Right";
 let previousLandmarks: NormalizedLandmark[] | null = null;
 let targetFPS = 30;
 let fastWindows = 0;
@@ -285,7 +287,11 @@ function loop(): void {
     const gesture = result.gestures[index]?.[0];
     const landmarks = smoothLandmarks(result.landmarks[index] ?? []);
     previousLandmarks = landmarks;
-    drawSkeleton(landmarks, selectedHand, gesture?.categoryName ?? "None", gesture?.score ?? 0);
+    if (selectedHand === controlHand) {
+      drawSkeleton(landmarks, selectedHand, gesture?.categoryName ?? "None", gesture?.score ?? 0);
+    } else {
+      clearSkeleton();
+    }
     post({
       type: "pose",
       handedness: selectedHand,
@@ -339,6 +345,11 @@ window.stopRecognition = () => {
   frameTimes = [];
   recognitionFPS = 0;
   clearSkeleton();
+};
+
+window.setControlHand = (hand: Handedness) => {
+  controlHand = hand;
+  if (selectedHand !== controlHand) clearSkeleton();
 };
 
 void start();

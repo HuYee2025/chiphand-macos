@@ -1,0 +1,23 @@
+{
+  "version": "0.6.0",
+  "date": "2026-07-15",
+  "tag": "macos-v0.6.0",
+  "summary": "Add a persistent right-hand or left-hand control choice and strictly block the unselected hand from all gestures.",
+  "scope": [
+    "Add an exclusive right-hand or left-hand segmented control to the main menu, defaulting to right.",
+    "Filter poses before GestureEngine so the unselected hand and unknown handedness cannot trigger any action.",
+    "Cancel active gesture state immediately when the selected hand changes.",
+    "Keep MediaPipe at numHands 1 and hide the unselected hand skeleton in the calibration preview."
+  ],
+  "validation": [
+    "swift test passed 14 tests including selected-hand acceptance and rejection",
+    "TypeScript typecheck and native recognizer build passed",
+    "GestureControlCoreChecks passed",
+    "Release app build and strict codesign verification passed",
+    "Installed bundle reports version 0.6.0 build 9"
+  ],
+  "notes": [
+    "The selected hand is stored locally in UserDefaults; a fresh install defaults to right.",
+    "macos-v0.5.1 remains the rollback point before this feature."
+  ]
+}

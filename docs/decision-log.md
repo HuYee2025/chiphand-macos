@@ -25,6 +25,28 @@
 
 ## 当前决策
 
+## 2026-07-15 v0.6.0 指定控制手并严格过滤
+
+背景：
+- 两只手同时进入画面时，单手识别结果可能在左右手之间切换，导致非预期动作。
+
+决策：
+- 主控制窗口新增右手/左手互斥选择，默认右手并持久保存。
+- MediaPipe 与 Apple Vision 都保持单手推理；关键点进入 `GestureEngine` 前按选择严格过滤，未选择手和未知左右手数据都不能执行动作。
+- 切换控制手时立即取消捏合、挥手、返回和点赞状态；校准窗口也不绘制未选择手骨架。
+
+原因：
+- 在唯一动作入口过滤可覆盖所有现有和未来手势，同时避免把 `numHands` 提到 2 后增加计算量。
+
+影响：
+- 升级为 `0.6.0`（build 9）；`macos-v0.5.1` 保持为修改前回滚点。
+
+相关文件：
+- `macos-app/Sources/GestureControlApp/AppModel.swift`
+- `macos-app/Sources/GestureControlApp/MenuBarView.swift`
+- `macos-app/Sources/GestureControlCore/HandPose.swift`
+- `src/native-recognizer.ts`
+
 ## 2026-07-15 v0.5.1 固定反馈条、纵向迷你条与双击暂停
 
 背景：
