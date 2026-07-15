@@ -25,6 +25,27 @@
 
 ## 当前决策
 
+## 2026-07-15 v0.8.0 食指悬停与张掌点击
+
+背景：
+- YouTube 网格视频支持鼠标悬停预览；MediaPipe 已提供完整 `indexTip` 坐标，无需读取网页 DOM 或屏幕图像即可把命中判断交给网页自身。
+
+决策：
+- 增加默认关闭的食指指针测试，仅允许 Chrome、Safari、Edge、夸克；严格握拳竖食指稳定 150ms 后直接映射主屏幕真实鼠标。
+- 指尖在约 24pt 内稳定 350ms 后进入待点击；800ms 内同一只手张开执行一次单击。未定位张掌被消费，不点击也不翻页。
+- 普通张掌翻页和严格 OK 捏合保持原逻辑；测试期在食指尖显示黄色圆点。Apple Vision 备用模式不发送鼠标事件。
+
+原因：
+- 真实鼠标能直接复用 YouTube 原生 hover/click，兼容性和成本优于重新启用浏览器插件；“食指定位→张掌”比精确指尖轻碰更容易稳定识别。
+
+影响：
+- 升级为 `0.8.0`（build 14）；`macos-v0.7.3` 保持为回滚点，不新增屏幕录制权限。
+
+相关文件：
+- `macos-app/Sources/GestureControlCore/GestureEngine.swift`
+- `macos-app/Sources/GestureControlApp/SystemPointerEmitter.swift`
+- `macos-app/Sources/GestureControlApp/AppModel.swift`
+
 ## 2026-07-15 v0.7.3 恢复张开手掌左右挥动翻页
 
 背景：

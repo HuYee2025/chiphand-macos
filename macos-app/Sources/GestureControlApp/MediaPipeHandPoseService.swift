@@ -19,6 +19,7 @@ final class MediaPipeHandPoseService: NSObject {
     private var server: LocalMediaServer?
     private var previewVisible = false
     private var controlHand: Handedness = .right
+    private var pointerModeEnabled = false
 
     func start() {
         stop()
@@ -130,6 +131,11 @@ final class MediaPipeHandPoseService: NSObject {
         webView?.evaluateJavaScript("window.setControlHand?.('\(rawValue)')")
     }
 
+    func setPointerModeEnabled(_ enabled: Bool) {
+        pointerModeEnabled = enabled
+        webView?.evaluateJavaScript("window.setPointerModeEnabled?.(\(enabled ? "true" : "false"))")
+    }
+
     private func decodePose(_ body: [String: Any]) -> HandPose? {
         guard let rawLandmarks = body["landmarks"] as? [[String: Any]],
               rawLandmarks.count >= 21 else { return nil }
@@ -185,6 +191,7 @@ extension MediaPipeHandPoseService: WKScriptMessageHandler {
                 )
             case "ready":
                 self.setControlHand(self.controlHand)
+                self.setPointerModeEnabled(self.pointerModeEnabled)
                 self.onReady?("MediaPipe \(body["delegate"] as? String ?? "")")
             case "pose":
                 self.onPerformance?(
@@ -219,6 +226,7 @@ extension MediaPipeHandPoseService: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
         logger.info("page loaded: \(webView.url?.absoluteString ?? "unknown", privacy: .public)")
         setControlHand(controlHand)
+        setPointerModeEnabled(pointerModeEnabled)
     }
 
     func webView(

@@ -1,0 +1,25 @@
+{
+  "version": "0.8.0",
+  "date": "2026-07-15",
+  "tag": "macos-v0.8.0",
+  "summary": "Add an opt-in browser pointer driven by the strict index-finger pose and click by opening the same hand after a stable hover.",
+  "scope": [
+    "Map mirrored indexTip coordinates directly to the MacBook main display in Chrome, Safari, Edge and Quark.",
+    "Require 150ms pointing activation, tolerate 180ms classifier dropouts and reject single-frame jumps above 18 percent of the screen diagonal.",
+    "Arm click after a 350ms stable hover, then consume an open-palm transition within 800ms as one frozen-position click.",
+    "Show a yellow index-tip marker in the screen overlay and MediaPipe calibration preview while test mode is active."
+  ],
+  "validation": [
+    "swift test passed 28 tests including pointer activation, stability, click transition, rejection, dropout tolerance, jump protection and pinch priority",
+    "GestureControlCoreChecks passed 20 checks",
+    "TypeScript typecheck and 32 Web regression tests passed",
+    "Swift warnings-as-errors build passed",
+    "Release app build, strict codesign and installed 0.8.0 build 14 checks passed",
+    "Installed UI confirmed pointer test defaults off, permissions remain allowed and MediaPipe GPU reached 25 FPS at 16.0ms"
+  ],
+  "notes": [
+    "Pointer test mode defaults to off and persists the user choice.",
+    "No DOM access or screen recording permission is used; real YouTube hover behavior remains a physical-hand acceptance test.",
+    "macos-v0.7.3 remains the rollback point."
+  ]
+}

@@ -49,6 +49,7 @@ struct DebugWindowView: View {
                 HandSkeletonView(
                     pose: model.latestPose,
                     isPinching: model.isPinching,
+                    showPointingTip: model.showsPointingTip,
                     coordinateMode: .cameraAspectFill,
                     mirrored: true
                 )
@@ -94,6 +95,7 @@ struct HandSkeletonView: View {
 
     let pose: HandPose?
     var isPinching = false
+    var showPointingTip = false
     var coordinateMode: CoordinateMode = .stretch
     var mirrored = false
     var lineWidth: CGFloat = 2.5
@@ -173,6 +175,19 @@ struct HandSkeletonView: View {
                     with: .color(handColor),
                     lineWidth: max(1.5, lineWidth * 0.6)
                 )
+            }
+
+            if showPointingTip, let index = pose.point(.indexTip) {
+                let center = screenPoint(index, size: size)
+                let diameter: CGFloat = 22
+                let rect = CGRect(
+                    x: center.x - diameter / 2,
+                    y: center.y - diameter / 2,
+                    width: diameter,
+                    height: diameter
+                )
+                context.fill(Path(ellipseIn: rect), with: .color(.yellow))
+                context.stroke(Path(ellipseIn: rect), with: .color(.white), lineWidth: 2)
             }
         }
         .allowsHitTesting(false)

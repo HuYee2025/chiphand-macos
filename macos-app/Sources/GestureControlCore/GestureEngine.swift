@@ -17,12 +17,21 @@ public enum PinchInteractionMode: Equatable, Sendable {
     case navigation(NavigationDirection?)
 }
 
+public enum PointerInteractionState: Equatable, Sendable {
+    case moving
+    case clickReady
+}
+
 public enum GestureOutput: Equatable, Sendable {
     case pinchBegan
     case pinchScroll(Double)
     case pinchEnded
     case page(PageDirection)
     case navigate(NavigationDirection)
+    case pointerMoved(NormalizedPoint, PointerInteractionState)
+    case pointerClicked(NormalizedPoint)
+    case pointerClickRejected
+    case pointerEnded
     case thumbsUpBegan
     case thumbsUpEnded
 }
@@ -45,6 +54,12 @@ public struct GestureConfiguration: Equatable, Sendable {
     public var swipeCooldownSeconds: TimeInterval
     public var minimumConfidence: Double
     public var cannedGestureMinimumConfidence: Double
+    public var pointerActivationSeconds: TimeInterval
+    public var pointerClassificationGraceSeconds: TimeInterval
+    public var pointerStableSeconds: TimeInterval
+    public var pointerStableRadius: Double
+    public var pointerMaximumJump: Double
+    public var pointerOpenPalmTransitionSeconds: TimeInterval
     public var gestureReleaseSeconds: TimeInterval
     public var thumbsUpActivationSeconds: TimeInterval
 
@@ -66,6 +81,12 @@ public struct GestureConfiguration: Equatable, Sendable {
         swipeCooldownSeconds: TimeInterval = 0.65,
         minimumConfidence: Double = 0.55,
         cannedGestureMinimumConfidence: Double = 0.70,
+        pointerActivationSeconds: TimeInterval = 0.15,
+        pointerClassificationGraceSeconds: TimeInterval = 0.18,
+        pointerStableSeconds: TimeInterval = 0.35,
+        pointerStableRadius: Double = 0.012,
+        pointerMaximumJump: Double = 0.18,
+        pointerOpenPalmTransitionSeconds: TimeInterval = 0.80,
         gestureReleaseSeconds: TimeInterval = 0.15,
         thumbsUpActivationSeconds: TimeInterval = 0.30
     ) {
@@ -86,6 +107,12 @@ public struct GestureConfiguration: Equatable, Sendable {
         self.swipeCooldownSeconds = swipeCooldownSeconds
         self.minimumConfidence = minimumConfidence
         self.cannedGestureMinimumConfidence = cannedGestureMinimumConfidence
+        self.pointerActivationSeconds = pointerActivationSeconds
+        self.pointerClassificationGraceSeconds = pointerClassificationGraceSeconds
+        self.pointerStableSeconds = pointerStableSeconds
+        self.pointerStableRadius = pointerStableRadius
+        self.pointerMaximumJump = pointerMaximumJump
+        self.pointerOpenPalmTransitionSeconds = pointerOpenPalmTransitionSeconds
         self.gestureReleaseSeconds = gestureReleaseSeconds
         self.thumbsUpActivationSeconds = thumbsUpActivationSeconds
     }
@@ -114,6 +141,16 @@ public final class GestureEngine {
     private var swipeStableSince: TimeInterval?
     private var lastRearmPalm: SwipeSample?
 
+    private var pointerCandidateSince: TimeInterval?
+    private var pointerActive = false
+    private var pointerLastConfirmedAt: TimeInterval?
+    private var pointerLastPoint: NormalizedPoint?
+    private var pointerStableAnchor: NormalizedPoint?
+    private var pointerStableSince: TimeInterval?
+    private var pointerClickReady = false
+    private var pointerOpenPalmConsumed = false
+    private var pointerOpenPalmAbsentSince: TimeInterval?
+
     private var thumbsUpCandidateSince: TimeInterval?
     private var thumbsUpActive = false
     private var thumbsUpAbsentSince: TimeInterval?
@@ -122,13 +159,21 @@ public final class GestureEngine {
         self.configuration = configuration
     }
 
-    public func update(pose: HandPose?, at now: TimeInterval) -> [GestureOutput] {
+    public func update(
+        pose: HandPose?,
+        at now: TimeInterval,
+        pointerModeEnabled: Bool = false
+    ) -> [GestureOutput] {
         guard let pose, pose.confidence >= configuration.minimumConfidence else {
             return loseHand(at: now)
         }
 
         let pinchPoint = pinchCenter(pose).map(screenPoint)
         var output: [GestureOutput] = []
+        if !pointerModeEnabled {
+            endPointer(into: &output)
+            resetPointerCompletely()
+        }
 
         if pinchActive {
             let remainsStrictOK = isStrictPinch(
@@ -138,6 +183,8 @@ public final class GestureEngine {
             if !remainsStrictOK || pinchPoint == nil {
                 endPinch(into: &output)
             } else if let point = pinchPoint {
+                endPointer(into: &output)
+                resetPointerCompletely()
                 output.append(contentsOf: updateActivePinch(point: point))
                 resetSwipe(released: true, at: now)
                 output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
@@ -148,6 +195,8 @@ public final class GestureEngine {
         if !pinchActive,
            isStrictPinch(pose, pinchThreshold: configuration.pinchThreshold),
            let point = pinchPoint {
+            endPointer(into: &output)
+            resetPointerCompletely()
             pinchCandidateSince = pinchCandidateSince ?? now
             if now - (pinchCandidateSince ?? now) >= configuration.pinchActivationSeconds {
                 pinchActive = true
@@ -167,6 +216,16 @@ public final class GestureEngine {
         pinchStartPoint = nil
         lastPinchPoint = nil
         pinchNavigationTriggered = false
+
+        if pointerModeEnabled {
+            let pointerUpdate = updatePointer(pose: pose, at: now)
+            output.append(contentsOf: pointerUpdate.output)
+            if pointerUpdate.consumed {
+                resetSwipe(released: true, at: now)
+                output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
+                return output
+            }
+        }
 
         let cannedGestureIsConfident =
             pose.gestureConfidence >= configuration.cannedGestureMinimumConfidence
@@ -201,6 +260,8 @@ public final class GestureEngine {
         thumbsUpCandidateSince = nil
         thumbsUpActive = false
         thumbsUpAbsentSince = nil
+        endPointer(into: &output)
+        resetPointerCompletely()
         resetSwipeCompletely()
         return output
     }
@@ -224,6 +285,8 @@ public final class GestureEngine {
         thumbsUpActive = false
         thumbsUpCandidateSince = nil
         thumbsUpAbsentSince = nil
+        endPointer(into: &output)
+        resetPointerCompletely()
         pinchCandidateSince = nil
         pinchMode = .inactive
         pinchStartPoint = nil
@@ -333,6 +396,110 @@ public final class GestureEngine {
         swipeStableSince = nil
         lastRearmPalm = SwipeSample(x: current.x, y: current.y, time: now)
         return [.page(deltaX < 0 ? .up : .down)]
+    }
+
+    private func updatePointer(
+        pose: HandPose,
+        at now: TimeInterval
+    ) -> (output: [GestureOutput], consumed: Bool) {
+        if pointerOpenPalmConsumed {
+            if isOpenPalm(pose) {
+                pointerOpenPalmAbsentSince = nil
+                return ([], true)
+            }
+            pointerOpenPalmAbsentSince = pointerOpenPalmAbsentSince ?? now
+            guard now - (pointerOpenPalmAbsentSince ?? now) >= configuration.gestureReleaseSeconds else {
+                return ([], true)
+            }
+            resetPointerCompletely()
+        }
+
+        let cannedPointing = pose.recognizedGesture == .pointingUp
+            && pose.gestureConfidence >= configuration.cannedGestureMinimumConfidence
+            && isStrictPointing(pose)
+        let withinClassificationGrace = pointerActive
+            && isStrictPointing(pose)
+            && pointerLastConfirmedAt.map {
+                now - $0 <= configuration.pointerClassificationGraceSeconds
+            } == true
+
+        if cannedPointing || withinClassificationGrace,
+           let point = pose.point(.indexTip).map(screenPoint) {
+            if cannedPointing { pointerLastConfirmedAt = now }
+            pointerCandidateSince = pointerCandidateSince ?? now
+
+            if let previous = pointerLastPoint,
+               pointDistance(previous, point) > configuration.pointerMaximumJump {
+                pointerStableAnchor = point
+                pointerStableSince = now
+                pointerClickReady = false
+                pointerLastPoint = point
+                return ([], true)
+            }
+
+            pointerLastPoint = point
+            if !pointerActive {
+                guard now - (pointerCandidateSince ?? now) >= configuration.pointerActivationSeconds else {
+                    return ([], true)
+                }
+                pointerActive = true
+                pointerStableAnchor = point
+                pointerStableSince = now
+                pointerClickReady = false
+            }
+
+            if let anchor = pointerStableAnchor,
+               pointDistance(anchor, point) <= configuration.pointerStableRadius {
+                if now - (pointerStableSince ?? now) >= configuration.pointerStableSeconds {
+                    pointerClickReady = true
+                }
+            } else {
+                pointerStableAnchor = point
+                pointerStableSince = now
+                pointerClickReady = false
+            }
+
+            return ([.pointerMoved(point, pointerClickReady ? .clickReady : .moving)], true)
+        }
+
+        if let lastConfirmedAt = pointerLastConfirmedAt,
+           now - lastConfirmedAt <= configuration.pointerOpenPalmTransitionSeconds {
+            if isOpenPalm(pose) {
+                var output: [GestureOutput] = []
+                endPointer(into: &output)
+                if pointerClickReady, let point = pointerLastPoint {
+                    output.append(.pointerClicked(point))
+                } else {
+                    output.append(.pointerClickRejected)
+                }
+                resetPointerCompletely()
+                pointerOpenPalmConsumed = true
+                return (output, true)
+            }
+            return ([], true)
+        }
+
+        var output: [GestureOutput] = []
+        endPointer(into: &output)
+        resetPointerCompletely()
+        return (output, false)
+    }
+
+    private func endPointer(into output: inout [GestureOutput]) {
+        if pointerActive { output.append(.pointerEnded) }
+        pointerActive = false
+    }
+
+    private func resetPointerCompletely() {
+        pointerCandidateSince = nil
+        pointerActive = false
+        pointerLastConfirmedAt = nil
+        pointerLastPoint = nil
+        pointerStableAnchor = nil
+        pointerStableSince = nil
+        pointerClickReady = false
+        pointerOpenPalmConsumed = false
+        pointerOpenPalmAbsentSince = nil
     }
 
     private func resetSwipe(released: Bool, at now: TimeInterval) {

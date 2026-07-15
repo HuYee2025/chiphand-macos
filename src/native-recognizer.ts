@@ -31,6 +31,7 @@ declare global {
     };
     stopRecognition?: () => void;
     setControlHand?: (hand: Handedness) => void;
+    setPointerModeEnabled?: (enabled: boolean) => void;
   }
 }
 
@@ -62,6 +63,7 @@ let lastVideoTime = -1;
 let lastInferenceAt = 0;
 let selectedHand: Handedness | null = null;
 let controlHand: Handedness = "Right";
+let pointerModeEnabled = false;
 let previousLandmarks: NormalizedLandmark[] | null = null;
 let targetFPS = 30;
 let fastWindows = 0;
@@ -133,6 +135,39 @@ function isPinching(landmarks: readonly NormalizedLandmark[]): boolean {
   return fingersAreOpen && distance(thumb, index) / Math.max(scale, 0.000_001) <= 0.18;
 }
 
+function fingerIsExtended(
+  landmarks: readonly NormalizedLandmark[],
+  tipIndex: number,
+  pipIndex: number,
+  mcpIndex: number,
+): boolean {
+  const wrist = landmarks[0];
+  const tip = landmarks[tipIndex];
+  const pip = landmarks[pipIndex];
+  const mcp = landmarks[mcpIndex];
+  return Boolean(wrist && tip && pip && mcp
+    && distance(tip, wrist) > distance(pip, wrist) * 1.04
+    && distance(tip, wrist) > distance(mcp, wrist) * 1.12);
+}
+
+function isStrictPointing(landmarks: readonly NormalizedLandmark[]): boolean {
+  const wrist = landmarks[0];
+  const thumb = landmarks[4];
+  if (!wrist || !thumb) return false;
+  const palm = [5, 9, 13, 17].map((index) => landmarks[index]).filter(Boolean) as NormalizedLandmark[];
+  const thumbAnchors = [5, 9, 13, 6, 10]
+    .map((index) => landmarks[index])
+    .filter(Boolean) as NormalizedLandmark[];
+  if (palm.length === 0 || thumbAnchors.length === 0) return false;
+  const scale = palm.reduce((sum, point) => sum + distance(wrist, point), 0) / palm.length;
+  const thumbFolded = Math.min(...thumbAnchors.map((point) => distance(thumb, point))) <= scale * 0.90;
+  return thumbFolded
+    && fingerIsExtended(landmarks, 8, 6, 5)
+    && !fingerIsExtended(landmarks, 12, 10, 9)
+    && !fingerIsExtended(landmarks, 16, 14, 13)
+    && !fingerIsExtended(landmarks, 20, 18, 17);
+}
+
 function drawSkeleton(
   landmarks: readonly NormalizedLandmark[],
   handedness: Handedness | null,
@@ -181,6 +216,21 @@ function drawSkeleton(
     context.lineWidth = 2;
     context.strokeStyle = "white";
     context.stroke();
+  }
+  if (pointerModeEnabled
+      && gesture === "Pointing_Up"
+      && gestureConfidence >= 0.70
+      && isStrictPointing(landmarks)) {
+    const index = landmarks[8];
+    if (index) {
+      context.beginPath();
+      context.arc(index.x * width, index.y * height, 11, 0, Math.PI * 2);
+      context.fillStyle = "#f8d84e";
+      context.fill();
+      context.lineWidth = 2;
+      context.strokeStyle = "white";
+      context.stroke();
+    }
   }
   if (gesture === "Thumb_Up" && gestureConfidence >= 0.70) {
     const palm = [0, 5, 9, 13, 17]
@@ -350,6 +400,10 @@ window.stopRecognition = () => {
 window.setControlHand = (hand: Handedness) => {
   controlHand = hand;
   if (selectedHand !== controlHand) clearSkeleton();
+};
+
+window.setPointerModeEnabled = (enabled: boolean) => {
+  pointerModeEnabled = enabled;
 };
 
 void start();

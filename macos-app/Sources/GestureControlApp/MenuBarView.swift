@@ -71,7 +71,8 @@ struct MenuBarView: View {
                     Text("张开手掌左右挥动：翻页")
                     Text("OK 捏合上下移动：滚动")
                     Text("OK 捏合左右跨中线：返回 / 前进")
-                    Text("食指、V 手势：暂不执行操作")
+                    Text("食指指针：悬停；定位后张掌点击")
+                    Text("V 手势：暂不执行操作")
                     Text("竖起拇指：识别点赞（不执行）")
                     Text("握拳：只显示状态")
                     Button("测试系统下翻") { model.testPageDown() }
@@ -82,6 +83,7 @@ struct MenuBarView: View {
                 .padding(.vertical, 2)
             }
 
+            Toggle("食指指针（测试）", isOn: $model.pointerModeEnabled)
             Toggle("全屏显示手掌骨架", isOn: $model.screenOverlayEnabled)
             Toggle("显示摄像头校准窗口", isOn: $model.debugWindowEnabled)
             HStack {

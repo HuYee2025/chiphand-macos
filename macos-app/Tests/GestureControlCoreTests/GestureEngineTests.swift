@@ -2,6 +2,22 @@ import XCTest
 @testable import GestureControlCore
 
 final class GestureEngineTests: XCTestCase {
+    private func assertPointerMoved(
+        _ output: [GestureOutput],
+        x: Double,
+        state: PointerInteractionState,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard output.count == 1,
+              case let .pointerMoved(point, actualState) = output[0] else {
+            return XCTFail("应只输出一次指针移动", file: file, line: line)
+        }
+        XCTAssertEqual(point.x, x, accuracy: 0.000_001, file: file, line: line)
+        XCTAssertEqual(point.y, 0.82, accuracy: 0.000_001, file: file, line: line)
+        XCTAssertEqual(actualState, state, file: file, line: line)
+    }
+
     private func makePose(
         palmX: Double = 0.5,
         thumbX: Double = 0.30,
@@ -330,6 +346,177 @@ final class GestureEngineTests: XCTestCase {
         let engine = GestureEngine()
         XCTAssertTrue(engine.update(pose: makePointingPose(screenTipX: 0.20), at: 0).isEmpty)
         XCTAssertTrue(engine.update(pose: makePointingPose(screenTipX: 0.80), at: 0.20).isEmpty)
+    }
+
+    func testPointerRequiresActivationBeforeMoving() {
+        let engine = GestureEngine()
+        let pointing = makePointingPose(screenTipX: 0.30)
+
+        XCTAssertTrue(engine.update(pose: pointing, at: 0, pointerModeEnabled: true).isEmpty)
+        XCTAssertTrue(engine.update(pose: pointing, at: 0.14, pointerModeEnabled: true).isEmpty)
+        assertPointerMoved(
+            engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true),
+            x: 0.30,
+            state: .moving
+        )
+    }
+
+    func testStablePointerArmsOpenPalmClick() {
+        let engine = GestureEngine()
+        let pointing = makePointingPose(screenTipX: 0.42)
+        _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
+        _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
+
+        assertPointerMoved(
+            engine.update(pose: pointing, at: 0.52, pointerModeEnabled: true),
+            x: 0.42,
+            state: .clickReady
+        )
+        let click = engine.update(
+            pose: makeOpenPalmPose(screenX: 0.42),
+            at: 0.62,
+            pointerModeEnabled: true
+        )
+        XCTAssertEqual(click.first, .pointerEnded)
+        guard click.count == 2, case let .pointerClicked(point) = click[1] else {
+            return XCTFail("稳定食指转张掌应输出一次点击")
+        }
+        XCTAssertEqual(point.x, 0.42, accuracy: 0.000_001)
+        XCTAssertEqual(point.y, 0.82, accuracy: 0.000_001)
+    }
+
+    func testUnstablePointerOpenPalmRejectsClickAndSuppressesPage() {
+        let engine = GestureEngine()
+        let pointing = makePointingPose(screenTipX: 0.42)
+        _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
+        _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
+
+        XCTAssertEqual(
+            engine.update(
+                pose: makeOpenPalmPose(screenX: 0.42),
+                at: 0.20,
+                pointerModeEnabled: true
+            ),
+            [.pointerEnded, .pointerClickRejected]
+        )
+        XCTAssertTrue(
+            engine.update(
+                pose: makeOpenPalmPose(screenX: 0.72),
+                at: 0.36,
+                pointerModeEnabled: true
+            ).isEmpty
+        )
+    }
+
+    func testDirectOpenPalmStillPagesWhenPointerModeIsEnabled() {
+        let engine = GestureEngine()
+        XCTAssertTrue(
+            engine.update(
+                pose: makeOpenPalmPose(screenX: 0.20),
+                at: 0,
+                pointerModeEnabled: true
+            ).isEmpty
+        )
+        XCTAssertEqual(
+            engine.update(
+                pose: makeOpenPalmPose(screenX: 0.38),
+                at: 0.14,
+                pointerModeEnabled: true
+            ),
+            [.page(.down)]
+        )
+    }
+
+    func testPointerToleratesBriefClassifierDropout() {
+        let engine = GestureEngine()
+        let pointing = makePointingPose(screenTipX: 0.40)
+        let geometryOnly = makePointingPose(
+            screenTipX: 0.41,
+            recognizedGesture: .none,
+            gestureConfidence: 0
+        )
+        _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
+        _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
+
+        assertPointerMoved(
+            engine.update(pose: geometryOnly, at: 0.25, pointerModeEnabled: true),
+            x: 0.41,
+            state: .moving
+        )
+        XCTAssertTrue(engine.update(pose: geometryOnly, at: 0.40, pointerModeEnabled: true).isEmpty)
+        XCTAssertEqual(
+            engine.update(pose: geometryOnly, at: 1.0, pointerModeEnabled: true),
+            [.pointerEnded]
+        )
+    }
+
+    func testPointerIgnoresImplausibleSingleFrameJump() {
+        let engine = GestureEngine()
+        _ = engine.update(
+            pose: makePointingPose(screenTipX: 0.30),
+            at: 0,
+            pointerModeEnabled: true
+        )
+        _ = engine.update(
+            pose: makePointingPose(screenTipX: 0.30),
+            at: 0.16,
+            pointerModeEnabled: true
+        )
+        XCTAssertTrue(
+            engine.update(
+                pose: makePointingPose(screenTipX: 0.70),
+                at: 0.20,
+                pointerModeEnabled: true
+            ).isEmpty
+        )
+        assertPointerMoved(
+            engine.update(
+                pose: makePointingPose(screenTipX: 0.71),
+                at: 0.24,
+                pointerModeEnabled: true
+            ),
+            x: 0.71,
+            state: .moving
+        )
+    }
+
+    func testStrictOKPinchCancelsPointerAndKeepsPriority() {
+        let engine = GestureEngine()
+        _ = engine.update(
+            pose: makePointingPose(screenTipX: 0.40),
+            at: 0,
+            pointerModeEnabled: true
+        )
+        _ = engine.update(
+            pose: makePointingPose(screenTipX: 0.40),
+            at: 0.16,
+            pointerModeEnabled: true
+        )
+        XCTAssertEqual(
+            engine.update(
+                pose: makePinchPose(screenX: 0.40),
+                at: 0.20,
+                pointerModeEnabled: true
+            ),
+            [.pointerEnded]
+        )
+        XCTAssertEqual(
+            engine.update(
+                pose: makePinchPose(screenX: 0.40),
+                at: 0.29,
+                pointerModeEnabled: true
+            ),
+            [.pinchBegan]
+        )
+    }
+
+    func testCancellingActivePointerEmitsEnded() {
+        let engine = GestureEngine()
+        let pointing = makePointingPose(screenTipX: 0.40)
+        _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
+        _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
+
+        XCTAssertEqual(engine.cancelActiveGesture(), [.pointerEnded])
     }
 
     func testThumbsUpIsStatusOnlyAndUsesStableActivation() {

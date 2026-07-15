@@ -268,6 +268,7 @@ private struct ScreenGestureOverlayView: View {
             HandSkeletonView(
                 pose: model.latestPose,
                 isPinching: model.isPinching,
+                showPointingTip: model.showsPointingTip,
                 mirrored: true,
                 lineWidth: 4,
                 pointDiameter: 12

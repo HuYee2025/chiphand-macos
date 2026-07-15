@@ -8,7 +8,7 @@
 - WKWebView + `@mediapipe/tasks-vision` 0.10.35：主引擎使用 Gesture Recognizer，单手 21 点、左右手与内置姿态分类，GPU 优先。
 - Network.framework：进程内只监听 `127.0.0.1`，向 WKWebView 提供打包在 App 内的 HTML、WASM 与模型。
 - AVFoundation + Vision：MediaPipe 启动失败时的本机备用识别路径。
-- Core Graphics `CGEvent`：通过 `.cghidEventTap` 注入连续滚动、翻页和受限的浏览器返回/前进按键。
+- Core Graphics `CGEvent`：通过 `.cghidEventTap` 注入连续滚动、翻页、受限浏览器导航，以及可选的食指鼠标移动与单击。
 - ApplicationServices：检查辅助功能信任；AppKit `NSWorkspace`：跟踪前台 App 切换。
 
 ### 冻结分支：Web / Extension
@@ -23,14 +23,15 @@
 
 ### macOS 原型
 
-- `GestureControlCore`：平台无关的关键点归一化、严格 OK 捏合迟滞与方向锁、跨中线导航、张开手掌的 `palmCenter` 短时水平轨迹翻页、点赞稳定状态和重新激活；食指与 V 手势仅保留状态。
+- `GestureControlCore`：平台无关的关键点归一化、严格 OK 捏合迟滞与方向锁、跨中线导航、张掌翻页，以及严格食指指针/停稳/张掌点击组合状态机；V 手势仅保留状态。
 - `MediaPipeHandPoseService`：WKWebView 主识别运行时；接收完整 21 点、左右手、内置手势、置信度、推理耗时和 FPS，并可显示同源校准窗口。识别器固定 `numHands: 1`，校准层不绘制未选择手。
 - `LocalMediaServer`：仅在 loopback 随机端口提供离线运行资源，避免 `file://` 对 ES Module、WASM 与摄像头安全上下文的限制。
 - `CameraCaptureService` + `HandPoseService`：Apple Vision 备用路径；最多请求一只手，按结构与置信度连续跟踪。
 - `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；持久保存右手/左手单选，只有所选手能进入 `GestureEngine`，App 切换或控制手切换立即取消活动手势。
 - `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件，并从 HID event tap 注入到目标窗口中心。
 - `SystemNavigationEmitter`：严格 OK 跨中线后按方向发送 `Command + [` 或 `Command + ]`；AppModel 只允许 Chrome、Safari、Edge 和夸克调用。
-- `MenuBarView`：启停、权限状态、两项灵敏度、右手/左手互斥选择、操作说明、全屏 HUD 与摄像头校准开关；同一界面同时用于 Dock 控制窗与菜单栏弹窗。
+- `SystemPointerEmitter`：把镜像 `indexTip` 直接映射到主屏幕并发送 HID `mouseMoved`；定位后张掌在冻结点发送一次左键按下/松开。只在四个浏览器和辅助功能有效时启用。
+- `MenuBarView`：启停、权限状态、两项灵敏度、右手/左手互斥选择、默认关闭的食指指针测试、全屏 HUD 与摄像头校准开关。
 - `ScreenGestureOverlayController`：使用两个 `NSPanel`。全屏层只绘制点击穿透的镜像简化骨架、严格捏合圆点和点赞标记；状态层固定为底部居中 `390×52`，右侧三道杠将其收为右边缘 `30×44` 左圆右方迷你条。迷你条用 AppKit 屏幕绝对鼠标坐标只改变纵向位置；双击迷你条恢复默认帧，双击展开内容在暂停/恢复识别之间切换。
 - 暂停状态：`AppModel.isPaused` 与完整停止分离；暂停会停止 MediaPipe、Apple Vision、摄像头和所有系统事件，隐藏骨架但保留红色反馈条。恢复前重新检查摄像头与辅助功能权限，不自动打开系统设置。
 - 校准窗口：MediaPipe 主路径直接显示同一 WKWebView 的自拍镜像视频与骨架；Apple Vision 备用路径由 `DebugWindowController` 显示相同方向。

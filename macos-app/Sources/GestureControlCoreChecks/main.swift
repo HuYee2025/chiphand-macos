@@ -162,6 +162,56 @@ do {
 
 do {
     let engine = GestureEngine()
+    let pointing = makePointingPose(screenTipX: 0.42)
+    check(
+        engine.update(pose: pointing, at: 0, pointerModeEnabled: true).isEmpty,
+        "食指指针需要稳定激活"
+    )
+    let moving = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
+    if case .pointerMoved(_, .moving)? = moving.first {
+        check(true, "稳定食指开始移动鼠标")
+    } else {
+        check(false, "稳定食指开始移动鼠标")
+    }
+    let ready = engine.update(pose: pointing, at: 0.52, pointerModeEnabled: true)
+    if case .pointerMoved(_, .clickReady)? = ready.first {
+        check(true, "食指停稳后进入张掌点击待命")
+    } else {
+        check(false, "食指停稳后进入张掌点击待命")
+    }
+    let click = engine.update(
+        pose: makeOpenPalmPose(screenX: 0.42),
+        at: 0.62,
+        pointerModeEnabled: true
+    )
+    check(
+        click.count == 2 && click.first == .pointerEnded,
+        "食指定位后张掌只结束一次指针"
+    )
+    if click.count == 2, case .pointerClicked = click[1] {
+        check(true, "食指定位后张掌输出单击")
+    } else {
+        check(false, "食指定位后张掌输出单击")
+    }
+}
+
+do {
+    let engine = GestureEngine()
+    let pointing = makePointingPose(screenTipX: 0.42)
+    _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
+    _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
+    check(
+        engine.update(
+            pose: makeOpenPalmPose(screenX: 0.42),
+            at: 0.20,
+            pointerModeEnabled: true
+        ) == [.pointerEnded, .pointerClickRejected],
+        "食指未停稳张掌不点击也不翻页"
+    )
+}
+
+do {
+    let engine = GestureEngine()
     let victory = makePose(recognizedGesture: .victory, gestureConfidence: 0.90)
     _ = engine.update(pose: victory, at: 0)
     _ = engine.update(pose: victory, at: 0.23)
