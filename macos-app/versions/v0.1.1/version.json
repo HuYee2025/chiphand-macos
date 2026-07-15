@@ -1,0 +1,23 @@
+{
+  "version": "0.1.1",
+  "date": "2026-07-15",
+  "tag": "macos-v0.1.1",
+  "summary": "Fix the stale Accessibility permission loop and add a floating hand-recognition test window.",
+  "scope": [
+    "Stop automatically opening System Settings from the Start button and poll permission state until it becomes active.",
+    "Automatically continue startup after Camera and Accessibility permissions are both available.",
+    "Show a floating mirrored camera preview with live hand skeleton, pinch line, and recognition status.",
+    "Install the prototype at a stable /Applications/GestureControl.app path."
+  ],
+  "validation": [
+    "swift test: 5 XCTest cases passed",
+    "swift run GestureControlCoreChecks: 10 checks passed",
+    "swift build --target GestureControlApp",
+    "release .app build and ad-hoc codesign verification",
+    "installed bundle reports version 0.1.1 and launches from /Applications"
+  ],
+  "notes": [
+    "The stale Accessibility record was reset after installing the final 0.1.1 binary; the user must grant the new record once.",
+    "Xcode 26.6 is installed, its License is accepted, and the standard XCTest target is available."
+  ]
+}

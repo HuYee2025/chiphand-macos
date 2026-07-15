@@ -19,5 +19,9 @@ let package = Package(
             name: "GestureControlCoreChecks",
             dependencies: ["GestureControlCore"]
         ),
+        .testTarget(
+            name: "GestureControlCoreTests",
+            dependencies: ["GestureControlCore"]
+        ),
     ]
 )

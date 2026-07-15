@@ -28,6 +28,8 @@
 - `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；App 切换立即取消捏合。
 - `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件形成约 75% 屏幕的平滑滚动。
 - `MenuBarView`：启停、权限状态、两项灵敏度和调试预览；默认无 Dock 图标。
+- `DebugWindowController`：控制开启后默认弹出置顶测试窗，叠加镜像摄像头、手部骨架、捏合连线和实时状态；关闭测试窗不停止识别。
+- 权限协调：启动按钮只记录启动意图，不再自动跳转系统设置；App 每秒刷新 Camera/Accessibility 状态，授权生效后自动继续启动。
 
 ### Web / Extension（冻结）
 
@@ -115,7 +117,7 @@ open build/GestureControl.app
 ## 技术限制
 
 - macOS 原型必须由用户在系统设置中授予摄像头和辅助功能权限；无权限时只显示状态，不发送事件。
-- 当前本机只有 Command Line Tools；标准 Xcode 测试 Target、调试和正式签名需安装完整 Xcode。
+- Xcode 26.6 已安装并接受 License；核心逻辑同时保留可执行检查和标准 `XCTest`。
 - 当前 `.app` 使用 ad-hoc 签名，仅供本机原型；重新构建后系统权限可能需要再次确认。
 - Core Graphics 滚动方向、不同 App 的滚动响应和 Vision 阈值仍需真实手势验收。
 

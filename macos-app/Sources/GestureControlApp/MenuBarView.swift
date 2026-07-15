@@ -20,14 +20,9 @@ struct MenuBarView: View {
                     .frame(width: 9, height: 9)
             }
 
-            if model.showDebugPreview {
-                CameraPreviewView(session: model.camera.session)
-                    .frame(height: 150)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                Text(model.handStatus)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(model.handStatus)
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Button(model.isRunning ? "停止手势控制" : "开启手势控制") {
                 model.toggle()
@@ -56,7 +51,7 @@ struct MenuBarView: View {
                 .padding(.vertical, 2)
             }
 
-            Toggle("显示调试预览", isOn: $model.showDebugPreview)
+            Toggle("显示悬浮识别窗口", isOn: $model.debugWindowEnabled)
             HStack {
                 Button("刷新权限") { model.refreshPermissions() }
                 Spacer()

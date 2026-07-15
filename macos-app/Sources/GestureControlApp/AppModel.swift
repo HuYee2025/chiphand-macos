@@ -11,7 +11,16 @@ final class AppModel: ObservableObject {
     @Published private(set) var accessibilityPermission = PermissionService.accessibilityState
     @Published private(set) var status = "已停止"
     @Published private(set) var handStatus = "等待启动"
-    @Published var showDebugPreview = false
+    @Published private(set) var latestPose: HandPose?
+    @Published var debugWindowEnabled = true {
+        didSet {
+            if isRunning && debugWindowEnabled {
+                debugWindowController.show()
+            } else {
+                debugWindowController.hide()
+            }
+        }
+    }
     @Published var swipeSensitivity: Double {
         didSet { saveAndApplySettings() }
     }
@@ -26,7 +35,10 @@ final class AppModel: ObservableObject {
     private let emitter: ScrollEmitting = SystemScrollEmitter()
     private var processingFrame = false
     private var pinchTargetPID: pid_t?
+    private var pendingStart = false
     private var workspaceObserver: NSObjectProtocol?
+    private var permissionTimer: AnyCancellable?
+    private lazy var debugWindowController = DebugWindowController(model: self)
 
     init() {
         let defaults = UserDefaults.standard
@@ -47,6 +59,11 @@ final class AppModel: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in self?.cancelCurrentGesture() }
         }
+        permissionTimer = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.refreshPermissions() }
+            }
     }
 
     deinit {
@@ -64,30 +81,31 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
+        pendingStart = true
         status = "检查权限…"
         Task {
             let cameraGranted = await PermissionService.requestCamera()
             refreshPermissions()
             guard cameraGranted else {
+                pendingStart = false
                 status = "需要摄像头权限"
                 return
             }
             guard accessibilityPermission == .granted else {
-                PermissionService.promptForAccessibility()
-                status = "请允许辅助功能后再次开启"
+                status = "辅助功能未生效，请点下方“设置”"
                 return
             }
-            isRunning = true
-            handStatus = "正在寻找手掌"
-            status = "手势控制中"
-            camera.start()
+            beginRunning()
         }
     }
 
     func stop() {
+        pendingStart = false
         isRunning = false
         camera.stop()
         cancelCurrentGesture()
+        latestPose = nil
+        debugWindowController.hide()
         handStatus = "等待启动"
         status = "已停止"
     }
@@ -95,6 +113,12 @@ final class AppModel: ObservableObject {
     func refreshPermissions() {
         cameraPermission = PermissionService.cameraState
         accessibilityPermission = PermissionService.accessibilityState
+        if pendingStart,
+           !isRunning,
+           cameraPermission == .granted,
+           accessibilityPermission == .granted {
+            beginRunning()
+        }
     }
 
     func openCameraSettings() {
@@ -102,7 +126,9 @@ final class AppModel: ObservableObject {
     }
 
     func openAccessibilitySettings() {
+        PermissionService.promptForAccessibility()
         PermissionService.openAccessibilitySettings()
+        status = "请打开 GestureControl 开关；授权后会自动启动"
     }
 
     private nonisolated func process(_ sampleBuffer: CMSampleBuffer) {
@@ -124,6 +150,7 @@ final class AppModel: ObservableObject {
 
     private func consume(pose: HandPose?) {
         guard isRunning else { return }
+        latestPose = pose
         handStatus = pose == nil ? "正在寻找手掌" : "已检测到手掌"
         let outputs = gestureEngine.update(pose: pose, at: CACurrentMediaTime())
         for output in outputs { handle(output) }
@@ -161,6 +188,16 @@ final class AppModel: ObservableObject {
     private func handleCameraError(_ message: String) {
         stop()
         status = "摄像头错误：\(message)"
+    }
+
+    private func beginRunning() {
+        guard !isRunning else { return }
+        pendingStart = false
+        isRunning = true
+        handStatus = "正在寻找手掌"
+        status = "手势控制中"
+        camera.start()
+        if debugWindowEnabled { debugWindowController.show() }
     }
 
     private func saveAndApplySettings() {
