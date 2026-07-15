@@ -83,7 +83,7 @@ struct MenuBarView: View {
                 .padding(.vertical, 2)
             }
 
-            Toggle("食指指针（测试）", isOn: $model.pointerModeEnabled)
+            Toggle("显示控制点", isOn: $model.pointerModeEnabled)
             Toggle("全屏显示手掌骨架", isOn: $model.screenOverlayEnabled)
             Toggle("显示摄像头校准窗口", isOn: $model.debugWindowEnabled)
             HStack {

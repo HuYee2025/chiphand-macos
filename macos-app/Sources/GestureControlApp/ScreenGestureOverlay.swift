@@ -274,11 +274,12 @@ private struct ScreenGestureOverlayView: View {
                 isPinching: model.isPinching,
                 showPointingTip: model.showsPointingTip,
                 pointerClickPoint: model.pointerClickContactPoint,
+                showSkeleton: model.screenOverlayEnabled,
                 mirrored: true,
                 lineWidth: 4,
                 pointDiameter: 12
             )
-            if model.isThumbsUp {
+            if model.screenOverlayEnabled, model.isThumbsUp {
                 ThumbsUpBadgeView(pose: model.latestPose, mirrored: true)
             }
         }
@@ -295,19 +296,20 @@ private struct CenterCrossingFlashView: View {
         GeometryReader { proxy in
             ZStack {
                 Capsule()
-                    .fill(Color.blue.opacity(0.28))
-                    .frame(width: 18, height: 176)
-                    .blur(radius: 8)
+                    .fill(Color.blue.opacity(0.34))
+                    .frame(width: 22, height: 352)
+                    .blur(radius: 10)
                 Capsule()
-                    .fill(Color.cyan.opacity(0.72))
-                    .frame(width: 8, height: 176)
-                    .blur(radius: 3)
+                    .fill(Color(red: 0.12, green: 0.55, blue: 1).opacity(0.78))
+                    .frame(width: 10, height: 352)
+                    .blur(radius: 4)
                 Capsule()
-                    .fill(Color(red: 0.16, green: 0.58, blue: 1.0))
-                    .frame(width: 4, height: 176)
+                    .fill(Color.white.opacity(0.72))
+                    .frame(width: 5, height: 352)
+                    .blur(radius: 1.5)
                 Capsule()
-                    .fill(Color.white.opacity(0.82))
-                    .frame(width: 1.5, height: 166)
+                    .fill(Color.white)
+                    .frame(width: 2.5, height: 342)
             }
             .position(
                 x: proxy.size.width / 2,

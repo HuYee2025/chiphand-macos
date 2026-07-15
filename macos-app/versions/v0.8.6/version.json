@@ -1,0 +1,22 @@
+{
+  "version": "0.8.6",
+  "date": "2026-07-16",
+  "tag": "macos-v0.8.6",
+  "summary": "Keep action control points and the center flash visible when the full hand skeleton is disabled, and strengthen the crossing marker.",
+  "scope": [
+    "Increase the center marker from 176pt to 352pt and render a white core with layered blue glow.",
+    "Rename the pointer setting from the test label to Display Control Points without changing pointer behavior.",
+    "Decouple the full-screen HUD panel from skeleton rendering so action points and crossing feedback remain visible.",
+    "Persist the user's full-screen skeleton visibility choice."
+  ],
+  "validation": [
+    "swift test passed 33 tests",
+    "GestureControlCoreChecks passed 22 checks",
+    "Swift warnings-as-errors and Release builds passed",
+    "Strict codesign and installed 0.8.6 build 20 checks passed"
+  ],
+  "notes": [
+    "macos-v0.8.5 remains the rollback point.",
+    "The camera calibration window continues to show its own full skeleton and does not show the center flash."
+  ]
+}

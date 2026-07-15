@@ -29,12 +29,12 @@ final class AppModel: ObservableObject {
     @Published private(set) var inferenceDurationMS = 0.0
     @Published private(set) var recognitionEngine = "MediaPipe"
     @Published private(set) var centerCrossingFlash: CenterCrossingFlash?
-    @Published var screenOverlayEnabled = true {
+    @Published var screenOverlayEnabled: Bool {
         didSet {
-            if !screenOverlayEnabled { clearCenterCrossingFlash() }
-            if isRunning && screenOverlayEnabled {
+            UserDefaults.standard.set(screenOverlayEnabled, forKey: "screenOverlayEnabled")
+            if isRunning {
                 screenOverlayController.show()
-            } else if isPaused && screenOverlayEnabled {
+            } else if isPaused {
                 screenOverlayController.showFeedbackOnly()
             } else {
                 screenOverlayController.hide()
@@ -109,6 +109,7 @@ final class AppModel: ObservableObject {
         swipeSensitivity = defaults.object(forKey: "swipeSensitivity") as? Double ?? 50
         pinchSensitivity = defaults.object(forKey: "pinchSensitivity") as? Double ?? 50
         pointerModeEnabled = defaults.object(forKey: "pointerModeEnabled") as? Bool ?? false
+        screenOverlayEnabled = defaults.object(forKey: "screenOverlayEnabled") as? Bool ?? true
         pointerInteractionState = nil
         applySettings()
         if let application = NSWorkspace.shared.frontmostApplication,
@@ -287,11 +288,7 @@ final class AppModel: ObservableObject {
         recognitionEngine = recognitionDelegate + " · 已暂停"
         handStatus = "已暂停手势控制"
         status = "已暂停手势控制"
-        if screenOverlayEnabled {
-            screenOverlayController.showFeedbackOnly()
-        } else {
-            screenOverlayController.hide()
-        }
+        screenOverlayController.showFeedbackOnly()
     }
 
     private func resume() {
@@ -593,8 +590,7 @@ final class AppModel: ObservableObject {
     }
 
     private func triggerCenterCrossingFlash() {
-        guard screenOverlayEnabled,
-              let latestPose,
+        guard let latestPose,
               let center = pinchCenter(latestPose) else { return }
         centerCrossingFlashTask?.cancel()
         centerCrossingFlashSequence &+= 1
@@ -658,7 +654,7 @@ final class AppModel: ObservableObject {
         mediaPipeService.setPointerModeEnabled(pointerModeEnabled)
         mediaPipeService.start()
         mediaPipeService.setPreviewVisible(debugWindowEnabled)
-        if screenOverlayEnabled { screenOverlayController.show() }
+        screenOverlayController.show()
     }
 
     private func saveAndApplySettings() {
@@ -674,8 +670,8 @@ final class AppModel: ObservableObject {
         actionFeedback = nil
         if isRunning {
             handStatus = pointerModeEnabled
-                ? "食指指针测试已开启 · 等待\(handName(controlHand))"
-                : "食指指针测试已关闭"
+                ? "显示控制点已开启 · 等待\(handName(controlHand))"
+                : "显示控制点已关闭"
         }
     }
 

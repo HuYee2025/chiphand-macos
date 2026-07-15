@@ -98,6 +98,7 @@ struct HandSkeletonView: View {
     var isPinching = false
     var showPointingTip = false
     var pointerClickPoint: NormalizedPoint?
+    var showSkeleton = true
     var coordinateMode: CoordinateMode = .stretch
     var mirrored = false
     var lineWidth: CGFloat = 2.5
@@ -129,26 +130,34 @@ struct HandSkeletonView: View {
             case .right: .blue
             case nil: .cyan
             }
-            for (from, to) in connections {
-                guard let first = pose.point(from), let second = pose.point(to) else { continue }
-                var path = Path()
-                path.move(to: screenPoint(first, size: size))
-                path.addLine(to: screenPoint(second, size: size))
-                context.stroke(path, with: .color(handColor.opacity(0.9)), lineWidth: lineWidth)
+            if showSkeleton {
+                for (from, to) in connections {
+                    guard let first = pose.point(from), let second = pose.point(to) else { continue }
+                    var path = Path()
+                    path.move(to: screenPoint(first, size: size))
+                    path.addLine(to: screenPoint(second, size: size))
+                    context.stroke(
+                        path,
+                        with: .color(handColor.opacity(0.9)),
+                        lineWidth: lineWidth
+                    )
+                }
             }
 
             if isPinching,
                let thumb = pose.point(.thumbTip),
                let index = pose.point(.indexTip),
                let center = pinchCenter(pose) {
-                var pinchPath = Path()
-                pinchPath.move(to: screenPoint(thumb, size: size))
-                pinchPath.addLine(to: screenPoint(index, size: size))
-                context.stroke(
-                    pinchPath,
-                    with: .color(.yellow.opacity(0.95)),
-                    style: StrokeStyle(lineWidth: lineWidth * 2, lineCap: .round)
-                )
+                if showSkeleton {
+                    var pinchPath = Path()
+                    pinchPath.move(to: screenPoint(thumb, size: size))
+                    pinchPath.addLine(to: screenPoint(index, size: size))
+                    context.stroke(
+                        pinchPath,
+                        with: .color(.yellow.opacity(0.95)),
+                        style: StrokeStyle(lineWidth: lineWidth * 2, lineCap: .round)
+                    )
+                }
                 let pinchPoint = screenPoint(center, size: size)
                 let diameter = max(18, pointDiameter * 2.4)
                 let pinchRect = CGRect(
@@ -161,22 +170,24 @@ struct HandSkeletonView: View {
                 context.stroke(Path(ellipseIn: pinchRect), with: .color(.white), lineWidth: 2)
             }
 
-            for joint in visibleJoints {
-                guard let point = pose.point(joint) else { continue }
-                let center = screenPoint(point, size: size)
-                let radius = pointDiameter / 2
-                let rect = CGRect(
-                    x: center.x - radius,
-                    y: center.y - radius,
-                    width: pointDiameter,
-                    height: pointDiameter
-                )
-                context.fill(Path(ellipseIn: rect), with: .color(.white))
-                context.stroke(
-                    Path(ellipseIn: rect),
-                    with: .color(handColor),
-                    lineWidth: max(1.5, lineWidth * 0.6)
-                )
+            if showSkeleton {
+                for joint in visibleJoints {
+                    guard let point = pose.point(joint) else { continue }
+                    let center = screenPoint(point, size: size)
+                    let radius = pointDiameter / 2
+                    let rect = CGRect(
+                        x: center.x - radius,
+                        y: center.y - radius,
+                        width: pointDiameter,
+                        height: pointDiameter
+                    )
+                    context.fill(Path(ellipseIn: rect), with: .color(.white))
+                    context.stroke(
+                        Path(ellipseIn: rect),
+                        with: .color(handColor),
+                        lineWidth: max(1.5, lineWidth * 0.6)
+                    )
+                }
             }
 
             if showPointingTip, let index = pose.point(.indexTip) {

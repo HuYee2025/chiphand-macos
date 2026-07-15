@@ -25,6 +25,29 @@
 
 ## 当前决策
 
+## 2026-07-16 v0.8.6 精简全屏反馈
+
+背景：
+- 完整骨架有助于校准，但日常使用会遮挡内容；用户希望关闭骨架后仍能看见真正影响操作的黄色控制点和跨中线确认线。
+
+决策：
+- 将骨架显示与全屏反馈窗口解耦，骨架开关只控制手部连线、节点、捏合连线和点赞标记。
+- 严格 OK 黄球、食指黄球、拇指中指接触黄球与跨中线闪光始终保留；骨架开关状态持久保存。
+- 中线长度由 `176pt` 增加到 `352pt`，改为白色核心线条配蓝色外发光。
+- 设置开关“食指指针（测试）”更名为“显示控制点”，底层指针功能不变。
+
+原因：
+- 日常控制只需要动作落点和触发确认，完整骨架应当是可选的调试信息。
+
+影响：
+- 升级为 `0.8.6` build 20；`macos-v0.8.5` 保持为回滚点。
+
+相关文件：
+- `macos-app/Sources/GestureControlApp/AppModel.swift`
+- `macos-app/Sources/GestureControlApp/DebugWindow.swift`
+- `macos-app/Sources/GestureControlApp/ScreenGestureOverlay.swift`
+- `macos-app/Sources/GestureControlApp/MenuBarView.swift`
+
 ## 2026-07-16 v0.8.5 中线同步触发
 
 背景：
