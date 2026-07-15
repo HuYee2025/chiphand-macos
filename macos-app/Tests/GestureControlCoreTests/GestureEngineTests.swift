@@ -52,10 +52,10 @@ final class GestureEngineTests: XCTestCase {
         )
     }
 
-    private func makeVictoryPose(screenX: Double) -> HandPose {
+    private func makePointingPose(screenX: Double) -> HandPose {
         makePose(
             palmX: 1 - screenX,
-            recognizedGesture: .victory,
+            recognizedGesture: .pointingUp,
             gestureConfidence: 0.90
         )
     }
@@ -227,35 +227,35 @@ final class GestureEngineTests: XCTestCase {
         XCTAssertFalse(engine.isPinching())
     }
 
-    func testVictoryLeftToRightAcrossCenterPagesDown() {
+    func testPointingLeftToRightAcrossCenterPagesDown() {
         let engine = GestureEngine()
-        let start = makeVictoryPose(screenX: 0.30)
+        let start = makePointingPose(screenX: 0.30)
         XCTAssertTrue(engine.update(pose: start, at: 0).isEmpty)
         XCTAssertTrue(engine.update(pose: start, at: 0.23).isEmpty)
-        XCTAssertEqual(engine.update(pose: makeVictoryPose(screenX: 0.52), at: 0.40), [.page(.down)])
-        XCTAssertTrue(engine.update(pose: makeVictoryPose(screenX: 0.62), at: 0.50).isEmpty)
+        XCTAssertEqual(engine.update(pose: makePointingPose(screenX: 0.52), at: 0.40), [.page(.down)])
+        XCTAssertTrue(engine.update(pose: makePointingPose(screenX: 0.62), at: 0.50).isEmpty)
     }
 
-    func testVictoryRightToLeftAcrossCenterPagesUp() {
+    func testPointingRightToLeftAcrossCenterPagesUp() {
         let engine = GestureEngine()
-        let start = makeVictoryPose(screenX: 0.70)
+        let start = makePointingPose(screenX: 0.70)
         XCTAssertTrue(engine.update(pose: start, at: 0).isEmpty)
         XCTAssertTrue(engine.update(pose: start, at: 0.23).isEmpty)
-        XCTAssertEqual(engine.update(pose: makeVictoryPose(screenX: 0.48), at: 0.40), [.page(.up)])
+        XCTAssertEqual(engine.update(pose: makePointingPose(screenX: 0.48), at: 0.40), [.page(.up)])
     }
 
-    func testStaticAndNearCenterVictoryDoNotPage() {
+    func testStaticAndNearCenterPointingDoNotPage() {
         let engine = GestureEngine()
-        let victory = makeVictoryPose(screenX: 0.45)
-        XCTAssertTrue(engine.update(pose: victory, at: 0).isEmpty)
-        XCTAssertTrue(engine.update(pose: victory, at: 0.23).isEmpty)
-        XCTAssertTrue(engine.update(pose: makeVictoryPose(screenX: 0.65), at: 0.50).isEmpty)
+        let pointing = makePointingPose(screenX: 0.45)
+        XCTAssertTrue(engine.update(pose: pointing, at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: pointing, at: 0.23).isEmpty)
+        XCTAssertTrue(engine.update(pose: makePointingPose(screenX: 0.65), at: 0.50).isEmpty)
     }
 
-    func testVictoryRequiresReleaseBeforeItCanRepeat() {
+    func testPointingRequiresReleaseBeforeItCanRepeat() {
         let engine = GestureEngine()
-        let start = makeVictoryPose(screenX: 0.30)
-        let moved = makeVictoryPose(screenX: 0.52)
+        let start = makePointingPose(screenX: 0.30)
+        let moved = makePointingPose(screenX: 0.52)
         _ = engine.update(pose: start, at: 0)
         _ = engine.update(pose: start, at: 0.23)
         XCTAssertEqual(engine.update(pose: moved, at: 0.40), [.page(.down)])
@@ -266,6 +266,23 @@ final class GestureEngineTests: XCTestCase {
         XCTAssertTrue(engine.update(pose: start, at: 0.70).isEmpty)
         XCTAssertTrue(engine.update(pose: start, at: 0.93).isEmpty)
         XCTAssertEqual(engine.update(pose: moved, at: 1.10), [.page(.down)])
+    }
+
+    func testVictoryIsReservedAndNeverPages() {
+        let engine = GestureEngine()
+        let left = makePose(
+            palmX: 0.70,
+            recognizedGesture: .victory,
+            gestureConfidence: 0.90
+        )
+        let right = makePose(
+            palmX: 0.30,
+            recognizedGesture: .victory,
+            gestureConfidence: 0.90
+        )
+        XCTAssertTrue(engine.update(pose: left, at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: left, at: 0.23).isEmpty)
+        XCTAssertTrue(engine.update(pose: right, at: 0.40).isEmpty)
     }
 
     func testOpenPalmNeverPages() {

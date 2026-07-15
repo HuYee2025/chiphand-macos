@@ -353,7 +353,7 @@ final class AppModel: ObservableObject {
             guard let target = eligibleFrontmostPID() else { return }
             emitter.emitPage(direction, to: target)
             actionFeedback = (
-                direction == .down ? "V 右挥 · 已下翻" : "V 左挥 · 已上翻",
+                direction == .down ? "食指右滑 · 已下翻" : "食指左滑 · 已上翻",
                 now + 0.8
             )
         case let .navigate(direction):
@@ -429,11 +429,11 @@ final class AppModel: ObservableObject {
         case .fist:
             handStatus = handPrefix + "已握拳 · 不执行操作"
         case .pointing:
-            handStatus = handPrefix + "食指伸出 · 不执行操作"
+            handStatus = handPrefix + "食指手势 · 左右跨中线翻页"
         case .pinching:
             handStatus = handPrefix + "OK 手势·正在确认捏合…"
         case .victory:
-            handStatus = handPrefix + "V 手势 · 左右跨中线翻页"
+            handStatus = handPrefix + "V 手势 · 暂未设置操作"
         case .thumbsUp:
             handStatus = handPrefix + "👍 正在确认点赞手势…"
         case .other:

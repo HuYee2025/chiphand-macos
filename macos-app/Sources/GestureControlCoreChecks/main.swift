@@ -61,10 +61,10 @@ private func makePinchPose(screenX: Double, y: Double = 0.50) -> HandPose {
     )
 }
 
-private func makeVictoryPose(screenX: Double) -> HandPose {
+private func makePointingPose(screenX: Double) -> HandPose {
     makePose(
         palmX: 1 - screenX,
-        recognizedGesture: .victory,
+        recognizedGesture: .pointingUp,
         gestureConfidence: 0.90
     )
 }
@@ -113,19 +113,27 @@ do {
 
 do {
     let engine = GestureEngine()
-    let start = makeVictoryPose(screenX: 0.30)
+    let start = makePointingPose(screenX: 0.30)
     _ = engine.update(pose: start, at: 0)
     _ = engine.update(pose: start, at: 0.23)
-    check(engine.update(pose: makeVictoryPose(screenX: 0.52), at: 0.40) == [.page(.down)], "V 右挥映射下翻")
+    check(engine.update(pose: makePointingPose(screenX: 0.52), at: 0.40) == [.page(.down)], "食指右滑映射下翻")
 }
 
 do {
     let engine = GestureEngine()
-    let start = makeVictoryPose(screenX: 0.70)
+    let start = makePointingPose(screenX: 0.70)
     _ = engine.update(pose: start, at: 0)
     _ = engine.update(pose: start, at: 0.23)
-    check(engine.update(pose: makeVictoryPose(screenX: 0.48), at: 0.40) == [.page(.up)], "V 左挥映射上翻")
+    check(engine.update(pose: makePointingPose(screenX: 0.48), at: 0.40) == [.page(.up)], "食指左滑映射上翻")
     check(engine.update(pose: makePose(palmX: 0.20), at: 0.60).isEmpty, "张开手掌不再翻页")
+}
+
+do {
+    let engine = GestureEngine()
+    let victory = makePose(recognizedGesture: .victory, gestureConfidence: 0.90)
+    _ = engine.update(pose: victory, at: 0)
+    _ = engine.update(pose: victory, at: 0.23)
+    check(engine.update(pose: victory, at: 0.40).isEmpty, "V 手势保留但不执行操作")
 }
 
 do {

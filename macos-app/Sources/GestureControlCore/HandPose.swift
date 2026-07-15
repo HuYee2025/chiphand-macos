@@ -191,6 +191,7 @@ public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
 public func classifyHandShape(_ pose: HandPose, pinchThreshold: Double = 0.20) -> HandShape {
     if isStrictPinch(pose, pinchThreshold: pinchThreshold) { return .pinching }
     if pose.gestureConfidence >= 0.70 {
+        if pose.recognizedGesture == .pointingUp { return .pointing }
         if pose.recognizedGesture == .victory { return .victory }
         if pose.recognizedGesture == .thumbUp { return .thumbsUp }
     }

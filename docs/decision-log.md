@@ -25,6 +25,28 @@
 
 ## 当前决策
 
+## 2026-07-15 v0.7.1 食指替换 V 手势翻页
+
+背景：
+- V 手势需要同时稳定伸出两根手指，高频翻页时不如单食指省力；用户希望把 V 留给以后更独特的操作。
+
+决策：
+- 使用 MediaPipe 原生 `Pointing_Up` 接管跨中线翻页：左向右下翻，右向左上翻。
+- 保留 0.70 置信度、220ms 稳定、7% 起点保护、14% 最小位移、1.4 倍水平主导、真实跨中线和退出 150ms 后重激活。
+- 严格 OK 捏合优先于食指分类；V 手势只显示“暂未设置操作”，不输出系统事件。
+
+原因：
+- 单食指更容易保持且侧面轮廓更清楚；跨中线和稳定门槛可以抵消日常指向动作更常见带来的误触风险。
+
+影响：
+- 升级为 `0.7.1`（build 11）；`macos-v0.7.0` 保持为本轮修改前回滚点。
+
+相关文件：
+- `macos-app/Sources/GestureControlCore/GestureEngine.swift`
+- `macos-app/Sources/GestureControlCore/HandPose.swift`
+- `macos-app/Sources/GestureControlApp/AppModel.swift`
+- `macos-app/Tests/GestureControlCoreTests/GestureEngineTests.swift`
+
 ## 2026-07-15 v0.7.0 捏合导航方向锁与 V 跨中线翻页
 
 背景：

@@ -1,0 +1,24 @@
+{
+  "version": "0.7.1",
+  "date": "2026-07-15",
+  "tag": "macos-v0.7.1",
+  "summary": "Replace Victory paging with lower-effort Pointing_Up cross-center gestures and reserve Victory for future use.",
+  "scope": [
+    "Map Pointing_Up left-to-right cross-center movement to Page Down and right-to-left movement to Page Up.",
+    "Retain the confidence, stability, start guard, minimum distance, horizontal dominance and release-to-rearm gates.",
+    "Keep strict OK pinch at higher priority than pointing.",
+    "Make Victory status-only without emitting page events."
+  ],
+  "validation": [
+    "swift test passed 19 tests including Pointing_Up paging, release-to-rearm and inactive Victory",
+    "GestureControlCoreChecks passed 13 checks",
+    "TypeScript typecheck and 32 Web regression tests passed",
+    "Swift warnings-as-errors build passed",
+    "Release app build and strict codesign verification passed",
+    "Installed bundle reports version 0.7.1 build 11 and MediaPipe GPU reached ready state"
+  ],
+  "notes": [
+    "The MediaPipe model already provides Pointing_Up, so this change adds no inference cost.",
+    "macos-v0.7.0 remains the rollback point before this gesture remapping."
+  ]
+}
