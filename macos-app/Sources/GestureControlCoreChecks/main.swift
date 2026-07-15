@@ -184,6 +184,11 @@ do {
     let separated = makeMiddleThumbClickPose(screenTipX: 0.42, touching: false)
     let touching = makeMiddleThumbClickPose(screenTipX: 0.42, touching: true)
     check(
+        isMiddleThumbContact(touching, threshold: engine.configuration.pinchThreshold)
+            && !isMiddleThumbContact(separated, threshold: engine.configuration.pinchThreshold),
+        "拇指中指复用 OK 捏合距离阈值"
+    )
+    check(
         engine.update(pose: pointing, at: 0, pointerModeEnabled: true).isEmpty,
         "食指指针需要稳定激活"
     )
@@ -194,27 +199,16 @@ do {
         check(false, "稳定食指开始移动鼠标")
     }
     let ready = engine.update(pose: pointing, at: 0.52, pointerModeEnabled: true)
-    if case .pointerMoved(_, .clickReady)? = ready.first {
-        check(true, "食指停稳后等待张开拇指和中指")
+    if case .pointerMoved(_, .clickArmed)? = ready.first {
+        check(true, "食指停稳后可直接拇指中指捏合")
     } else {
-        check(false, "食指停稳后等待张开拇指和中指")
+        check(false, "食指停稳后可直接拇指中指捏合")
     }
-    _ = engine.update(
-        pose: separated,
-        at: 0.60,
-        pointerModeEnabled: true
-    )
-    let armed = engine.update(pose: separated, at: 0.71, pointerModeEnabled: true)
-    if case .pointerMoved(_, .clickArmed)? = armed.first {
-        check(true, "拇指中指分开后进入点击待命")
-    } else {
-        check(false, "拇指中指分开后进入点击待命")
-    }
-    check(engine.update(pose: touching, at: 0.75, pointerModeEnabled: true).isEmpty,
+    check(engine.update(pose: touching, at: 0.60, pointerModeEnabled: true).isEmpty,
           "拇指中指接触需要短暂稳定")
     let click = engine.update(
         pose: touching,
-        at: 0.84,
+        at: 0.69,
         pointerModeEnabled: true
     )
     if click.count == 1, case .pointerClicked = click[0] {
@@ -233,7 +227,7 @@ do {
     let early = engine.update(pose: touching, at: 0.20, pointerModeEnabled: true)
     let held = engine.update(pose: touching, at: 0.33, pointerModeEnabled: true)
     check(!early.contains { if case .pointerClicked = $0 { true } else { false } },
-          "未完成分开待命时不点击")
+          "食指尚未停稳时不点击")
     check(!held.contains { if case .pointerClicked = $0 { true } else { false } },
           "持续接触不会误点击")
 }

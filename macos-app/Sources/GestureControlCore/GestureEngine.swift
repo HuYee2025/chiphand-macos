@@ -60,10 +60,6 @@ public struct GestureConfiguration: Equatable, Sendable {
     public var pointerStableSeconds: TimeInterval
     public var pointerStableRadius: Double
     public var pointerMaximumJump: Double
-    public var pointerClickContactThreshold: Double
-    public var pointerClickReleaseThreshold: Double
-    public var pointerClickContactActivationSeconds: TimeInterval
-    public var pointerClickReleaseActivationSeconds: TimeInterval
     public var gestureReleaseSeconds: TimeInterval
     public var thumbsUpActivationSeconds: TimeInterval
 
@@ -90,10 +86,6 @@ public struct GestureConfiguration: Equatable, Sendable {
         pointerStableSeconds: TimeInterval = 0.35,
         pointerStableRadius: Double = 0.012,
         pointerMaximumJump: Double = 0.18,
-        pointerClickContactThreshold: Double = 0.22,
-        pointerClickReleaseThreshold: Double = 0.42,
-        pointerClickContactActivationSeconds: TimeInterval = 0.08,
-        pointerClickReleaseActivationSeconds: TimeInterval = 0.10,
         gestureReleaseSeconds: TimeInterval = 0.15,
         thumbsUpActivationSeconds: TimeInterval = 0.30
     ) {
@@ -119,10 +111,6 @@ public struct GestureConfiguration: Equatable, Sendable {
         self.pointerStableSeconds = pointerStableSeconds
         self.pointerStableRadius = pointerStableRadius
         self.pointerMaximumJump = pointerMaximumJump
-        self.pointerClickContactThreshold = pointerClickContactThreshold
-        self.pointerClickReleaseThreshold = pointerClickReleaseThreshold
-        self.pointerClickContactActivationSeconds = pointerClickContactActivationSeconds
-        self.pointerClickReleaseActivationSeconds = pointerClickReleaseActivationSeconds
         self.gestureReleaseSeconds = gestureReleaseSeconds
         self.thumbsUpActivationSeconds = thumbsUpActivationSeconds
     }
@@ -159,8 +147,6 @@ public final class GestureEngine {
     private var pointerStableSince: TimeInterval?
     private var pointerClickReady = false
     private var pointerClickContactCandidateSince: TimeInterval?
-    private var pointerClickReleaseCandidateSince: TimeInterval?
-    private var pointerClickContactArmed = false
     private var pointerClickContactConsumed = false
 
     private var thumbsUpCandidateSince: TimeInterval?
@@ -417,50 +403,33 @@ public final class GestureEngine {
         let pointerPose = isPointerInteractionPose(pose)
         let clickStrength = middleThumbPinchStrength(pose)
         let clickContact = pointerPose
-            && clickStrength <= configuration.pointerClickContactThreshold
+            && isMiddleThumbContact(
+                pose,
+                threshold: configuration.pinchThreshold
+            )
         let clickReleased = pointerPose
-            && clickStrength >= configuration.pointerClickReleaseThreshold
+            && clickStrength >= configuration.pinchReleaseThreshold
 
         if pointerActive, pointerClickContactConsumed {
-            guard clickReleased else {
-                pointerClickReleaseCandidateSince = nil
-                return ([], true)
-            }
-            pointerClickReleaseCandidateSince = pointerClickReleaseCandidateSince ?? now
-            guard now - (pointerClickReleaseCandidateSince ?? now)
-                >= configuration.pointerClickReleaseActivationSeconds else {
-                return ([], true)
-            }
+            guard clickReleased else { return ([], true) }
             pointerClickContactConsumed = false
-            pointerClickContactArmed = true
-            pointerClickReleaseCandidateSince = nil
         }
 
-        if pointerActive, pointerClickContactArmed, clickContact {
-            pointerClickReleaseCandidateSince = nil
+        if pointerActive, pointerClickReady, !pointerClickContactConsumed, clickContact {
             pointerClickContactCandidateSince = pointerClickContactCandidateSince ?? now
             guard now - (pointerClickContactCandidateSince ?? now)
-                >= configuration.pointerClickContactActivationSeconds else {
+                >= configuration.pinchActivationSeconds else {
                 return ([], true)
             }
             pointerClickContactCandidateSince = nil
-            pointerClickContactArmed = false
             pointerClickContactConsumed = true
-            if pointerClickReady, let point = pointerLastPoint {
+            if let point = pointerLastPoint {
                 return ([.pointerClicked(point)], true)
             }
-            return ([.pointerClickRejected], true)
+            return ([], true)
         }
-        pointerClickContactCandidateSince = nil
-
-        if pointerActive, pointerClickReady, !pointerClickContactArmed, clickReleased {
-            pointerClickReleaseCandidateSince = pointerClickReleaseCandidateSince ?? now
-            if now - (pointerClickReleaseCandidateSince ?? now)
-                >= configuration.pointerClickReleaseActivationSeconds {
-                pointerClickContactArmed = true
-            }
-        } else if !clickReleased {
-            pointerClickReleaseCandidateSince = nil
+        if !clickContact {
+            pointerClickContactCandidateSince = nil
         }
 
         let cannedPointing = pose.recognizedGesture == .pointingUp
@@ -485,8 +454,7 @@ public final class GestureEngine {
                 pointerStableAnchor = point
                 pointerStableSince = now
                 pointerClickReady = false
-                pointerClickContactArmed = false
-                pointerClickReleaseCandidateSince = nil
+                pointerClickContactCandidateSince = nil
                 pointerLastPoint = point
                 return ([], true)
             }
@@ -500,8 +468,7 @@ public final class GestureEngine {
                 pointerStableAnchor = point
                 pointerStableSince = now
                 pointerClickReady = false
-                pointerClickContactArmed = false
-                pointerClickReleaseCandidateSince = nil
+                pointerClickContactCandidateSince = nil
             }
 
             if let anchor = pointerStableAnchor,
@@ -513,12 +480,11 @@ public final class GestureEngine {
                 pointerStableAnchor = point
                 pointerStableSince = now
                 pointerClickReady = false
+                pointerClickContactCandidateSince = nil
             }
 
-            let state: PointerInteractionState = if pointerClickContactArmed {
-                .clickArmed
-            } else if pointerClickReady {
-                .clickReady
+            let state: PointerInteractionState = if pointerClickReady {
+                pointerClickContactConsumed ? .clickReady : .clickArmed
             } else {
                 .moving
             }
@@ -545,8 +511,6 @@ public final class GestureEngine {
         pointerStableSince = nil
         pointerClickReady = false
         pointerClickContactCandidateSince = nil
-        pointerClickReleaseCandidateSince = nil
-        pointerClickContactArmed = false
         pointerClickContactConsumed = false
     }
 

@@ -183,12 +183,22 @@ final class AppModel: ObservableObject {
 
     var pointerClickContactPoint: NormalizedPoint? {
         guard pointerModeIsAvailable(),
-              pointerInteractionState == .clickArmed,
+              pointerInteractionState != nil,
               let latestPose,
               isPointerInteractionPose(latestPose),
-              middleThumbPinchStrength(latestPose)
-                <= gestureEngine.configuration.pointerClickContactThreshold else { return nil }
+              isMiddleThumbContact(
+                  latestPose,
+                  threshold: gestureEngine.configuration.pinchThreshold
+              ) else { return nil }
         return middleThumbPinchCenter(latestPose)
+    }
+
+    var pointerMiddleThumbDistance: Double? {
+        guard pointerModeIsAvailable(),
+              pointerInteractionState != nil,
+              let latestPose,
+              isPointerInteractionPose(latestPose) else { return nil }
+        return middleThumbPinchStrength(latestPose)
     }
 
     func toggle() {
@@ -471,12 +481,26 @@ final class AppModel: ObservableObject {
             handStatus = handPrefix + "当前应用不支持食指指针"
             return
         }
+        if let distance = pointerMiddleThumbDistance,
+           distance <= gestureEngine.configuration.pinchThreshold {
+            handStatus = handPrefix + String(
+                format: "已检测到拇指中指接触 · %.2f",
+                distance
+            )
+            return
+        }
         if pointerInteractionState == .clickArmed {
-            handStatus = handPrefix + "食指已定位 · 拇指中指轻捏点击"
+            let suffix = pointerMiddleThumbDistance.map {
+                String(format: " · %.2f", $0)
+            } ?? ""
+            handStatus = handPrefix + "食指已定位 · 拇指中指轻捏点击" + suffix
             return
         }
         if pointerInteractionState == .clickReady {
-            handStatus = handPrefix + "食指已定位 · 张开拇指和中指"
+            let suffix = pointerMiddleThumbDistance.map {
+                String(format: " · %.2f", $0)
+            } ?? ""
+            handStatus = handPrefix + "已点击 · 松开后可再次点击" + suffix
             return
         }
         if pointerInteractionState == .moving {

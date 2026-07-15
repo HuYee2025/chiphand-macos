@@ -145,6 +145,13 @@ public func middleThumbPinchCenter(_ pose: HandPose) -> NormalizedPoint? {
     )
 }
 
+public func isMiddleThumbContact(
+    _ pose: HandPose,
+    threshold: Double = 0.22
+) -> Bool {
+    middleThumbPinchStrength(pose) <= threshold
+}
+
 public func palmCenter(_ pose: HandPose) -> NormalizedPoint? {
     let joints = [HandJoint.wrist, .indexMCP, .middleMCP, .ringMCP, .littleMCP].compactMap(pose.point)
     guard !joints.isEmpty else { return nil }

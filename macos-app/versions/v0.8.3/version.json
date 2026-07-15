@@ -1,0 +1,23 @@
+{
+  "version": "0.8.3",
+  "date": "2026-07-16",
+  "tag": "macos-v0.8.3",
+  "summary": "Reuse the proven strict OK pinch geometry for direct middle-thumb clicking and contact calibration.",
+  "scope": [
+    "Reuse the strict OK 0.18 contact threshold, 0.20 release threshold and 80ms activation with middleTip replacing indexTip.",
+    "Remove the pre-click separation and arming requirement.",
+    "Show the second yellow marker whenever the middle-thumb landmark distance enters the contact threshold.",
+    "Display the live normalized middle-thumb distance in the feedback bar.",
+    "Keep index pointer tracking unchanged and consume held contact only once."
+  ],
+  "validation": [
+    "swift test passed 32 tests including contact observation without click arming",
+    "GestureControlCoreChecks passed 22 checks",
+    "Swift warnings-as-errors and Release builds passed",
+    "Strict codesign and installed 0.8.3 build 17 checks passed"
+  ],
+  "notes": [
+    "macos-v0.8.2 remains the rollback point.",
+    "The next decision depends on physical-hand distance values observed by the user."
+  ]
+}
