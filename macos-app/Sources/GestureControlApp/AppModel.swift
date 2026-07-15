@@ -5,6 +5,11 @@ import GestureControlCore
 import OSLog
 import QuartzCore
 
+struct CenterCrossingFlash: Equatable, Identifiable {
+    let id: UInt64
+    let normalizedY: Double
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     private let logger = Logger(
@@ -23,8 +28,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var recognitionFPS = 0
     @Published private(set) var inferenceDurationMS = 0.0
     @Published private(set) var recognitionEngine = "MediaPipe"
+    @Published private(set) var centerCrossingFlash: CenterCrossingFlash?
     @Published var screenOverlayEnabled = true {
         didSet {
+            if !screenOverlayEnabled { clearCenterCrossingFlash() }
             if isRunning && screenOverlayEnabled {
                 screenOverlayController.show()
             } else if isPaused && screenOverlayEnabled {
@@ -82,6 +89,8 @@ final class AppModel: ObservableObject {
     private var pendingStart = false
     private var workspaceObserver: NSObjectProtocol?
     private var permissionTimer: AnyCancellable?
+    private var centerCrossingFlashTask: Task<Void, Never>?
+    private var centerCrossingFlashSequence: UInt64 = 0
     private lazy var debugWindowController = DebugWindowController(model: self)
     private lazy var screenOverlayController = ScreenGestureOverlayController(model: self)
     private var actionFeedback: (message: String, until: TimeInterval)?
@@ -162,6 +171,7 @@ final class AppModel: ObservableObject {
     }
 
     deinit {
+        centerCrossingFlashTask?.cancel()
         if let workspaceObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(workspaceObserver)
         }
@@ -362,6 +372,7 @@ final class AppModel: ObservableObject {
     private func consume(pose: HandPose?) {
         guard isRunning else { return }
         let controlledPose = poseForControlHand(pose, controlHand: controlHand)
+        if controlledPose == nil { clearCenterCrossingFlash() }
         let ignoredHand = pose?.handedness.flatMap { $0 == controlHand ? nil : $0 }
         latestPose = controlledPose
         let now = CACurrentMediaTime()
@@ -397,6 +408,7 @@ final class AppModel: ObservableObject {
                 now + 0.8
             )
         case let .navigate(direction):
+            triggerCenterCrossingFlash()
             guard browserNavigationTargetIsFrontmost() else {
                 actionFeedback = (
                     direction == .back
@@ -573,10 +585,37 @@ final class AppModel: ObservableObject {
 
     private func cancelCurrentGesture() {
         _ = gestureEngine.cancelActiveGesture()
+        clearCenterCrossingFlash()
         pinchTargetPID = nil
         isPinching = false
         isThumbsUp = false
         pointerInteractionState = nil
+    }
+
+    private func triggerCenterCrossingFlash() {
+        guard screenOverlayEnabled,
+              let latestPose,
+              let center = pinchCenter(latestPose) else { return }
+        centerCrossingFlashTask?.cancel()
+        centerCrossingFlashSequence &+= 1
+        let sequence = centerCrossingFlashSequence
+        centerCrossingFlash = CenterCrossingFlash(
+            id: sequence,
+            normalizedY: center.y
+        )
+        centerCrossingFlashTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 240_000_000)
+            guard !Task.isCancelled,
+                  self?.centerCrossingFlash?.id == sequence else { return }
+            self?.centerCrossingFlash = nil
+            self?.centerCrossingFlashTask = nil
+        }
+    }
+
+    private func clearCenterCrossingFlash() {
+        centerCrossingFlashTask?.cancel()
+        centerCrossingFlashTask = nil
+        centerCrossingFlash = nil
     }
 
     private func handleCameraError(_ message: String) {

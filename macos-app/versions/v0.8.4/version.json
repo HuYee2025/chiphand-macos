@@ -1,0 +1,22 @@
+{
+  "version": "0.8.4",
+  "date": "2026-07-16",
+  "tag": "macos-v0.8.4",
+  "summary": "Flash a short glowing blue center line when a navigation pinch is confirmed across the screen midpoint.",
+  "scope": [
+    "Trigger only from confirmed navigate output, never from raw midpoint proximity.",
+    "Draw an 88pt by 4pt vertical blue line at screen center, vertically aligned to the yellow pinch point.",
+    "Fade the layered glow within about 240ms and clear it on cancellation, pause, app switch, hand loss or HUD disable.",
+    "Keep all gesture thresholds, navigation output and pointer clicking unchanged."
+  ],
+  "validation": [
+    "swift test passed 32 tests including one-shot cross-center navigation",
+    "GestureControlCoreChecks passed 22 checks",
+    "Swift warnings-as-errors and Release builds passed",
+    "Strict codesign and installed 0.8.4 build 18 checks passed"
+  ],
+  "notes": [
+    "macos-v0.8.3 remains the rollback point.",
+    "The camera calibration window intentionally does not show the center flash."
+  ]
+}

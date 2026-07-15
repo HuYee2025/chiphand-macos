@@ -265,6 +265,10 @@ private struct ScreenGestureOverlayView: View {
     var body: some View {
         ZStack {
             Color.clear
+            if let flash = model.centerCrossingFlash {
+                CenterCrossingFlashView(flash: flash)
+                    .id(flash.id)
+            }
             HandSkeletonView(
                 pose: model.latestPose,
                 isPinching: model.isPinching,
@@ -279,6 +283,51 @@ private struct ScreenGestureOverlayView: View {
             }
         }
         .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
+private struct CenterCrossingFlashView: View {
+    let flash: CenterCrossingFlash
+    @State private var illuminated = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Capsule()
+                    .fill(Color.blue.opacity(0.28))
+                    .frame(width: 18, height: 88)
+                    .blur(radius: 8)
+                Capsule()
+                    .fill(Color.cyan.opacity(0.72))
+                    .frame(width: 8, height: 88)
+                    .blur(radius: 3)
+                Capsule()
+                    .fill(Color(red: 0.16, green: 0.58, blue: 1.0))
+                    .frame(width: 4, height: 88)
+                Capsule()
+                    .fill(Color.white.opacity(0.82))
+                    .frame(width: 1.5, height: 82)
+            }
+            .position(
+                x: proxy.size.width / 2,
+                y: (1 - flash.normalizedY) * proxy.size.height
+            )
+            .scaleEffect(x: 1, y: illuminated ? 1 : 0.72)
+            .opacity(illuminated ? 1 : 0)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.04)) {
+                illuminated = true
+            }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 60_000_000)
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.18)) {
+                    illuminated = false
+                }
+            }
+        }
         .allowsHitTesting(false)
     }
 }

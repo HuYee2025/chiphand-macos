@@ -33,6 +33,7 @@
 - `SystemPointerEmitter`：把镜像 `indexTip` 直接映射到主屏幕并发送 HID `mouseMoved`；定位后的拇指中指捏合直接复用严格 OK 的距离、释放阈值和稳定时间，在冻结点使用独立 `.privateState` 事件源发送一次无修饰键左键按下/松开。只在四个浏览器和辅助功能有效时启用。
 - `MenuBarView`：启停、权限状态、两项灵敏度、右手/左手互斥选择、默认关闭的食指指针测试、全屏 HUD 与摄像头校准开关。
 - `ScreenGestureOverlayController`：使用两个 `NSPanel`。全屏层只绘制点击穿透的镜像简化骨架、严格捏合圆点和点赞标记；状态层固定为底部居中 `390×52`，右侧三道杠将其收为右边缘 `30×44` 左圆右方迷你条。迷你条用 AppKit 屏幕绝对鼠标坐标只改变纵向位置；双击迷你条恢复默认帧，双击展开内容在暂停/恢复识别之间切换。
+- 跨线反馈：`AppModel` 在已确认的 `.navigate` 输出上保存一次性纵向位置；全屏 HUD 在 x=50% 绘制 `88pt × 4pt` 蓝色发光竖线，约 `240ms` 淡出。摄像头校准窗口不显示。
 - 暂停状态：`AppModel.isPaused` 与完整停止分离；暂停会停止 MediaPipe、Apple Vision、摄像头和所有系统事件，隐藏骨架但保留红色反馈条。恢复前重新检查摄像头与辅助功能权限，不自动打开系统设置。
 - 校准窗口：MediaPipe 主路径直接显示同一 WKWebView 的自拍镜像视频与骨架；Apple Vision 备用路径由 `DebugWindowController` 显示相同方向。
 - 权限协调：启动按钮只记录启动意图，不再自动跳转系统设置；App 每秒刷新 Camera/Accessibility 状态，授权生效后自动继续启动。
