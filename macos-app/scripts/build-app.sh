@@ -22,7 +22,11 @@ cp "$ROOT/.build/release/GestureControl" "$CONTENTS/MacOS/GestureControl"
 cp "$ROOT/Resources/Info.plist" "$CONTENTS/Info.plist"
 cp -R "$ROOT/Resources/MediaPipeRecognizer" "$CONTENTS/Resources/MediaPipeRecognizer"
 
+BUNDLE_IDENTIFIER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$ROOT/Resources/Info.plist")"
+DESIGNATED_REQUIREMENT="=designated => identifier \"$BUNDLE_IDENTIFIER\""
 codesign --force --deep --sign - \
+  --identifier "$BUNDLE_IDENTIFIER" \
+  --requirements "$DESIGNATED_REQUIREMENT" \
   --entitlements "$ROOT/Resources/GestureControl.entitlements" \
   "$APP"
 

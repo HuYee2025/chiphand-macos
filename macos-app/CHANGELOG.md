@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 - 2026-07-15
+
+- 修复辅助功能列表显示已开启、App 实际仍读取为未允许的问题：ad-hoc 签名现在包含固定 bundle identifier 的 designated requirement，不再只用每次构建变化的 CDHash 作为系统身份。
+- 本次安装后需要清理一次旧 TCC 项并重新打开 GestureControl；后续本地小版本重建不再反复丢失同一授权。
+
 ## 0.4.0 - 2026-07-15
 
 - MediaPipe Hand Landmarker 升级为 Gesture Recognizer，使用单手识别并输出 21 点、左右手、内置手势、置信度和推理耗时。

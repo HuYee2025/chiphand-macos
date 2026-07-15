@@ -25,6 +25,23 @@
 
 ## 当前决策
 
+## 2026-07-15 v0.4.1 固定本地签名身份
+
+背景：
+- 系统设置中的 GestureControl 开关显示开启，但 App 的 `AXIsProcessTrusted()` 返回 false。
+- 原 ad-hoc 签名没有内部 designated requirement，系统只能按每次构建变化的 CDHash 识别二进制。
+
+决策：
+- 构建脚本为 ad-hoc App 写入 `designated => identifier "com.huyee.gesture-control.prototype"`。
+- 只重置一次 GestureControl 的旧 Accessibility TCC 记录，再由用户打开最终安装版的新开关。
+
+原因：
+- 固定 requirement 能让后续本地重建继续匹配同一权限身份；其他应用的权限不受影响。
+
+影响：
+- 升级为 `0.4.1`（build 6）；首次修复仍需要用户亲自确认一次系统安全开关。
+- 这只解决本机开发签名稳定性，外部分发仍需 Developer ID 和 notarization。
+
 ## 2026-07-15 v0.4.0 Gesture Recognizer、严格 OK 捏合与浏览器返回
 
 背景：

@@ -1,5 +1,10 @@
 # Changelog
 
+## macOS 0.4.1 - 2026-07-15
+
+- 修复辅助功能开关表面开启但 App 实际未获授权的循环：本地 ad-hoc 签名加入稳定 designated requirement，使后续构建继续匹配同一 GestureControl 权限身份。
+- 首次从旧签名升级需要重置一次 GestureControl 的旧辅助功能记录；不影响其他应用权限。
+
 ## macOS 0.4.0 - 2026-07-15
 
 - MediaPipe 主引擎升级为 Gesture Recognizer，保持 21 点骨架并原生识别 `Victory` 与 `Thumb_Up`；单手上限改为 1，停止无效的第二只手计算。

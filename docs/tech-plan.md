@@ -122,7 +122,8 @@ open build/GestureControl.app
 
 - macOS 原型必须由用户在系统设置中授予摄像头和辅助功能权限；无权限时只显示状态，不发送事件。
 - Xcode 26.6 已安装并接受 License；核心逻辑同时保留可执行检查和标准 `XCTest`。
-- 当前 `.app` 使用 ad-hoc 签名，仅供本机原型；重新构建后系统权限可能需要再次确认。
+- 当前 `.app` 使用 ad-hoc 签名，仅供本机原型；更改 bundle identifier 或签名 requirement 时系统权限仍需重新确认。
+- 从 `0.4.1` 起 ad-hoc 签名包含固定 bundle identifier 的 designated requirement，避免 TCC 只绑定变化的 CDHash；首次升级需清理一次旧记录。
 - Core Graphics 滚动方向、不同 App 的滚动响应和手势阈值仍需真实手势验收。
 - MediaPipe 主运行时资源约 40 MB；只在本机 loopback 端口短暂提供，App 停止识别时关闭。
 

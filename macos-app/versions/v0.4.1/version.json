@@ -1,0 +1,21 @@
+{
+  "version": "0.4.1",
+  "date": "2026-07-15",
+  "tag": "macos-v0.4.1",
+  "summary": "Keep the local ad-hoc app identity stable across rebuilds so macOS Accessibility approval no longer points at a stale CDHash.",
+  "scope": [
+    "Sign the app with an explicit designated requirement based on com.huyee.gesture-control.prototype.",
+    "Reset only the stale GestureControl Accessibility record once and register the final installed app again.",
+    "Keep all gesture recognition and system-control behavior from 0.4.0 unchanged."
+  ],
+  "validation": [
+    "Release app build and strict codesign verification passed",
+    "Installed bundle reports version 0.4.1 build 6",
+    "codesign reports designated => identifier com.huyee.gesture-control.prototype",
+    "Targeted tccutil reset completed without changing other applications"
+  ],
+  "notes": [
+    "The user must turn on the newly registered GestureControl switch once; macOS does not allow an app to grant this security permission to itself.",
+    "This remains a local prototype signature. Developer ID signing and notarization are still required for external distribution."
+  ]
+}
