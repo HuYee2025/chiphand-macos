@@ -5,12 +5,24 @@ public enum PageDirection: Equatable, Sendable {
     case down
 }
 
+public enum NavigationDirection: Equatable, Sendable {
+    case back
+    case forward
+}
+
+public enum PinchInteractionMode: Equatable, Sendable {
+    case inactive
+    case undecided
+    case scrolling
+    case navigation(NavigationDirection?)
+}
+
 public enum GestureOutput: Equatable, Sendable {
     case pinchBegan
     case pinchScroll(Double)
     case pinchEnded
     case page(PageDirection)
-    case back
+    case navigate(NavigationDirection)
     case thumbsUpBegan
     case thumbsUpEnded
 }
@@ -21,16 +33,16 @@ public struct GestureConfiguration: Equatable, Sendable {
     public var pinchActivationSeconds: TimeInterval
     public var minimumPinchStep: Double
     public var maximumPinchStep: Double
+    public var pinchVerticalIntentThreshold: Double
+    public var pinchHorizontalIntentThreshold: Double
+    public var pinchVerticalDominance: Double
+    public var horizontalDominance: Double
+    public var navigationCenterGuard: Double
+    public var navigationCenterX: Double
     public var swipeMinimumDisplacement: Double
-    public var swipeHistorySeconds: TimeInterval
-    public var swipeMinimumDuration: TimeInterval
-    public var swipeCooldownSeconds: TimeInterval
     public var minimumConfidence: Double
     public var cannedGestureMinimumConfidence: Double
     public var victoryActivationSeconds: TimeInterval
-    public var backMinimumDisplacement: Double
-    public var backMovementWindowSeconds: TimeInterval
-    public var backCooldownSeconds: TimeInterval
     public var gestureReleaseSeconds: TimeInterval
     public var thumbsUpActivationSeconds: TimeInterval
 
@@ -40,16 +52,16 @@ public struct GestureConfiguration: Equatable, Sendable {
         pinchActivationSeconds: TimeInterval = 0.08,
         minimumPinchStep: Double = 0.003,
         maximumPinchStep: Double = 0.12,
-        swipeMinimumDisplacement: Double = 0.16,
-        swipeHistorySeconds: TimeInterval = 0.36,
-        swipeMinimumDuration: TimeInterval = 0.10,
-        swipeCooldownSeconds: TimeInterval = 0.65,
+        pinchVerticalIntentThreshold: Double = 0.025,
+        pinchHorizontalIntentThreshold: Double = 0.04,
+        pinchVerticalDominance: Double = 1.35,
+        horizontalDominance: Double = 1.40,
+        navigationCenterGuard: Double = 0.07,
+        navigationCenterX: Double = 0.50,
+        swipeMinimumDisplacement: Double = 0.14,
         minimumConfidence: Double = 0.55,
         cannedGestureMinimumConfidence: Double = 0.70,
         victoryActivationSeconds: TimeInterval = 0.22,
-        backMinimumDisplacement: Double = 0.14,
-        backMovementWindowSeconds: TimeInterval = 0.60,
-        backCooldownSeconds: TimeInterval = 0.85,
         gestureReleaseSeconds: TimeInterval = 0.15,
         thumbsUpActivationSeconds: TimeInterval = 0.30
     ) {
@@ -58,16 +70,16 @@ public struct GestureConfiguration: Equatable, Sendable {
         self.pinchActivationSeconds = pinchActivationSeconds
         self.minimumPinchStep = minimumPinchStep
         self.maximumPinchStep = maximumPinchStep
+        self.pinchVerticalIntentThreshold = pinchVerticalIntentThreshold
+        self.pinchHorizontalIntentThreshold = pinchHorizontalIntentThreshold
+        self.pinchVerticalDominance = pinchVerticalDominance
+        self.horizontalDominance = horizontalDominance
+        self.navigationCenterGuard = navigationCenterGuard
+        self.navigationCenterX = navigationCenterX
         self.swipeMinimumDisplacement = swipeMinimumDisplacement
-        self.swipeHistorySeconds = swipeHistorySeconds
-        self.swipeMinimumDuration = swipeMinimumDuration
-        self.swipeCooldownSeconds = swipeCooldownSeconds
         self.minimumConfidence = minimumConfidence
         self.cannedGestureMinimumConfidence = cannedGestureMinimumConfidence
         self.victoryActivationSeconds = victoryActivationSeconds
-        self.backMinimumDisplacement = backMinimumDisplacement
-        self.backMovementWindowSeconds = backMovementWindowSeconds
-        self.backCooldownSeconds = backCooldownSeconds
         self.gestureReleaseSeconds = gestureReleaseSeconds
         self.thumbsUpActivationSeconds = thumbsUpActivationSeconds
     }
@@ -84,20 +96,14 @@ public final class GestureEngine {
 
     private var pinchCandidateSince: TimeInterval?
     private var pinchActive = false
+    private var pinchMode: PinchInteractionMode = .inactive
+    private var pinchStartPoint: NormalizedPoint?
     private var lastPinchPoint: NormalizedPoint?
-    private var swipeSamples: [SwipeSample] = []
-    private var swipeArmed = true
-    private var swipeCooldownUntil: TimeInterval = 0
-    private var swipeReleaseObserved = false
-    private var swipeStableSince: TimeInterval?
-    private var lastRearmPalm: SwipeSample?
+    private var pinchNavigationTriggered = false
 
     private var victoryCandidateSince: TimeInterval?
-    private var backStartPalm: SwipeSample?
-    private var backDeadline: TimeInterval = 0
-    private var backNeedsRelease = false
-    private var backReleaseObserved = false
-    private var backCooldownUntil: TimeInterval = 0
+    private var victoryStartPalm: SwipeSample?
+    private var victoryNeedsRelease = false
     private var victoryExitSince: TimeInterval?
 
     private var thumbsUpCandidateSince: TimeInterval?
@@ -113,7 +119,7 @@ public final class GestureEngine {
             return loseHand(at: now)
         }
 
-        let pinchPoint = pinchCenter(pose)
+        let pinchPoint = pinchCenter(pose).map(screenPoint)
         var output: [GestureOutput] = []
 
         if pinchActive {
@@ -124,17 +130,9 @@ public final class GestureEngine {
             if !remainsStrictOK || pinchPoint == nil {
                 endPinch(into: &output)
             } else if let point = pinchPoint {
-                let previous = lastPinchPoint ?? point
-                lastPinchPoint = point
-                let deltaY = point.y - previous.y
-                let magnitude = abs(deltaY)
-                if magnitude >= configuration.minimumPinchStep,
-                   magnitude <= configuration.maximumPinchStep {
-                    output.append(.pinchScroll(deltaY))
-                }
-                resetBackCompletely()
+                output.append(contentsOf: updateActivePinch(point: point))
+                observeVictoryRelease(at: now)
                 output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
-                resetSwipe(released: true, at: now)
                 return output
             }
         }
@@ -145,37 +143,39 @@ public final class GestureEngine {
             pinchCandidateSince = pinchCandidateSince ?? now
             if now - (pinchCandidateSince ?? now) >= configuration.pinchActivationSeconds {
                 pinchActive = true
+                pinchMode = .undecided
+                pinchStartPoint = point
                 lastPinchPoint = point
+                pinchNavigationTriggered = false
                 output.append(.pinchBegan)
             }
-            resetBackCompletely()
+            observeVictoryRelease(at: now)
             output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
-            resetSwipe(released: true, at: now)
             return output
         }
 
         pinchCandidateSince = nil
+        pinchMode = .inactive
+        pinchStartPoint = nil
         lastPinchPoint = nil
+        pinchNavigationTriggered = false
 
         let cannedGestureIsConfident =
             pose.gestureConfidence >= configuration.cannedGestureMinimumConfidence
         if cannedGestureIsConfident, pose.recognizedGesture == .victory {
             output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
-            resetSwipe(released: true, at: now)
-            output.append(contentsOf: updateBack(pose: pose, at: now))
+            output.append(contentsOf: updateVictoryPage(pose: pose, at: now))
             return output
         }
 
         observeVictoryRelease(at: now)
 
         if cannedGestureIsConfident, pose.recognizedGesture == .thumbUp {
-            resetSwipe(released: true, at: now)
             output.append(contentsOf: updateThumbsUp(isDetected: true, at: now))
             return output
         }
 
         output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
-        output.append(contentsOf: updateSwipe(pose: pose, at: now))
         return output
     }
 
@@ -185,22 +185,23 @@ public final class GestureEngine {
         endPinch(into: &output)
         if thumbsUpActive { output.append(.thumbsUpEnded) }
         pinchCandidateSince = nil
+        pinchMode = .inactive
+        pinchStartPoint = nil
         lastPinchPoint = nil
+        pinchNavigationTriggered = false
         thumbsUpCandidateSince = nil
         thumbsUpActive = false
         thumbsUpAbsentSince = nil
-        resetBackCompletely()
-        swipeSamples = []
-        swipeArmed = true
-        swipeCooldownUntil = 0
-        swipeReleaseObserved = false
-        swipeStableSince = nil
-        lastRearmPalm = nil
+        resetVictoryCompletely()
         return output
     }
 
     public func isPinching() -> Bool {
         pinchActive
+    }
+
+    public func pinchInteractionMode() -> PinchInteractionMode {
+        pinchMode
     }
 
     public func isThumbsUpRecognized() -> Bool {
@@ -215,9 +216,11 @@ public final class GestureEngine {
         thumbsUpCandidateSince = nil
         thumbsUpAbsentSince = nil
         pinchCandidateSince = nil
+        pinchMode = .inactive
+        pinchStartPoint = nil
         lastPinchPoint = nil
-        resetBackCompletely()
-        resetSwipe(released: true, at: now)
+        pinchNavigationTriggered = false
+        observeVictoryRelease(at: now)
         return output
     }
 
@@ -225,77 +228,124 @@ public final class GestureEngine {
         if pinchActive { output.append(.pinchEnded) }
         pinchActive = false
         pinchCandidateSince = nil
+        pinchMode = .inactive
+        pinchStartPoint = nil
         lastPinchPoint = nil
+        pinchNavigationTriggered = false
     }
 
-    private func updateBack(pose: HandPose, at now: TimeInterval) -> [GestureOutput] {
-        if backNeedsRelease {
-            guard backReleaseObserved, now >= backCooldownUntil else { return [] }
-            backNeedsRelease = false
-            backReleaseObserved = false
-            backCooldownUntil = 0
+    private func updateActivePinch(point: NormalizedPoint) -> [GestureOutput] {
+        guard let start = pinchStartPoint else {
+            pinchStartPoint = point
+            lastPinchPoint = point
+            return []
         }
+
+        let totalDeltaX = point.x - start.x
+        let totalDeltaY = point.y - start.y
+        if pinchMode == .undecided {
+            if abs(totalDeltaY) >= configuration.pinchVerticalIntentThreshold,
+               abs(totalDeltaY) >= abs(totalDeltaX) * configuration.pinchVerticalDominance {
+                pinchMode = .scrolling
+            } else if abs(totalDeltaX) >= configuration.pinchHorizontalIntentThreshold,
+                      abs(totalDeltaX) >= abs(totalDeltaY) * configuration.horizontalDominance {
+                pinchMode = .navigation(navigationDirection(forStartX: start.x))
+            }
+        }
+
+        switch pinchMode {
+        case .inactive, .undecided:
+            lastPinchPoint = point
+            return []
+        case .scrolling:
+            let previous = lastPinchPoint ?? start
+            lastPinchPoint = point
+            let deltaY = point.y - previous.y
+            let magnitude = abs(deltaY)
+            guard magnitude >= configuration.minimumPinchStep,
+                  magnitude <= configuration.maximumPinchStep else { return [] }
+            return [.pinchScroll(deltaY)]
+        case let .navigation(direction):
+            lastPinchPoint = point
+            guard let direction,
+                  !pinchNavigationTriggered,
+                  crossedCenter(from: start, to: point, direction: direction) else { return [] }
+            pinchNavigationTriggered = true
+            return [.navigate(direction)]
+        }
+    }
+
+    private func updateVictoryPage(pose: HandPose, at now: TimeInterval) -> [GestureOutput] {
+        guard !victoryNeedsRelease else { return [] }
         victoryExitSince = nil
-        guard let palm = palmCenter(pose) else { return [] }
-
-        let mirrored = SwipeSample(x: 1 - palm.x, y: palm.y, time: now)
         victoryCandidateSince = victoryCandidateSince ?? now
-        guard now - (victoryCandidateSince ?? now) >= configuration.victoryActivationSeconds else {
+        guard now - (victoryCandidateSince ?? now) >= configuration.victoryActivationSeconds,
+              let palm = palmCenter(pose) else { return [] }
+
+        let current = SwipeSample(x: 1 - palm.x, y: palm.y, time: now)
+        if victoryStartPalm == nil {
+            victoryStartPalm = current
             return []
         }
+        guard let start = victoryStartPalm,
+              let direction = navigationDirection(forStartX: start.x),
+              crossedCenter(
+                from: NormalizedPoint(x: start.x, y: start.y),
+                to: NormalizedPoint(x: current.x, y: current.y),
+                direction: direction
+              ) else { return [] }
 
-        if backStartPalm == nil {
-            backStartPalm = mirrored
-            backDeadline = now + configuration.backMovementWindowSeconds
-            return []
-        }
-
-        if now > backDeadline {
-            victoryCandidateSince = now
-            backStartPalm = nil
-            return []
-        }
-
-        guard let start = backStartPalm else { return [] }
-        let deltaX = mirrored.x - start.x
-        let deltaY = mirrored.y - start.y
-        guard deltaX <= -configuration.backMinimumDisplacement,
-              abs(deltaX) >= abs(deltaY) * 1.4 else { return [] }
-
-        backNeedsRelease = true
-        backReleaseObserved = false
-        backCooldownUntil = now + configuration.backCooldownSeconds
+        victoryNeedsRelease = true
         victoryCandidateSince = nil
-        backStartPalm = nil
-        backDeadline = 0
-        return [.back]
+        victoryStartPalm = nil
+        return [.page(direction == .back ? .down : .up)]
     }
 
     private func observeVictoryRelease(at now: TimeInterval) {
         victoryCandidateSince = nil
-        backStartPalm = nil
-        backDeadline = 0
-        guard backNeedsRelease else { return }
+        victoryStartPalm = nil
+        guard victoryNeedsRelease else { return }
         victoryExitSince = victoryExitSince ?? now
         if now - (victoryExitSince ?? now) >= configuration.gestureReleaseSeconds {
-            backReleaseObserved = true
-        }
-        if backReleaseObserved, now >= backCooldownUntil {
-            backNeedsRelease = false
-            backReleaseObserved = false
-            backCooldownUntil = 0
+            victoryNeedsRelease = false
             victoryExitSince = nil
         }
     }
 
-    private func resetBackCompletely() {
+    private func resetVictoryCompletely() {
         victoryCandidateSince = nil
-        backStartPalm = nil
-        backDeadline = 0
-        backNeedsRelease = false
-        backReleaseObserved = false
-        backCooldownUntil = 0
+        victoryStartPalm = nil
+        victoryNeedsRelease = false
         victoryExitSince = nil
+    }
+
+    private func navigationDirection(forStartX x: Double) -> NavigationDirection? {
+        let center = configuration.navigationCenterX
+        if x <= center - configuration.navigationCenterGuard { return .back }
+        if x >= center + configuration.navigationCenterGuard { return .forward }
+        return nil
+    }
+
+    private func crossedCenter(
+        from start: NormalizedPoint,
+        to current: NormalizedPoint,
+        direction: NavigationDirection
+    ) -> Bool {
+        let deltaX = current.x - start.x
+        let deltaY = current.y - start.y
+        let minimumDisplacement = max(0.14, configuration.swipeMinimumDisplacement)
+        guard abs(deltaX) >= minimumDisplacement,
+              abs(deltaX) >= abs(deltaY) * configuration.horizontalDominance else { return false }
+        switch direction {
+        case .back:
+            return deltaX > 0 && current.x >= configuration.navigationCenterX
+        case .forward:
+            return deltaX < 0 && current.x <= configuration.navigationCenterX
+        }
+    }
+
+    private func screenPoint(_ point: NormalizedPoint) -> NormalizedPoint {
+        NormalizedPoint(x: 1 - point.x, y: point.y, confidence: point.confidence)
     }
 
     private func updateThumbsUp(isDetected: Bool, at now: TimeInterval) -> [GestureOutput] {
@@ -324,74 +374,4 @@ public final class GestureEngine {
         return [.thumbsUpEnded]
     }
 
-    private func updateSwipe(pose: HandPose, at now: TimeInterval) -> [GestureOutput] {
-        guard isOpenPalm(pose), let palm = palmCenter(pose) else {
-            resetSwipe(released: true, at: now)
-            return []
-        }
-
-        if !swipeArmed {
-            if swipeReleaseObserved && now >= swipeCooldownUntil {
-                rearm(with: palm, at: now)
-            } else {
-                let mirrored = SwipeSample(x: 1 - palm.x, y: palm.y, time: now)
-                let movement = lastRearmPalm.map { hypot(mirrored.x - $0.x, mirrored.y - $0.y) } ?? 0
-                if lastRearmPalm == nil || movement > 0.018 {
-                    swipeStableSince = now
-                } else if swipeStableSince == nil {
-                    swipeStableSince = now
-                }
-                lastRearmPalm = mirrored
-                if let stableSince = swipeStableSince,
-                   now - stableSince >= 0.18,
-                   now >= swipeCooldownUntil {
-                    rearm(with: palm, at: now)
-                } else {
-                    return []
-                }
-            }
-        }
-
-        swipeSamples.append(SwipeSample(x: 1 - palm.x, y: palm.y, time: now))
-        swipeSamples.removeAll { now - $0.time > configuration.swipeHistorySeconds }
-        guard let first = swipeSamples.first else { return [] }
-        let duration = now - first.time
-        guard duration >= configuration.swipeMinimumDuration else { return [] }
-
-        let current = swipeSamples[swipeSamples.count - 1]
-        let deltaX = current.x - first.x
-        let deltaY = current.y - first.y
-        guard abs(deltaX) >= configuration.swipeMinimumDisplacement,
-              abs(deltaX) >= abs(deltaY) * 1.4 else { return [] }
-
-        swipeArmed = false
-        swipeReleaseObserved = false
-        swipeCooldownUntil = now + configuration.swipeCooldownSeconds
-        swipeSamples = []
-        swipeStableSince = nil
-        lastRearmPalm = SwipeSample(x: current.x, y: current.y, time: now)
-        return [.page(deltaX < 0 ? .up : .down)]
-    }
-
-    private func resetSwipe(released: Bool, at now: TimeInterval) {
-        swipeSamples = []
-        if !swipeArmed && released {
-            swipeReleaseObserved = true
-            if now >= swipeCooldownUntil {
-                swipeArmed = true
-                swipeReleaseObserved = false
-                swipeStableSince = nil
-                lastRearmPalm = nil
-            }
-        }
-    }
-
-    private func rearm(with palm: NormalizedPoint, at now: TimeInterval) {
-        swipeArmed = true
-        swipeReleaseObserved = false
-        swipeCooldownUntil = 0
-        swipeStableSince = nil
-        lastRearmPalm = nil
-        swipeSamples = [SwipeSample(x: 1 - palm.x, y: palm.y, time: now)]
-    }
 }

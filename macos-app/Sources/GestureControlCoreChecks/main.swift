@@ -16,7 +16,9 @@ private func makePose(
     palmX: Double = 0.5,
     thumbX: Double = 0.30,
     indexX: Double = 0.46,
-    pinchY: Double = 0.50
+    pinchY: Double = 0.50,
+    recognizedGesture: RecognizedGesture = .none,
+    gestureConfidence: Double = 0
 ) -> HandPose {
     let points: [HandJoint: NormalizedPoint] = [
         .wrist: .init(x: palmX, y: 0.20),
@@ -41,14 +43,37 @@ private func makePose(
         .littleDIP: .init(x: palmX + 0.108, y: 0.61),
         .littleTip: .init(x: palmX + 0.11, y: 0.70),
     ]
-    return HandPose(points: points, confidence: 0.95)
+    return HandPose(
+        points: points,
+        confidence: 0.95,
+        recognizedGesture: recognizedGesture,
+        gestureConfidence: gestureConfidence
+    )
+}
+
+private func makePinchPose(screenX: Double, y: Double = 0.50) -> HandPose {
+    let rawX = 1 - screenX
+    return makePose(
+        palmX: rawX,
+        thumbX: rawX - 0.01,
+        indexX: rawX + 0.01,
+        pinchY: y
+    )
+}
+
+private func makeVictoryPose(screenX: Double) -> HandPose {
+    makePose(
+        palmX: 1 - screenX,
+        recognizedGesture: .victory,
+        gestureConfidence: 0.90
+    )
 }
 
 do {
     let engine = GestureEngine()
-    check(engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0).isEmpty, "捏合需要稳定时间")
-    check(engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0.09) == [.pinchBegan], "稳定捏合开始")
-    let scroll = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51, pinchY: 0.56), at: 0.12)
+    check(engine.update(pose: makePinchPose(screenX: 0.50), at: 0).isEmpty, "捏合需要稳定时间")
+    check(engine.update(pose: makePinchPose(screenX: 0.50), at: 0.09) == [.pinchBegan], "稳定捏合开始")
+    let scroll = engine.update(pose: makePinchPose(screenX: 0.50, y: 0.56), at: 0.12)
     if case let .pinchScroll(delta)? = scroll.first {
         check(abs(delta - 0.06) < 0.000_001, "捏合上下移动输出连续滚动")
     } else {
@@ -59,38 +84,56 @@ do {
 
 do {
     let engine = GestureEngine()
-    _ = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0)
-    _ = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0.09)
+    _ = engine.update(pose: makePinchPose(screenX: 0.50), at: 0)
+    _ = engine.update(pose: makePinchPose(screenX: 0.50), at: 0.09)
     check(engine.update(pose: makePose(thumbX: 0.40, indexX: 0.60), at: 0.10) == [.pinchEnded], "松开立即停止捏合")
 }
 
 do {
     let engine = GestureEngine()
-    _ = engine.update(pose: makePose(palmX: 0.65), at: 0)
-    check(engine.update(pose: makePose(palmX: 0.45), at: 0.14) == [.page(.down)], "物理右挥映射下翻")
+    _ = engine.update(pose: makePinchPose(screenX: 0.30), at: 0)
+    _ = engine.update(pose: makePinchPose(screenX: 0.30), at: 0.09)
+    _ = engine.update(pose: makePinchPose(screenX: 0.38), at: 0.12)
+    check(
+        engine.update(pose: makePinchPose(screenX: 0.52), at: 0.20) == [.navigate(.back)],
+        "捏合向右跨中线返回"
+    )
 }
 
 do {
     let engine = GestureEngine()
-    _ = engine.update(pose: makePose(palmX: 0.35), at: 0)
-    check(engine.update(pose: makePose(palmX: 0.55), at: 0.14) == [.page(.up)], "物理左挥映射上翻")
+    _ = engine.update(pose: makePinchPose(screenX: 0.70), at: 0)
+    _ = engine.update(pose: makePinchPose(screenX: 0.70), at: 0.09)
+    _ = engine.update(pose: makePinchPose(screenX: 0.62), at: 0.12)
+    check(
+        engine.update(pose: makePinchPose(screenX: 0.48), at: 0.20) == [.navigate(.forward)],
+        "捏合向左跨中线前进"
+    )
 }
 
 do {
     let engine = GestureEngine()
-    _ = engine.update(pose: makePose(palmX: 0.65), at: 0)
-    _ = engine.update(pose: makePose(palmX: 0.45), at: 0.14)
-    _ = engine.update(pose: makePose(palmX: 0.45), at: 0.50)
-    _ = engine.update(pose: makePose(palmX: 0.45), at: 0.84)
-    check(engine.update(pose: makePose(palmX: 0.65), at: 0.98) == [.page(.up)], "稳定手掌在冷却后重新激活")
+    let start = makeVictoryPose(screenX: 0.30)
+    _ = engine.update(pose: start, at: 0)
+    _ = engine.update(pose: start, at: 0.23)
+    check(engine.update(pose: makeVictoryPose(screenX: 0.52), at: 0.40) == [.page(.down)], "V 右挥映射下翻")
 }
 
 do {
     let engine = GestureEngine()
-    _ = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0)
-    _ = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0.09)
+    let start = makeVictoryPose(screenX: 0.70)
+    _ = engine.update(pose: start, at: 0)
+    _ = engine.update(pose: start, at: 0.23)
+    check(engine.update(pose: makeVictoryPose(screenX: 0.48), at: 0.40) == [.page(.up)], "V 左挥映射上翻")
+    check(engine.update(pose: makePose(palmX: 0.20), at: 0.60).isEmpty, "张开手掌不再翻页")
+}
+
+do {
+    let engine = GestureEngine()
+    _ = engine.update(pose: makePinchPose(screenX: 0.50), at: 0)
+    _ = engine.update(pose: makePinchPose(screenX: 0.50), at: 0.09)
     check(engine.cancelActiveGesture() == [.pinchEnded], "切换应用取消当前捏合")
-    check(engine.update(pose: makePose(palmX: 0.40), at: 0.10).isEmpty, "取消后清空挥手轨迹")
+    check(engine.update(pose: makePose(palmX: 0.40), at: 0.10).isEmpty, "取消后清空方向锁")
 }
 
 if !failures.isEmpty {

@@ -1,0 +1,24 @@
+{
+  "version": "0.7.0",
+  "date": "2026-07-15",
+  "tag": "macos-v0.7.0",
+  "summary": "Refactor navigation around direction-locked strict OK pinches and cross-center Victory paging.",
+  "scope": [
+    "Lock each strict OK pinch to vertical scrolling or horizontal browser navigation until release.",
+    "Map left-to-right cross-center pinches to Back and right-to-left pinches to Forward in supported browsers.",
+    "Move page-down and page-up actions to cross-center Victory gestures.",
+    "Reserve open palm as a status-only gesture and clear all direction state on lifecycle changes."
+  ],
+  "validation": [
+    "swift test passed 18 tests covering direction locks, Back, Forward, Victory paging and open-palm inactivity",
+    "GestureControlCoreChecks passed 12 checks",
+    "TypeScript typecheck and 32 Web regression tests passed",
+    "Swift warnings-as-errors build passed",
+    "Release app build and strict codesign verification passed",
+    "Installed bundle reports version 0.7.0 build 10 and MediaPipe GPU reached ready state"
+  ],
+  "notes": [
+    "Browser Back and Forward remain restricted to Chrome, Safari, Edge and Quark.",
+    "macos-v0.6.0 remains the rollback point before this navigation refactor."
+  ]
+}

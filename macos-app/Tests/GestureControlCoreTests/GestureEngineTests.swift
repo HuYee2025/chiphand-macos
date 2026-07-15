@@ -42,6 +42,24 @@ final class GestureEngineTests: XCTestCase {
         )
     }
 
+    private func makePinchPose(screenX: Double, y: Double = 0.50) -> HandPose {
+        let rawX = 1 - screenX
+        return makePose(
+            palmX: rawX,
+            thumbX: rawX - 0.01,
+            indexX: rawX + 0.01,
+            pinchY: y
+        )
+    }
+
+    private func makeVictoryPose(screenX: Double) -> HandPose {
+        makePose(
+            palmX: 1 - screenX,
+            recognizedGesture: .victory,
+            gestureConfidence: 0.90
+        )
+    }
+
     func testControlHandAcceptsOnlySelectedHand() {
         let rightPose = makePose(handedness: .right)
         let leftPose = makePose(handedness: .left)
@@ -60,27 +78,30 @@ final class GestureEngineTests: XCTestCase {
     func testPinchRequiresStabilityAndEndsWhenHandIsLost() {
         let engine = GestureEngine()
 
-        XCTAssertTrue(engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: makePinchPose(screenX: 0.50), at: 0).isEmpty)
         XCTAssertEqual(
-            engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0.09),
+            engine.update(pose: makePinchPose(screenX: 0.50), at: 0.09),
             [.pinchBegan]
         )
+        XCTAssertEqual(engine.pinchInteractionMode(), .undecided)
 
         let scroll = engine.update(
-            pose: makePose(thumbX: 0.49, indexX: 0.51, pinchY: 0.56),
+            pose: makePinchPose(screenX: 0.50, y: 0.56),
             at: 0.12
         )
         guard case let .pinchScroll(delta)? = scroll.first else {
             return XCTFail("稳定捏合移动应输出连续滚动")
         }
         XCTAssertEqual(delta, 0.06, accuracy: 0.000_001)
+        XCTAssertEqual(engine.pinchInteractionMode(), .scrolling)
         XCTAssertEqual(engine.update(pose: nil, at: 0.13), [.pinchEnded])
+        XCTAssertEqual(engine.pinchInteractionMode(), .inactive)
     }
 
     func testOpeningPinchEndsImmediately() {
         let engine = GestureEngine()
-        _ = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0)
-        _ = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0.09)
+        _ = engine.update(pose: makePinchPose(screenX: 0.50), at: 0)
+        _ = engine.update(pose: makePinchPose(screenX: 0.50), at: 0.09)
 
         XCTAssertEqual(
             engine.update(pose: makePose(thumbX: 0.40, indexX: 0.60), at: 0.10),
@@ -88,24 +109,67 @@ final class GestureEngineTests: XCTestCase {
         )
     }
 
-    func testPhysicalRightSwipePagesDown() {
+    func testVerticalPinchLockIgnoresHorizontalDrift() {
         let engine = GestureEngine()
-        _ = engine.update(pose: makePose(palmX: 0.65), at: 0)
+        _ = engine.update(pose: makePinchPose(screenX: 0.30), at: 0)
+        _ = engine.update(pose: makePinchPose(screenX: 0.30), at: 0.09)
+        _ = engine.update(pose: makePinchPose(screenX: 0.30, y: 0.54), at: 0.12)
 
-        XCTAssertEqual(engine.update(pose: makePose(palmX: 0.45), at: 0.14), [.page(.down)])
+        let output = engine.update(pose: makePinchPose(screenX: 0.55, y: 0.55), at: 0.20)
+        XCTAssertEqual(engine.pinchInteractionMode(), .scrolling)
+        XCTAssertFalse(output.contains(.navigate(.back)))
     }
 
-    func testPhysicalLeftSwipePagesUp() {
+    func testPinchLeftToRightAcrossCenterNavigatesBackOnce() {
         let engine = GestureEngine()
-        _ = engine.update(pose: makePose(palmX: 0.35), at: 0)
+        _ = engine.update(pose: makePinchPose(screenX: 0.30), at: 0)
+        XCTAssertEqual(engine.update(pose: makePinchPose(screenX: 0.30), at: 0.09), [.pinchBegan])
+        XCTAssertTrue(engine.update(pose: makePinchPose(screenX: 0.38), at: 0.12).isEmpty)
+        XCTAssertEqual(engine.pinchInteractionMode(), .navigation(.back))
+        XCTAssertTrue(
+            engine.update(pose: makePinchPose(screenX: 0.40, y: 0.66), at: 0.16).isEmpty
+        )
+        XCTAssertEqual(engine.pinchInteractionMode(), .navigation(.back))
+        XCTAssertEqual(
+            engine.update(pose: makePinchPose(screenX: 0.55), at: 0.20),
+            [.navigate(.back)]
+        )
+        XCTAssertTrue(engine.update(pose: makePinchPose(screenX: 0.62), at: 0.24).isEmpty)
+    }
 
-        XCTAssertEqual(engine.update(pose: makePose(palmX: 0.55), at: 0.14), [.page(.up)])
+    func testPinchRightToLeftAcrossCenterNavigatesForwardOnce() {
+        let engine = GestureEngine()
+        _ = engine.update(pose: makePinchPose(screenX: 0.70), at: 0)
+        _ = engine.update(pose: makePinchPose(screenX: 0.70), at: 0.09)
+        _ = engine.update(pose: makePinchPose(screenX: 0.62), at: 0.12)
+        XCTAssertEqual(engine.pinchInteractionMode(), .navigation(.forward))
+        XCTAssertEqual(
+            engine.update(pose: makePinchPose(screenX: 0.48), at: 0.20),
+            [.navigate(.forward)]
+        )
+        XCTAssertTrue(engine.update(pose: makePinchPose(screenX: 0.38), at: 0.24).isEmpty)
+    }
+
+    func testPinchNearCenterAndDiagonalMovementDoNotNavigateOrScroll() {
+        let nearCenter = GestureEngine()
+        _ = nearCenter.update(pose: makePinchPose(screenX: 0.48), at: 0)
+        _ = nearCenter.update(pose: makePinchPose(screenX: 0.48), at: 0.09)
+        XCTAssertTrue(nearCenter.update(pose: makePinchPose(screenX: 0.68), at: 0.20).isEmpty)
+        XCTAssertEqual(nearCenter.pinchInteractionMode(), .navigation(nil))
+
+        let diagonal = GestureEngine()
+        _ = diagonal.update(pose: makePinchPose(screenX: 0.30), at: 0)
+        _ = diagonal.update(pose: makePinchPose(screenX: 0.30), at: 0.09)
+        XCTAssertTrue(
+            diagonal.update(pose: makePinchPose(screenX: 0.48, y: 0.70), at: 0.20).isEmpty
+        )
+        XCTAssertEqual(diagonal.pinchInteractionMode(), .undecided)
     }
 
     func testCancellationEndsPinchAndClearsSwipeTrail() {
         let engine = GestureEngine()
-        _ = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0)
-        _ = engine.update(pose: makePose(thumbX: 0.49, indexX: 0.51), at: 0.09)
+        _ = engine.update(pose: makePinchPose(screenX: 0.50), at: 0)
+        _ = engine.update(pose: makePinchPose(screenX: 0.50), at: 0.09)
 
         XCTAssertEqual(engine.cancelActiveGesture(), [.pinchEnded])
         XCTAssertTrue(engine.update(pose: makePose(palmX: 0.40), at: 0.10).isEmpty)
@@ -163,59 +227,51 @@ final class GestureEngineTests: XCTestCase {
         XCTAssertFalse(engine.isPinching())
     }
 
-    func testVictoryMustStabilizeThenMovePhysicalLeftToGoBack() {
+    func testVictoryLeftToRightAcrossCenterPagesDown() {
         let engine = GestureEngine()
-        let victoryAtStart = makePose(
-            palmX: 0.35,
-            recognizedGesture: .victory,
-            gestureConfidence: 0.90
-        )
-        XCTAssertTrue(engine.update(pose: victoryAtStart, at: 0).isEmpty)
-        XCTAssertTrue(engine.update(pose: victoryAtStart, at: 0.23).isEmpty)
-
-        let victoryMovedLeft = makePose(
-            palmX: 0.50,
-            recognizedGesture: .victory,
-            gestureConfidence: 0.90
-        )
-        XCTAssertEqual(engine.update(pose: victoryMovedLeft, at: 0.40), [.back])
-        XCTAssertTrue(engine.update(pose: victoryMovedLeft, at: 0.50).isEmpty)
+        let start = makeVictoryPose(screenX: 0.30)
+        XCTAssertTrue(engine.update(pose: start, at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: start, at: 0.23).isEmpty)
+        XCTAssertEqual(engine.update(pose: makeVictoryPose(screenX: 0.52), at: 0.40), [.page(.down)])
+        XCTAssertTrue(engine.update(pose: makeVictoryPose(screenX: 0.62), at: 0.50).isEmpty)
     }
 
-    func testStaticVictoryDoesNotGoBack() {
+    func testVictoryRightToLeftAcrossCenterPagesUp() {
         let engine = GestureEngine()
-        let victory = makePose(
-            palmX: 0.45,
-            recognizedGesture: .victory,
-            gestureConfidence: 0.90
-        )
+        let start = makeVictoryPose(screenX: 0.70)
+        XCTAssertTrue(engine.update(pose: start, at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: start, at: 0.23).isEmpty)
+        XCTAssertEqual(engine.update(pose: makeVictoryPose(screenX: 0.48), at: 0.40), [.page(.up)])
+    }
+
+    func testStaticAndNearCenterVictoryDoNotPage() {
+        let engine = GestureEngine()
+        let victory = makeVictoryPose(screenX: 0.45)
         XCTAssertTrue(engine.update(pose: victory, at: 0).isEmpty)
         XCTAssertTrue(engine.update(pose: victory, at: 0.23).isEmpty)
-        XCTAssertTrue(engine.update(pose: victory, at: 0.50).isEmpty)
-        XCTAssertTrue(engine.update(pose: victory, at: 0.90).isEmpty)
+        XCTAssertTrue(engine.update(pose: makeVictoryPose(screenX: 0.65), at: 0.50).isEmpty)
     }
 
-    func testBackRequiresReleaseAndCooldownBeforeItCanRepeat() {
+    func testVictoryRequiresReleaseBeforeItCanRepeat() {
         let engine = GestureEngine()
-        let start = makePose(
-            palmX: 0.35,
-            recognizedGesture: .victory,
-            gestureConfidence: 0.90
-        )
-        let moved = makePose(
-            palmX: 0.50,
-            recognizedGesture: .victory,
-            gestureConfidence: 0.90
-        )
+        let start = makeVictoryPose(screenX: 0.30)
+        let moved = makeVictoryPose(screenX: 0.52)
         _ = engine.update(pose: start, at: 0)
         _ = engine.update(pose: start, at: 0.23)
-        XCTAssertEqual(engine.update(pose: moved, at: 0.40), [.back])
+        XCTAssertEqual(engine.update(pose: moved, at: 0.40), [.page(.down)])
+        XCTAssertTrue(engine.update(pose: moved, at: 0.48).isEmpty)
 
         XCTAssertTrue(engine.update(pose: makePose(), at: 0.50).isEmpty)
         XCTAssertTrue(engine.update(pose: makePose(), at: 0.66).isEmpty)
-        XCTAssertTrue(engine.update(pose: start, at: 1.26).isEmpty)
-        XCTAssertTrue(engine.update(pose: start, at: 1.49).isEmpty)
-        XCTAssertEqual(engine.update(pose: moved, at: 1.66), [.back])
+        XCTAssertTrue(engine.update(pose: start, at: 0.70).isEmpty)
+        XCTAssertTrue(engine.update(pose: start, at: 0.93).isEmpty)
+        XCTAssertEqual(engine.update(pose: moved, at: 1.10), [.page(.down)])
+    }
+
+    func testOpenPalmNeverPages() {
+        let engine = GestureEngine()
+        XCTAssertTrue(engine.update(pose: makePose(palmX: 0.70), at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: makePose(palmX: 0.30), at: 0.20).isEmpty)
     }
 
     func testThumbsUpIsStatusOnlyAndUsesStableActivation() {

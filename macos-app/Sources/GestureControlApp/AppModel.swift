@@ -82,7 +82,7 @@ final class AppModel: ObservableObject {
     private var actionFeedback: (message: String, until: TimeInterval)?
     private var usingAppleVisionFallback = false
     private var recognitionDelegate = "MediaPipe"
-    private let backBrowserBundleIdentifiers: Set<String> = [
+    private let navigationBrowserBundleIdentifiers: Set<String> = [
         "com.google.Chrome",
         "com.apple.Safari",
         "com.microsoft.edgemac",
@@ -353,16 +353,24 @@ final class AppModel: ObservableObject {
             guard let target = eligibleFrontmostPID() else { return }
             emitter.emitPage(direction, to: target)
             actionFeedback = (
-                direction == .down ? "右挥 · 已下翻" : "左挥 · 已上翻",
+                direction == .down ? "V 右挥 · 已下翻" : "V 左挥 · 已上翻",
                 now + 0.8
             )
-        case .back:
-            guard browserBackTargetIsFrontmost() else {
-                actionFeedback = ("V 左挥 · 当前应用不支持返回", now + 0.9)
+        case let .navigate(direction):
+            guard browserNavigationTargetIsFrontmost() else {
+                actionFeedback = (
+                    direction == .back
+                        ? "捏合右滑 · 当前应用不支持返回"
+                        : "捏合左滑 · 当前应用不支持前进",
+                    now + 0.9
+                )
                 return
             }
-            navigationEmitter.emitBack()
-            actionFeedback = ("V 左挥 · 已返回上一页", now + 0.9)
+            navigationEmitter.emit(direction)
+            actionFeedback = (
+                direction == .back ? "已返回上一页" : "已前进下一页",
+                now + 0.9
+            )
         case .thumbsUpBegan:
             isThumbsUp = true
         case .thumbsUpEnded:
@@ -391,9 +399,20 @@ final class AppModel: ObservableObject {
         }
         let handPrefix = pose.handedness.map { handName($0) + " · " } ?? ""
         if isPinching {
-            handStatus = handPrefix + (pinchTargetPID == nil
-                ? "已捏合 · 前台应用不可控制"
-                : "已捏合 · 上下移动滚动")
+            switch gestureEngine.pinchInteractionMode() {
+            case .inactive, .undecided:
+                handStatus = handPrefix + "已捏合 · 上下滚动，左右跨中线导航"
+            case .scrolling:
+                handStatus = handPrefix + (pinchTargetPID == nil
+                    ? "已捏合 · 前台应用不可控制"
+                    : "已捏合 · 上下移动滚动")
+            case .navigation(.back):
+                handStatus = handPrefix + "继续向右跨中线返回"
+            case .navigation(.forward):
+                handStatus = handPrefix + "继续向左跨中线前进"
+            case .navigation(nil):
+                handStatus = handPrefix + "请松开后从屏幕一侧重新捏合"
+            }
             return
         }
         if isThumbsUp {
@@ -406,7 +425,7 @@ final class AppModel: ObservableObject {
             pinchThreshold: gestureEngine.configuration.pinchThreshold
         ) {
         case .openPalm:
-            handStatus = handPrefix + "张开手掌 · 左右挥动翻页"
+            handStatus = handPrefix + "张开手掌 · 暂未设置操作"
         case .fist:
             handStatus = handPrefix + "已握拳 · 不执行操作"
         case .pointing:
@@ -414,7 +433,7 @@ final class AppModel: ObservableObject {
         case .pinching:
             handStatus = handPrefix + "OK 手势·正在确认捏合…"
         case .victory:
-            handStatus = handPrefix + "V 手势·向左挥动返回"
+            handStatus = handPrefix + "V 手势 · 左右跨中线翻页"
         case .thumbsUp:
             handStatus = handPrefix + "👍 正在确认点赞手势…"
         case .other:
@@ -439,11 +458,11 @@ final class AppModel: ObservableObject {
         handedness == .right ? "右手" : "左手"
     }
 
-    private func browserBackTargetIsFrontmost() -> Bool {
+    private func browserNavigationTargetIsFrontmost() -> Bool {
         guard let application = NSWorkspace.shared.frontmostApplication,
               let bundleIdentifier = application.bundleIdentifier,
               application.bundleIdentifier != Bundle.main.bundleIdentifier else { return false }
-        return backBrowserBundleIdentifiers.contains(bundleIdentifier)
+        return navigationBrowserBundleIdentifiers.contains(bundleIdentifier)
     }
 
     private func eligibleFrontmostPID() -> pid_t? {
@@ -476,6 +495,9 @@ final class AppModel: ObservableObject {
         guard isRunning, !usingAppleVisionFallback else { return }
         logger.error("MediaPipe error: \(message, privacy: .public)")
         mediaPipeService.stop()
+        cancelCurrentGesture()
+        latestPose = nil
+        actionFeedback = nil
         usingAppleVisionFallback = true
         recognitionEngine = "Apple Vision 备用·新手势不可用"
         status = "MediaPipe 启动失败，已切换备用：\(message)"

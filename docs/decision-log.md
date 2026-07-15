@@ -25,6 +25,29 @@
 
 ## 当前决策
 
+## 2026-07-15 v0.7.0 捏合导航方向锁与 V 跨中线翻页
+
+背景：
+- 捏合横向移动若直接映射视频进度条，依赖网站结构且容易与垂直滚动冲突；张开手掌又是最常见姿态，不适合继续承担高误触风险动作。
+
+决策：
+- 严格 OK 捏合先进入方向未确定状态，再按水平/垂直主导比例锁定到滚动或导航，松开前不能切换。
+- 左侧捏合向右跨中线返回，右侧捏合向左跨中线前进；必须满足起点保护、14% 最小位移和真实跨中线，每次捏合只触发一次。
+- V 手势接管上下翻页，左向右跨中线下翻、右向左跨中线上翻；张开手掌只显示识别状态。
+- 返回/前进只允许 Chrome、Safari、Edge 和夸克，并在丢手、切换 App、暂停、切换控制手或重启识别器时清空状态。
+
+原因：
+- 一次手势只承担一个已锁定意图，能显著降低斜向漂移误判；跨中线动作也比按固定像素位移更容易理解和校准。
+
+影响：
+- 升级为 `0.7.0`（build 10）；`macos-v0.6.0` 保持为本轮修改前回滚点。
+
+相关文件：
+- `macos-app/Sources/GestureControlCore/GestureEngine.swift`
+- `macos-app/Sources/GestureControlApp/AppModel.swift`
+- `macos-app/Sources/GestureControlApp/SystemNavigationEmitter.swift`
+- `macos-app/Tests/GestureControlCoreTests/GestureEngineTests.swift`
+
 ## 2026-07-15 v0.6.0 指定控制手并严格过滤
 
 背景：
