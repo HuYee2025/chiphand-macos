@@ -3,7 +3,7 @@
 ## 当前阶段
 
 - 第 04 阶段：macOS 系统级手势控制原型。
-- 浏览器插件冻结在本地 `v1.0.1`；macOS 当前版本 `0.4.1`，`macos-v0.3.0` 为 ⭐ 重要稳定版。
+- 浏览器插件冻结在本地 `v1.0.1`；macOS 当前版本 `0.5.0`，`macos-v0.3.0` 为 ⭐ 重要稳定版。
 - 当前分支：`codex/macos-system-prototype`。
 
 ## 已完成
@@ -15,7 +15,7 @@
 - 捏合改为严格 OK 手势：拇指食指接触且中指、无名指、小指张开；握拳和两指偶然靠近不会启动滚动。
 - 新增 V 手势稳定后向左挥返回，仅允许 Chrome、Safari、Edge、夸克；新增竖拇指点赞识别与标记，但不执行真实点赞。
 - 识别窗口显示实时 FPS 与推理耗时，30 FPS 性能不足时自动降到 24 FPS。
-- 全屏 HUD 点击穿透；状态条高于 Dock 36px 且离屏幕底部至少 120px，摄像头校准窗口可选显示。
+- 全屏骨架 HUD 保持点击穿透；实时状态拆成不抢焦点的独立面板，可拖拽、左右吸附收起、点击/向内拖动展开，并保存位置与收起状态。
 - 系统滚动改为 `.cghidEventTap` 全局注入，事件位置设为目标前台窗口中心，修复 Chromium 可能忽略 `postToPid` 滚轮事件的问题。
 - App 改为正常 Dock 控制窗口并保留菜单栏入口，解决菜单栏项目被隐藏后启动即退出、退出后找不到入口的问题。
 - 已安装 `/Applications/GestureControl.app`；诊断实测 MediaPipe GPU ready，并实时返回“左手 · 已识别手掌姿态”。
@@ -30,22 +30,23 @@
 - Release `.app`、Info.plist、camera entitlement、ad-hoc codesign：通过。
 - v0.4.0 Gesture Recognizer 已在打包 App 中达到 MediaPipe GPU ready，摄像头、模型和 WKWebView 本机服务链路正常。
 - 最终 `0.4.0`（build 5）已安装并启动于 `/Applications/GestureControl.app`，ad-hoc 签名和内置手势模型校验通过。
-- `0.4.1`（build 6）为 ad-hoc 签名加入稳定 designated requirement；旧 GestureControl 辅助功能记录已单独重置，最终 App 已重新登记并等待用户打开一次新开关。
+- `0.4.1`（build 6）为 ad-hoc 签名加入稳定 designated requirement；旧 GestureControl 辅助功能记录已单独重置，摄像头与辅助功能已由 App 实际读取为“已允许”。
+- `0.5.0`（build 7）的 Swift 编译和 12 项 XCTest 通过；运行时窗口检查确认骨架与 `390×52` 状态条已分离，最终版已安装到 `/Applications/GestureControl.app`。
 
 ## 尚未验证
 
-- 系统设置中的新 GestureControl 开关当前为关闭；需要用户亲自打开一次，App 才能获得辅助功能权限。
-- 尚需用户实测四个浏览器的 V 左挥返回、严格 OK 捏合、点赞状态和底部状态条位置。
+- 尚需用户实测状态条拖动、左右吸附/收起/展开和重启后位置保留。
+- 尚需用户实测四个浏览器的 V 左挥返回、严格 OK 捏合和点赞状态。
 - 60 秒真实手掌下的平均推理耗时、有效 FPS 与两分钟静止误触率尚未记录。
 - 当前没有 Developer ID 正式签名、notarization 或自动更新。
 
 ## 下一步
 
-1. 在已经打开的“隐私与安全性 → 辅助功能”中打开新登记的 GestureControl 开关，然后回到 App 点“刷新权限”。
+1. 启动最终 `0.5.0` 安装版，拖动状态条到左、右边缘，验证收成圆点且仍能点击展开；重启后确认位置保留。
 2. 在 Chrome、Safari、Edge、夸克分别保持 V 手势 220ms 后向左挥，确认只返回一次；静止 V 不返回。
 3. 验证握拳不滚动，只有标准 OK 手势捏住并上下移动才滚动。
-4. 验证竖拇指只显示“点赞手势已识别（测试模式）”和绿色标记，不改变网页点赞。
-5. 检查状态条位于 Dock 上方，并记录 60 秒 FPS/推理耗时和两分钟误触率。
+4. 验证竖拇指只显示点赞反馈，不改变网页点赞。
+5. 记录 60 秒 FPS/推理耗时和两分钟误触率。
 
 ## 重要边界
 

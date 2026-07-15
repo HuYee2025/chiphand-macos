@@ -1,0 +1,22 @@
+{
+  "version": "0.5.0",
+  "date": "2026-07-15",
+  "tag": "macos-v0.5.0",
+  "summary": "Make the real-time feedback capsule draggable and let it collapse into a persistent status dot at either screen edge.",
+  "scope": [
+    "Split the click-through full-screen skeleton and interactive feedback capsule into separate non-activating panels.",
+    "Snap and collapse the capsule at the left or right screen edge; click or drag inward to expand it.",
+    "Persist free position, dock side, vertical position, and collapsed state across launches.",
+    "Keep the default capsule position 120 points above the screen bottom so it stays above the Dock."
+  ],
+  "validation": [
+    "swift test passed 12 tests",
+    "Release app build and strict codesign verification passed",
+    "Runtime window inspection confirmed separate 2560x1440 click-through and 390x52 feedback panels",
+    "Installed bundle reports version 0.5.0 build 7"
+  ],
+  "notes": [
+    "The feedback panel is non-activating and does not replace the browser as the gesture target.",
+    "macos-v0.4.1 remains the rollback point immediately before this UI change."
+  ]
+}

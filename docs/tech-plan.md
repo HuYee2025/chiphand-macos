@@ -31,7 +31,7 @@
 - `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件，并从 HID event tap 注入到目标窗口中心。
 - `SystemNavigationEmitter`：V 手势左挥后发送 `Command + [`；AppModel 只允许 Chrome、Safari、Edge 和夸克调用。
 - `MenuBarView`：启停、权限状态、两项灵敏度、操作说明、全屏 HUD 与摄像头校准开关；同一界面同时用于 Dock 控制窗与菜单栏弹窗。
-- `ScreenGestureOverlayController`：在主屏幕绘制点击穿透的镜像简化骨架、严格捏合圆点、点赞标记和动态状态；状态条高于 Dock 至少 36px，离屏幕底部至少 120px。
+- `ScreenGestureOverlayController`：使用两个 `NSPanel`。全屏层只绘制点击穿透的镜像简化骨架、严格捏合圆点和点赞标记；状态层为不激活 App 的 `390×52` 交互面板，默认离屏幕底部 120pt，可拖拽、跨启动保存位置，靠左/右 72pt 时吸附收起为 `30×52` 状态圆点。
 - 校准窗口：MediaPipe 主路径直接显示同一 WKWebView 的自拍镜像视频与骨架；Apple Vision 备用路径由 `DebugWindowController` 显示相同方向。
 - 权限协调：启动按钮只记录启动意图，不再自动跳转系统设置；App 每秒刷新 Camera/Accessibility 状态，授权生效后自动继续启动。
 
