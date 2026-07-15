@@ -61,6 +61,10 @@ private func makePinchPose(screenX: Double, y: Double = 0.50) -> HandPose {
     )
 }
 
+private func makeOpenPalmPose(screenX: Double) -> HandPose {
+    makePose(palmX: 1 - screenX)
+}
+
 private func makePointingPose(
     screenTipX: Double,
     recognizedGesture: RecognizedGesture = .pointingUp,
@@ -138,32 +142,21 @@ do {
 
 do {
     let engine = GestureEngine()
-    let start = makePointingPose(screenTipX: 0.30)
-    _ = engine.update(pose: start, at: 0)
-    _ = engine.update(pose: start, at: 0.23)
-    check(engine.update(pose: makePointingPose(screenTipX: 0.52), at: 0.40) == [.page(.down)], "食指尖右滑映射下翻")
+    _ = engine.update(pose: makeOpenPalmPose(screenX: 0.20), at: 0)
+    check(engine.update(pose: makeOpenPalmPose(screenX: 0.38), at: 0.14) == [.page(.down)], "张开手掌右挥映射下翻")
 }
 
 do {
     let engine = GestureEngine()
-    let start = makePointingPose(screenTipX: 0.70)
-    _ = engine.update(pose: start, at: 0)
-    _ = engine.update(pose: start, at: 0.23)
-    check(engine.update(pose: makePointingPose(screenTipX: 0.48), at: 0.40) == [.page(.up)], "食指尖左滑映射上翻")
-    check(engine.update(pose: makePose(palmX: 0.20), at: 0.60).isEmpty, "张开手掌不再翻页")
+    _ = engine.update(pose: makeOpenPalmPose(screenX: 0.80), at: 0)
+    check(engine.update(pose: makeOpenPalmPose(screenX: 0.62), at: 0.14) == [.page(.up)], "张开手掌左挥映射上翻")
 }
 
 do {
     let engine = GestureEngine()
     let start = makePointingPose(screenTipX: 0.30)
     _ = engine.update(pose: start, at: 0)
-    _ = engine.update(pose: start, at: 0.23)
-    let dropout = makePointingPose(
-        screenTipX: 0.52,
-        recognizedGesture: .none,
-        gestureConfidence: 0
-    )
-    check(engine.update(pose: dropout, at: 0.40) == [.page(.down)], "食指分类短暂波动仍跟踪指尖")
+    check(engine.update(pose: makePointingPose(screenTipX: 0.70), at: 0.20).isEmpty, "食指左右移动不再翻页")
     check(isStrictPointing(start), "食指姿态要求其余手指收拢")
 }
 

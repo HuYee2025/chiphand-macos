@@ -40,10 +40,11 @@ public struct GestureConfiguration: Equatable, Sendable {
     public var navigationCenterGuard: Double
     public var navigationCenterX: Double
     public var swipeMinimumDisplacement: Double
+    public var swipeHistorySeconds: TimeInterval
+    public var swipeMinimumDuration: TimeInterval
+    public var swipeCooldownSeconds: TimeInterval
     public var minimumConfidence: Double
     public var cannedGestureMinimumConfidence: Double
-    public var pointingActivationSeconds: TimeInterval
-    public var pointingClassificationGraceSeconds: TimeInterval
     public var gestureReleaseSeconds: TimeInterval
     public var thumbsUpActivationSeconds: TimeInterval
 
@@ -60,10 +61,11 @@ public struct GestureConfiguration: Equatable, Sendable {
         navigationCenterGuard: Double = 0.07,
         navigationCenterX: Double = 0.50,
         swipeMinimumDisplacement: Double = 0.14,
+        swipeHistorySeconds: TimeInterval = 0.36,
+        swipeMinimumDuration: TimeInterval = 0.10,
+        swipeCooldownSeconds: TimeInterval = 0.65,
         minimumConfidence: Double = 0.55,
         cannedGestureMinimumConfidence: Double = 0.70,
-        pointingActivationSeconds: TimeInterval = 0.22,
-        pointingClassificationGraceSeconds: TimeInterval = 0.18,
         gestureReleaseSeconds: TimeInterval = 0.15,
         thumbsUpActivationSeconds: TimeInterval = 0.30
     ) {
@@ -79,10 +81,11 @@ public struct GestureConfiguration: Equatable, Sendable {
         self.navigationCenterGuard = navigationCenterGuard
         self.navigationCenterX = navigationCenterX
         self.swipeMinimumDisplacement = swipeMinimumDisplacement
+        self.swipeHistorySeconds = swipeHistorySeconds
+        self.swipeMinimumDuration = swipeMinimumDuration
+        self.swipeCooldownSeconds = swipeCooldownSeconds
         self.minimumConfidence = minimumConfidence
         self.cannedGestureMinimumConfidence = cannedGestureMinimumConfidence
-        self.pointingActivationSeconds = pointingActivationSeconds
-        self.pointingClassificationGraceSeconds = pointingClassificationGraceSeconds
         self.gestureReleaseSeconds = gestureReleaseSeconds
         self.thumbsUpActivationSeconds = thumbsUpActivationSeconds
     }
@@ -91,6 +94,12 @@ public struct GestureConfiguration: Equatable, Sendable {
 public final class GestureEngine {
     public var configuration: GestureConfiguration
 
+    private struct SwipeSample {
+        var x: Double
+        var y: Double
+        var time: TimeInterval
+    }
+
     private var pinchCandidateSince: TimeInterval?
     private var pinchActive = false
     private var pinchMode: PinchInteractionMode = .inactive
@@ -98,12 +107,12 @@ public final class GestureEngine {
     private var lastPinchPoint: NormalizedPoint?
     private var pinchNavigationTriggered = false
 
-    private var pointingCandidateSince: TimeInterval?
-    private var pointingStartTip: NormalizedPoint?
-    private var pointingActive = false
-    private var pointingLastConfirmedAt: TimeInterval?
-    private var pointingNeedsRelease = false
-    private var pointingExitSince: TimeInterval?
+    private var swipeSamples: [SwipeSample] = []
+    private var swipeArmed = true
+    private var swipeCooldownUntil: TimeInterval = 0
+    private var swipeReleaseObserved = false
+    private var swipeStableSince: TimeInterval?
+    private var lastRearmPalm: SwipeSample?
 
     private var thumbsUpCandidateSince: TimeInterval?
     private var thumbsUpActive = false
@@ -130,7 +139,7 @@ public final class GestureEngine {
                 endPinch(into: &output)
             } else if let point = pinchPoint {
                 output.append(contentsOf: updateActivePinch(point: point))
-                observePointingRelease(at: now)
+                resetSwipe(released: true, at: now)
                 output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
                 return output
             }
@@ -148,7 +157,7 @@ public final class GestureEngine {
                 pinchNavigationTriggered = false
                 output.append(.pinchBegan)
             }
-            observePointingRelease(at: now)
+            resetSwipe(released: true, at: now)
             output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
             return output
         }
@@ -161,31 +170,21 @@ public final class GestureEngine {
 
         let cannedGestureIsConfident =
             pose.gestureConfidence >= configuration.cannedGestureMinimumConfidence
-        if cannedGestureIsConfident,
-           pose.recognizedGesture == .pointingUp,
-           isStrictPointing(pose) {
-            output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
-            output.append(contentsOf: updatePointingPage(pose: pose, at: now, confirmed: true))
-            return output
-        }
-
-        if pointingActive,
-           let lastConfirmedAt = pointingLastConfirmedAt,
-           now - lastConfirmedAt <= configuration.pointingClassificationGraceSeconds,
-           isStrictPointing(pose) {
-            output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
-            output.append(contentsOf: updatePointingPage(pose: pose, at: now, confirmed: false))
-            return output
-        }
-
-        observePointingRelease(at: now)
-
         if cannedGestureIsConfident, pose.recognizedGesture == .thumbUp {
+            resetSwipe(released: true, at: now)
             output.append(contentsOf: updateThumbsUp(isDetected: true, at: now))
             return output
         }
 
+        if cannedGestureIsConfident,
+           pose.recognizedGesture == .victory || pose.recognizedGesture == .pointingUp {
+            resetSwipe(released: true, at: now)
+            output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
+            return output
+        }
+
         output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
+        output.append(contentsOf: updateSwipe(pose: pose, at: now))
         return output
     }
 
@@ -202,7 +201,7 @@ public final class GestureEngine {
         thumbsUpCandidateSince = nil
         thumbsUpActive = false
         thumbsUpAbsentSince = nil
-        resetPointingCompletely()
+        resetSwipeCompletely()
         return output
     }
 
@@ -230,7 +229,7 @@ public final class GestureEngine {
         pinchStartPoint = nil
         lastPinchPoint = nil
         pinchNavigationTriggered = false
-        observePointingRelease(at: now)
+        resetSwipe(released: true, at: now)
         return output
     }
 
@@ -285,64 +284,79 @@ public final class GestureEngine {
         }
     }
 
-    private func updatePointingPage(
-        pose: HandPose,
-        at now: TimeInterval,
-        confirmed: Bool
-    ) -> [GestureOutput] {
-        guard let current = pose.point(.indexTip).map(screenPoint) else { return [] }
-        if confirmed {
-            pointingLastConfirmedAt = now
-            pointingExitSince = nil
-        }
-        guard !pointingNeedsRelease else { return [] }
-
-        if pointingCandidateSince == nil {
-            pointingCandidateSince = now
-            pointingStartTip = current
-            pointingActive = false
+    private func updateSwipe(pose: HandPose, at now: TimeInterval) -> [GestureOutput] {
+        guard isOpenPalm(pose), let palm = palmCenter(pose) else {
+            resetSwipe(released: true, at: now)
             return []
         }
 
-        if !pointingActive {
-            guard now - (pointingCandidateSince ?? now) >= configuration.pointingActivationSeconds else {
-                return []
+        if !swipeArmed {
+            if swipeReleaseObserved && now >= swipeCooldownUntil {
+                rearmSwipe(with: palm, at: now)
+            } else {
+                let mirrored = SwipeSample(x: 1 - palm.x, y: palm.y, time: now)
+                let movement = lastRearmPalm.map {
+                    hypot(mirrored.x - $0.x, mirrored.y - $0.y)
+                } ?? 0
+                if lastRearmPalm == nil || movement > 0.018 {
+                    swipeStableSince = now
+                } else if swipeStableSince == nil {
+                    swipeStableSince = now
+                }
+                lastRearmPalm = mirrored
+                if let stableSince = swipeStableSince,
+                   now - stableSince >= 0.18,
+                   now >= swipeCooldownUntil {
+                    rearmSwipe(with: palm, at: now)
+                } else {
+                    return []
+                }
             }
-            pointingActive = true
         }
 
-        guard let start = pointingStartTip,
-              let direction = navigationDirection(forStartX: start.x),
-              crossedCenter(from: start, to: current, direction: direction) else { return [] }
+        swipeSamples.append(SwipeSample(x: 1 - palm.x, y: palm.y, time: now))
+        swipeSamples.removeAll { now - $0.time > configuration.swipeHistorySeconds }
+        guard let first = swipeSamples.first else { return [] }
+        let duration = now - first.time
+        guard duration >= configuration.swipeMinimumDuration else { return [] }
 
-        pointingNeedsRelease = true
-        pointingCandidateSince = nil
-        pointingStartTip = nil
-        pointingActive = false
-        pointingLastConfirmedAt = nil
-        return [.page(direction == .back ? .down : .up)]
+        let current = swipeSamples[swipeSamples.count - 1]
+        let deltaX = current.x - first.x
+        let deltaY = current.y - first.y
+        guard abs(deltaX) >= configuration.swipeMinimumDisplacement,
+              abs(deltaX) >= abs(deltaY) * configuration.horizontalDominance else { return [] }
+
+        swipeArmed = false
+        swipeReleaseObserved = false
+        swipeCooldownUntil = now + configuration.swipeCooldownSeconds
+        swipeSamples = []
+        swipeStableSince = nil
+        lastRearmPalm = SwipeSample(x: current.x, y: current.y, time: now)
+        return [.page(deltaX < 0 ? .up : .down)]
     }
 
-    private func observePointingRelease(at now: TimeInterval) {
-        pointingCandidateSince = nil
-        pointingStartTip = nil
-        pointingActive = false
-        pointingLastConfirmedAt = nil
-        guard pointingNeedsRelease else { return }
-        pointingExitSince = pointingExitSince ?? now
-        if now - (pointingExitSince ?? now) >= configuration.gestureReleaseSeconds {
-            pointingNeedsRelease = false
-            pointingExitSince = nil
+    private func resetSwipe(released: Bool, at now: TimeInterval) {
+        swipeSamples = []
+        if !swipeArmed && released {
+            swipeReleaseObserved = true
+            if now >= swipeCooldownUntil {
+                resetSwipeCompletely()
+            }
         }
     }
 
-    private func resetPointingCompletely() {
-        pointingCandidateSince = nil
-        pointingStartTip = nil
-        pointingActive = false
-        pointingLastConfirmedAt = nil
-        pointingNeedsRelease = false
-        pointingExitSince = nil
+    private func resetSwipeCompletely() {
+        swipeSamples = []
+        swipeArmed = true
+        swipeCooldownUntil = 0
+        swipeReleaseObserved = false
+        swipeStableSince = nil
+        lastRearmPalm = nil
+    }
+
+    private func rearmSwipe(with palm: NormalizedPoint, at now: TimeInterval) {
+        resetSwipeCompletely()
+        swipeSamples = [SwipeSample(x: 1 - palm.x, y: palm.y, time: now)]
     }
 
     private func navigationDirection(forStartX x: Double) -> NavigationDirection? {

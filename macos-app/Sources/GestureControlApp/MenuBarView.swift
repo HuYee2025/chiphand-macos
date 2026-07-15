@@ -60,7 +60,7 @@ struct MenuBarView: View {
 
             GroupBox("灵敏度") {
                 VStack(alignment: .leading, spacing: 10) {
-                    slider("跨中线动作", value: $model.swipeSensitivity)
+                    slider("左右挥手", value: $model.swipeSensitivity)
                     slider("手指捏合", value: $model.pinchSensitivity)
                 }
                 .padding(.vertical, 2)
@@ -68,12 +68,12 @@ struct MenuBarView: View {
 
             GroupBox("操作") {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("握拳竖食指左右跨中线：翻页")
+                    Text("张开手掌左右挥动：翻页")
                     Text("OK 捏合上下移动：滚动")
                     Text("OK 捏合左右跨中线：返回 / 前进")
-                    Text("张开手掌：暂不执行操作")
+                    Text("食指、V 手势：暂不执行操作")
                     Text("竖起拇指：识别点赞（不执行）")
-                    Text("V 手势、握拳：只显示状态")
+                    Text("握拳：只显示状态")
                     Button("测试系统下翻") { model.testPageDown() }
                         .controlSize(.small)
                 }
