@@ -163,12 +163,13 @@ public func isStrictPinch(_ pose: HandPose, pinchThreshold: Double = 0.20) -> Bo
 }
 
 public func isStrictPointing(_ pose: HandPose) -> Bool {
-    guard fingerIsExtended(pose, tip: .indexTip, pip: .indexPIP, mcp: .indexMCP) == true,
-          fingerIsExtended(pose, tip: .middleTip, pip: .middlePIP, mcp: .middleMCP) == false,
-          fingerIsExtended(pose, tip: .ringTip, pip: .ringPIP, mcp: .ringMCP) == false,
-          fingerIsExtended(pose, tip: .littleTip, pip: .littlePIP, mcp: .littleMCP) == false,
-          thumbIsFoldedTowardPalm(pose) == true else { return false }
-    return true
+    isPointingFingerConfiguration(pose)
+        && thumbPalmDistanceRatio(pose).map { $0 <= 0.90 } == true
+}
+
+public func isPointingWithThumbOpen(_ pose: HandPose) -> Bool {
+    isPointingFingerConfiguration(pose)
+        && thumbCenterDistanceRatio(pose).map { $0 >= 1.05 } == true
 }
 
 public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
@@ -236,7 +237,14 @@ private func fingerIsExtended(
     return tipDistance > pipDistance * 1.04 && tipDistance > mcpDistance * 1.12
 }
 
-private func thumbIsFoldedTowardPalm(_ pose: HandPose) -> Bool? {
+public func isPointingFingerConfiguration(_ pose: HandPose) -> Bool {
+    fingerIsExtended(pose, tip: .indexTip, pip: .indexPIP, mcp: .indexMCP) == true
+        && fingerIsExtended(pose, tip: .middleTip, pip: .middlePIP, mcp: .middleMCP) == false
+        && fingerIsExtended(pose, tip: .ringTip, pip: .ringPIP, mcp: .ringMCP) == false
+        && fingerIsExtended(pose, tip: .littleTip, pip: .littlePIP, mcp: .littleMCP) == false
+}
+
+private func thumbPalmDistanceRatio(_ pose: HandPose) -> Double? {
     guard let tip = pose.point(.thumbTip) else { return nil }
     let palmAnchors = [
         HandJoint.indexMCP,
@@ -248,5 +256,11 @@ private func thumbIsFoldedTowardPalm(_ pose: HandPose) -> Bool? {
     guard let closestPalmDistance = palmAnchors.map({ pointDistance(tip, $0) }).min() else {
         return nil
     }
-    return closestPalmDistance <= handScale(pose) * 0.90
+    return closestPalmDistance / handScale(pose)
+}
+
+private func thumbCenterDistanceRatio(_ pose: HandPose) -> Double? {
+    guard let tip = pose.point(.thumbTip),
+          let middleMCP = pose.point(.middleMCP) else { return nil }
+    return pointDistance(tip, middleMCP) / handScale(pose)
 }

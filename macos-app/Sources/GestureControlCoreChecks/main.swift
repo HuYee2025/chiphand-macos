@@ -98,6 +98,19 @@ private func makePointingPose(
     )
 }
 
+private func makeThumbOpenPointingPose(screenTipX: Double) -> HandPose {
+    let pointing = makePointingPose(
+        screenTipX: screenTipX,
+        recognizedGesture: .none,
+        gestureConfidence: 0
+    )
+    var points = pointing.points
+    points[.thumbMP] = .init(x: 0.40, y: 0.40)
+    points[.thumbIP] = .init(x: 0.31, y: 0.52)
+    points[.thumbTip] = .init(x: 0.20, y: 0.68)
+    return HandPose(points: points, confidence: pointing.confidence)
+}
+
 do {
     let engine = GestureEngine()
     check(engine.update(pose: makePinchPose(screenX: 0.50), at: 0).isEmpty, "捏合需要稳定时间")
@@ -175,23 +188,28 @@ do {
     }
     let ready = engine.update(pose: pointing, at: 0.52, pointerModeEnabled: true)
     if case .pointerMoved(_, .clickReady)? = ready.first {
-        check(true, "食指停稳后进入张掌点击待命")
+        check(true, "食指停稳后进入拇指点击待命")
     } else {
-        check(false, "食指停稳后进入张掌点击待命")
+        check(false, "食指停稳后进入拇指点击待命")
     }
+    check(engine.update(
+        pose: makeThumbOpenPointingPose(screenTipX: 0.42),
+        at: 0.60,
+        pointerModeEnabled: true
+    ).isEmpty, "张开拇指需要短暂稳定")
     let click = engine.update(
-        pose: makeOpenPalmPose(screenX: 0.42),
-        at: 0.62,
+        pose: makeThumbOpenPointingPose(screenTipX: 0.42),
+        at: 0.73,
         pointerModeEnabled: true
     )
     check(
         click.count == 2 && click.first == .pointerEnded,
-        "食指定位后张掌只结束一次指针"
+        "食指定位后张开拇指只结束一次指针"
     )
     if click.count == 2, case .pointerClicked = click[1] {
-        check(true, "食指定位后张掌输出单击")
+        check(true, "食指定位后张开拇指输出单击")
     } else {
-        check(false, "食指定位后张掌输出单击")
+        check(false, "食指定位后张开拇指输出单击")
     }
 }
 
@@ -200,14 +218,16 @@ do {
     let pointing = makePointingPose(screenTipX: 0.42)
     _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
     _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
-    check(
-        engine.update(
-            pose: makeOpenPalmPose(screenX: 0.42),
-            at: 0.20,
-            pointerModeEnabled: true
-        ) == [.pointerEnded, .pointerClickRejected],
-        "食指未停稳张掌不点击也不翻页"
-    )
+    check(engine.update(
+        pose: makeThumbOpenPointingPose(screenTipX: 0.42),
+        at: 0.20,
+        pointerModeEnabled: true
+    ).isEmpty, "未稳定食指张开拇指等待确认")
+    check(engine.update(
+        pose: makeThumbOpenPointingPose(screenTipX: 0.42),
+        at: 0.33,
+        pointerModeEnabled: true
+    ) == [.pointerEnded, .pointerClickRejected], "食指未停稳张开拇指不点击")
 }
 
 do {

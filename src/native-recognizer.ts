@@ -150,22 +150,29 @@ function fingerIsExtended(
     && distance(tip, wrist) > distance(mcp, wrist) * 1.12);
 }
 
-function isStrictPointing(landmarks: readonly NormalizedLandmark[]): boolean {
+function isPointingFingerConfiguration(landmarks: readonly NormalizedLandmark[]): boolean {
+  return fingerIsExtended(landmarks, 8, 6, 5)
+    && !fingerIsExtended(landmarks, 12, 10, 9)
+    && !fingerIsExtended(landmarks, 16, 14, 13)
+    && !fingerIsExtended(landmarks, 20, 18, 17);
+}
+
+function thumbPalmDistanceRatio(landmarks: readonly NormalizedLandmark[]): number | null {
   const wrist = landmarks[0];
   const thumb = landmarks[4];
-  if (!wrist || !thumb) return false;
+  if (!wrist || !thumb) return null;
   const palm = [5, 9, 13, 17].map((index) => landmarks[index]).filter(Boolean) as NormalizedLandmark[];
   const thumbAnchors = [5, 9, 13, 6, 10]
     .map((index) => landmarks[index])
     .filter(Boolean) as NormalizedLandmark[];
-  if (palm.length === 0 || thumbAnchors.length === 0) return false;
+  if (palm.length === 0 || thumbAnchors.length === 0) return null;
   const scale = palm.reduce((sum, point) => sum + distance(wrist, point), 0) / palm.length;
-  const thumbFolded = Math.min(...thumbAnchors.map((point) => distance(thumb, point))) <= scale * 0.90;
-  return thumbFolded
-    && fingerIsExtended(landmarks, 8, 6, 5)
-    && !fingerIsExtended(landmarks, 12, 10, 9)
-    && !fingerIsExtended(landmarks, 16, 14, 13)
-    && !fingerIsExtended(landmarks, 20, 18, 17);
+  return Math.min(...thumbAnchors.map((point) => distance(thumb, point))) / Math.max(scale, 0.000_001);
+}
+
+function isStrictPointing(landmarks: readonly NormalizedLandmark[]): boolean {
+  const ratio = thumbPalmDistanceRatio(landmarks);
+  return ratio !== null && ratio <= 0.90 && isPointingFingerConfiguration(landmarks);
 }
 
 function drawSkeleton(
@@ -218,9 +225,10 @@ function drawSkeleton(
     context.stroke();
   }
   if (pointerModeEnabled
-      && gesture === "Pointing_Up"
-      && gestureConfidence >= 0.70
-      && isStrictPointing(landmarks)) {
+      && ((gesture === "Pointing_Up"
+        && gestureConfidence >= 0.70
+        && isStrictPointing(landmarks))
+        || isPointingFingerConfiguration(landmarks))) {
     const index = landmarks[8];
     if (index) {
       context.beginPath();

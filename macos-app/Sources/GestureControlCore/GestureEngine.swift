@@ -59,7 +59,8 @@ public struct GestureConfiguration: Equatable, Sendable {
     public var pointerStableSeconds: TimeInterval
     public var pointerStableRadius: Double
     public var pointerMaximumJump: Double
-    public var pointerOpenPalmTransitionSeconds: TimeInterval
+    public var pointerThumbClickActivationSeconds: TimeInterval
+    public var pointerThumbTransitionGraceSeconds: TimeInterval
     public var gestureReleaseSeconds: TimeInterval
     public var thumbsUpActivationSeconds: TimeInterval
 
@@ -86,7 +87,8 @@ public struct GestureConfiguration: Equatable, Sendable {
         pointerStableSeconds: TimeInterval = 0.35,
         pointerStableRadius: Double = 0.012,
         pointerMaximumJump: Double = 0.18,
-        pointerOpenPalmTransitionSeconds: TimeInterval = 0.80,
+        pointerThumbClickActivationSeconds: TimeInterval = 0.12,
+        pointerThumbTransitionGraceSeconds: TimeInterval = 0.35,
         gestureReleaseSeconds: TimeInterval = 0.15,
         thumbsUpActivationSeconds: TimeInterval = 0.30
     ) {
@@ -112,7 +114,8 @@ public struct GestureConfiguration: Equatable, Sendable {
         self.pointerStableSeconds = pointerStableSeconds
         self.pointerStableRadius = pointerStableRadius
         self.pointerMaximumJump = pointerMaximumJump
-        self.pointerOpenPalmTransitionSeconds = pointerOpenPalmTransitionSeconds
+        self.pointerThumbClickActivationSeconds = pointerThumbClickActivationSeconds
+        self.pointerThumbTransitionGraceSeconds = pointerThumbTransitionGraceSeconds
         self.gestureReleaseSeconds = gestureReleaseSeconds
         self.thumbsUpActivationSeconds = thumbsUpActivationSeconds
     }
@@ -148,8 +151,10 @@ public final class GestureEngine {
     private var pointerStableAnchor: NormalizedPoint?
     private var pointerStableSince: TimeInterval?
     private var pointerClickReady = false
-    private var pointerOpenPalmConsumed = false
-    private var pointerOpenPalmAbsentSince: TimeInterval?
+    private var pointerThumbOpenCandidateSince: TimeInterval?
+    private var pointerThumbOpenConsumed = false
+    private var pointerThumbFoldedSince: TimeInterval?
+    private var pointerThumbTransitionSince: TimeInterval?
 
     private var thumbsUpCandidateSince: TimeInterval?
     private var thumbsUpActive = false
@@ -402,17 +407,56 @@ public final class GestureEngine {
         pose: HandPose,
         at now: TimeInterval
     ) -> (output: [GestureOutput], consumed: Bool) {
-        if pointerOpenPalmConsumed {
-            if isOpenPalm(pose) {
-                pointerOpenPalmAbsentSince = nil
+        if pointerThumbOpenConsumed {
+            if isPointingWithThumbOpen(pose) {
+                pointerThumbFoldedSince = nil
                 return ([], true)
             }
-            pointerOpenPalmAbsentSince = pointerOpenPalmAbsentSince ?? now
-            guard now - (pointerOpenPalmAbsentSince ?? now) >= configuration.gestureReleaseSeconds else {
+            guard isStrictPointing(pose) else {
+                resetPointerCompletely()
+                return ([], false)
+            }
+            pointerThumbFoldedSince = pointerThumbFoldedSince ?? now
+            guard now - (pointerThumbFoldedSince ?? now) >= configuration.gestureReleaseSeconds else {
                 return ([], true)
             }
             resetPointerCompletely()
         }
+
+        if pointerActive, isPointingWithThumbOpen(pose) {
+            pointerThumbTransitionSince = nil
+            pointerThumbOpenCandidateSince = pointerThumbOpenCandidateSince ?? now
+            guard now - (pointerThumbOpenCandidateSince ?? now)
+                >= configuration.pointerThumbClickActivationSeconds else {
+                return ([], true)
+            }
+            var output: [GestureOutput] = []
+            endPointer(into: &output)
+            if pointerClickReady, let point = pointerLastPoint {
+                output.append(.pointerClicked(point))
+            } else {
+                output.append(.pointerClickRejected)
+            }
+            resetPointerCompletely()
+            pointerThumbOpenConsumed = true
+            return (output, true)
+        }
+        pointerThumbOpenCandidateSince = nil
+
+        if pointerActive,
+           isPointingFingerConfiguration(pose),
+           !isStrictPointing(pose) {
+            pointerThumbTransitionSince = pointerThumbTransitionSince ?? now
+            guard now - (pointerThumbTransitionSince ?? now)
+                > configuration.pointerThumbTransitionGraceSeconds else {
+                return ([], true)
+            }
+            var output: [GestureOutput] = []
+            endPointer(into: &output)
+            resetPointerCompletely()
+            return (output, false)
+        }
+        pointerThumbTransitionSince = nil
 
         let cannedPointing = pose.recognizedGesture == .pointingUp
             && pose.gestureConfidence >= configuration.cannedGestureMinimumConfidence
@@ -462,23 +506,6 @@ public final class GestureEngine {
             return ([.pointerMoved(point, pointerClickReady ? .clickReady : .moving)], true)
         }
 
-        if let lastConfirmedAt = pointerLastConfirmedAt,
-           now - lastConfirmedAt <= configuration.pointerOpenPalmTransitionSeconds {
-            if isOpenPalm(pose) {
-                var output: [GestureOutput] = []
-                endPointer(into: &output)
-                if pointerClickReady, let point = pointerLastPoint {
-                    output.append(.pointerClicked(point))
-                } else {
-                    output.append(.pointerClickRejected)
-                }
-                resetPointerCompletely()
-                pointerOpenPalmConsumed = true
-                return (output, true)
-            }
-            return ([], true)
-        }
-
         var output: [GestureOutput] = []
         endPointer(into: &output)
         resetPointerCompletely()
@@ -498,8 +525,10 @@ public final class GestureEngine {
         pointerStableAnchor = nil
         pointerStableSince = nil
         pointerClickReady = false
-        pointerOpenPalmConsumed = false
-        pointerOpenPalmAbsentSince = nil
+        pointerThumbOpenCandidateSince = nil
+        pointerThumbOpenConsumed = false
+        pointerThumbFoldedSince = nil
+        pointerThumbTransitionSince = nil
     }
 
     private func resetSwipe(released: Bool, at now: TimeInterval) {

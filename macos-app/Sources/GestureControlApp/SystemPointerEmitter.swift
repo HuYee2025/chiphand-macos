@@ -32,7 +32,9 @@ final class SystemPointerEmitter: PointerEmitting {
         let location = screenLocation(for: point)
         lastLocation = location
         queue.async {
-            let source = CGEventSource(stateID: .hidSystemState)
+            // Isolate the click from the current HID modifier state. A synthetic
+            // click must never inherit Command and accidentally open a new tab.
+            let source = CGEventSource(stateID: .privateState)
             guard let down = CGEvent(
                 mouseEventSource: source,
                 mouseType: .leftMouseDown,
@@ -44,6 +46,12 @@ final class SystemPointerEmitter: PointerEmitting {
                 mouseCursorPosition: location,
                 mouseButton: .left
             ) else { return }
+            down.flags = []
+            up.flags = []
+            down.setIntegerValueField(.mouseEventButtonNumber, value: 0)
+            up.setIntegerValueField(.mouseEventButtonNumber, value: 0)
+            down.setIntegerValueField(.mouseEventClickState, value: 1)
+            up.setIntegerValueField(.mouseEventClickState, value: 1)
             down.post(tap: .cghidEventTap)
             Thread.sleep(forTimeInterval: 0.035)
             up.post(tap: .cghidEventTap)

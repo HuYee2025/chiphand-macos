@@ -1,0 +1,24 @@
+{
+  "version": "0.8.1",
+  "date": "2026-07-15",
+  "tag": "macos-v0.8.1",
+  "summary": "Replace open-palm clicking with a smaller thumb-open transition and force modifier-free left clicks.",
+  "scope": [
+    "Click after a stable index pointer by opening only the thumb for 120ms.",
+    "Keep pointer eligibility and the yellow index marker independent from thumb state, with 350ms transition tolerance.",
+    "Freeze the click at the last stable indexTip and require the thumb to fold before another click.",
+    "Use a private Core Graphics event source with empty flags to prevent accidental Command-click behavior.",
+    "Keep ordinary open-palm swipes dedicated to page navigation."
+  ],
+  "validation": [
+    "swift test passed 31 tests including thumb-open geometry, transition tolerance, click stability, one-shot consumption and open-palm separation",
+    "GestureControlCoreChecks passed 22 checks and all 32 Web regression tests passed",
+    "TypeScript typecheck and Swift warnings-as-errors build passed",
+    "Release build, strict codesign and installed 0.8.1 build 15 checks passed",
+    "Installed UI confirmed the thumb-click instruction, permissions remained allowed and MediaPipe GPU reached ready state"
+  ],
+  "notes": [
+    "macos-v0.8.0 remains the rollback point.",
+    "Final YouTube current-page behavior remains a physical-hand acceptance test."
+  ]
+}

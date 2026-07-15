@@ -25,6 +25,28 @@
 
 ## 当前决策
 
+## 2026-07-15 v0.8.1 拇指点击与纯左键事件
+
+背景：
+- `0.8.0` 的食指定位准确，但整掌张开会改变瞄准姿态；实测点击链接偶尔在新标签页打开，而产品目标是始终使用当前页。
+
+决策：
+- 点击改为严格食指定位完成后，仅张开拇指并稳定 120ms；点击位置冻结在最后稳定食指尖。
+- 食指资格只判断食指伸直和其余三指收拢，拇指从姿态定义中拆出；展开过程容忍 350ms，黄色指尖点不消失。
+- 拇指保持张开只消费一次，收回至少 150ms 后才能重新点击；普通张掌不再参与点击，继续执行左右挥动翻页。
+- 左键使用 Core Graphics `.privateState` 独立事件源，显式清空 flags，并固定为左键单击，避免继承 `Command` 等 HID 修饰状态。
+
+原因：
+- 拇指动作幅度比整掌张开小，食指尖更容易保持在视频卡片上；隔离事件源能从系统层保证合成点击不是 Command-click。
+
+影响：
+- 升级为 `0.8.1`（build 15）；`macos-v0.8.0` 保持为回滚点。
+
+相关文件：
+- `macos-app/Sources/GestureControlCore/HandPose.swift`
+- `macos-app/Sources/GestureControlCore/GestureEngine.swift`
+- `macos-app/Sources/GestureControlApp/SystemPointerEmitter.swift`
+
 ## 2026-07-15 v0.8.0 食指悬停与张掌点击
 
 背景：

@@ -175,9 +175,7 @@ final class AppModel: ObservableObject {
     var showsPointingTip: Bool {
         guard pointerModeIsAvailable(),
               let latestPose else { return false }
-        return latestPose.recognizedGesture == .pointingUp
-            && latestPose.gestureConfidence >= gestureEngine.configuration.cannedGestureMinimumConfidence
-            && isStrictPointing(latestPose)
+        return isPointingFingerConfiguration(latestPose)
     }
 
     func toggle() {
@@ -461,7 +459,7 @@ final class AppModel: ObservableObject {
             return
         }
         if pointerInteractionState == .clickReady {
-            handStatus = handPrefix + "食指已定位 · 张开手掌点击"
+            handStatus = handPrefix + "食指已定位 · 张开拇指点击"
             return
         }
         if pointerInteractionState == .moving {
