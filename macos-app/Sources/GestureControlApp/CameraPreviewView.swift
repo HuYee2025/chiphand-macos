@@ -13,6 +13,7 @@ struct CameraPreviewView: NSViewRepresentable {
 
     func updateNSView(_ nsView: PreviewView, context: Context) {
         nsView.previewLayer.session = session
+        nsView.enableMirroring()
     }
 }
 
@@ -23,7 +24,7 @@ final class PreviewView: NSView {
         super.init(frame: frameRect)
         wantsLayer = true
         layer = previewLayer
-        previewLayer.transform = CATransform3DMakeScale(-1, 1, 1)
+        previewLayer.transform = CATransform3DIdentity
     }
 
     required init?(coder: NSCoder) {
@@ -33,5 +34,13 @@ final class PreviewView: NSView {
     override func layout() {
         super.layout()
         previewLayer.frame = bounds
+        enableMirroring()
+    }
+
+    func enableMirroring() {
+        guard let connection = previewLayer.connection,
+              connection.isVideoMirroringSupported else { return }
+        connection.automaticallyAdjustsVideoMirroring = false
+        connection.isVideoMirrored = true
     }
 }

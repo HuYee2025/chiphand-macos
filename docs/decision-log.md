@@ -25,6 +25,35 @@
 
 ## 当前决策
 
+## 2026-07-15 MediaPipe 主引擎、HID 滚动与正常 Dock App
+
+背景：
+- Apple Vision 官方明确提示：手掌接近画面边缘、遮挡或与摄像头视线平行时可能表现不佳；用户实测侧手超过约 90°容易丢失。
+- 浏览器版 MediaPipe 已验证 21 点、左右手和侧手跟踪更稳定，用户要求两套技术择优。
+- 旧系统滚动通过 `postToPid` 发送，Chromium 可能忽略这类 PID 定向的设备滚轮事件。
+- macOS 记住菜单栏项目为隐藏后，会直接结束只有 `MenuBarExtra` 的 App，导致退出后找不到入口。
+
+决策：
+- macOS App 以 MediaPipe Hand Landmarker 为主引擎：GPU 优先、CPU 备用、最多双手检测、选择一只手连续跟踪；Apple Vision 仅在 MediaPipe 无法启动时兜底。
+- MediaPipe WASM 与模型打包在 App 内，由进程内仅监听 `127.0.0.1` 的静态服务提供给 WKWebView；不联网、不上传画面。
+- 系统滚动通过 `.cghidEventTap` 注入，并把事件位置放到目标前台窗口中心。
+- App 同时提供正常 Dock 控制窗口与菜单栏入口；校准视频、骨架和全屏 HUD 使用一致的自拍镜像坐标。
+
+原因：
+- 这条路线直接复用已经验证过的识别精度，并绕开 Apple Vision 对侧手姿态的已知限制。
+- HID event tap 更接近真实鼠标/触控板事件，能由 macOS 正常路由到 Chromium。
+- 正常 App 生命周期能彻底避免菜单栏隐藏导致的启动即退出，也让用户可以从“应用程序”重新进入。
+
+影响：
+- macOS 原型升级为 `0.3.0`；安装包约增加 40 MB 的本地模型与 WASM 资源。
+- 最终 ad-hoc 二进制替换后仍需重新授权一次辅助功能；真实 Chrome 滚动方向和误触率待用户验收。
+
+相关文件：
+- `src/native-recognizer.ts`
+- `macos-app/Sources/GestureControlApp/MediaPipeHandPoseService.swift`
+- `macos-app/Sources/GestureControlApp/LocalMediaServer.swift`
+- `macos-app/Sources/GestureControlApp/SystemScrollEmitter.swift`
+
 ## 2026-07-15 全屏 21 点手势 HUD 与误识别过滤
 
 背景：

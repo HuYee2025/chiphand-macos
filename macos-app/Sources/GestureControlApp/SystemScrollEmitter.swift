@@ -36,9 +36,10 @@ final class SystemScrollEmitter: ScrollEmitting {
         // Quartz positive wheel values move toward earlier content. The public
         // API uses positive values to mean "reveal content below", hence minus.
         let wheelValue = Int32(max(Double(Int32.min), min(Double(Int32.max), -revealPixels.rounded())))
+        let source = CGEventSource(stateID: .hidSystemState)
         guard wheelValue != 0,
               let event = CGEvent(
-                scrollWheelEvent2Source: nil,
+                scrollWheelEvent2Source: source,
                 units: .pixel,
                 wheelCount: 1,
                 wheel1: wheelValue,
@@ -46,6 +47,46 @@ final class SystemScrollEmitter: ScrollEmitting {
                 wheel3: 0
               ) else { return }
         event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        event.postToPid(processID)
+        event.location = targetLocation(for: processID)
+            ?? CGEvent(source: nil)?.location
+            ?? .zero
+        // A wheel event is a device-class event. Posting it directly to a PID
+        // can be ignored by Chromium; inject it at the HID event tap so macOS
+        // routes it like real mouse/trackpad input to the target window.
+        event.post(tap: .cghidEventTap)
+    }
+
+    private func targetLocation(for processID: pid_t) -> CGPoint? {
+        let application = AXUIElementCreateApplication(processID)
+        var windowValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            application,
+            kAXFocusedWindowAttribute as CFString,
+            &windowValue
+        ) == .success,
+        let window = windowValue else { return nil }
+
+        var positionValue: CFTypeRef?
+        var sizeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            window as! AXUIElement,
+            kAXPositionAttribute as CFString,
+            &positionValue
+        ) == .success,
+        AXUIElementCopyAttributeValue(
+            window as! AXUIElement,
+            kAXSizeAttribute as CFString,
+            &sizeValue
+        ) == .success,
+        let positionValue,
+        let sizeValue,
+        CFGetTypeID(positionValue) == AXValueGetTypeID(),
+        CFGetTypeID(sizeValue) == AXValueGetTypeID() else { return nil }
+
+        var position = CGPoint.zero
+        var size = CGSize.zero
+        guard AXValueGetValue(positionValue as! AXValue, .cgPoint, &position),
+              AXValueGetValue(sizeValue as! AXValue, .cgSize, &size) else { return nil }
+        return CGPoint(x: position.x + size.width / 2, y: position.y + size.height / 2)
     }
 }

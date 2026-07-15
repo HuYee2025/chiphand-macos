@@ -7,6 +7,7 @@ public/mediapipe/
 output/playwright/
 macos-app/.build/
 macos-app/build/
+macos-app/Resources/MediaPipeRecognizer/
 macos-app/.swiftpm/
 .DS_Store
 **/.DS_Store

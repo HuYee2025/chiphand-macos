@@ -4,10 +4,11 @@
 
 ### 当前主线：macOS 原型
 
-- Swift 6.3 / SwiftUI `MenuBarExtra`，部署目标 macOS 14+。
-- AVFoundation：640×480 摄像头会话与可选镜像预览。
-- Vision `VNDetectHumanHandPoseRequest`：单手 21 点关键点检测。
-- Core Graphics `CGEvent`：向前台 App PID 发送连续滚动事件。
+- Swift 6.3 / SwiftUI `Window` + `MenuBarExtra`，部署目标 macOS 14+。
+- WKWebView + `@mediapipe/tasks-vision` 0.10.35：主引擎使用 Hand Landmarker 21 点、左右手、最多双手检测，GPU 优先。
+- Network.framework：进程内只监听 `127.0.0.1`，向 WKWebView 提供打包在 App 内的 HTML、WASM 与模型。
+- AVFoundation + Vision：MediaPipe 启动失败时的本机备用识别路径。
+- Core Graphics `CGEvent`：通过 `.cghidEventTap` 注入连续滚动和翻页事件。
 - ApplicationServices：检查辅助功能信任；AppKit `NSWorkspace`：跟踪前台 App 切换。
 
 ### 冻结分支：Web / Extension
@@ -23,13 +24,14 @@
 ### macOS 原型
 
 - `GestureControlCore`：平台无关的关键点归一化、捏合迟滞、左右挥动、650ms 冷却和稳定重新激活。
-- `CameraCaptureService`：后台队列持有 `AVCaptureSession`，丢弃迟到帧，不阻塞菜单栏 UI。
-- `HandPoseService`：串行执行 Apple Vision 单手 21 点请求；以点数、完整手指链、点云跨度和置信度中位数过滤脸部假点云，只保留当前处理帧。
+- `MediaPipeHandPoseService`：WKWebView 主识别运行时；接收完整 21 点、左右手和置信度，并可直接显示同源视频/骨架校准窗口。
+- `LocalMediaServer`：仅在 loopback 随机端口提供离线运行资源，避免 `file://` 对 ES Module、WASM 与摄像头安全上下文的限制。
+- `CameraCaptureService` + `HandPoseService`：Apple Vision 备用路径；最多双手请求，按结构与置信度筛选一只手连续跟踪。
 - `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；App 切换立即取消捏合。
-- `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件形成约 75% 屏幕的平滑滚动。
-- `MenuBarView`：启停、权限状态、两项灵敏度、操作说明、全屏 HUD 与摄像头校准开关；默认无 Dock 图标。
-- `ScreenGestureOverlayController`：在主屏幕绘制点击穿透的 21 点骨架、捏合线和动态状态，不抢前台焦点、不阻挡鼠标。
-- `DebugWindowController`：可选摄像头校准窗口；视频保持自拍镜像，骨架使用匹配坐标，不再额外水平反转。
+- `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件，并从 HID event tap 注入到目标窗口中心。
+- `MenuBarView`：启停、权限状态、两项灵敏度、操作说明、全屏 HUD 与摄像头校准开关；同一界面同时用于 Dock 控制窗与菜单栏弹窗。
+- `ScreenGestureOverlayController`：在主屏幕绘制点击穿透的镜像简化骨架、捏合圆点和动态状态，不抢前台焦点、不阻挡鼠标；底部状态避开 Dock。
+- 校准窗口：MediaPipe 主路径直接显示同一 WKWebView 的自拍镜像视频与骨架；Apple Vision 备用路径由 `DebugWindowController` 显示相同方向。
 - 权限协调：启动按钮只记录启动意图，不再自动跳转系统设置；App 每秒刷新 Camera/Accessibility 状态，授权生效后自动继续启动。
 
 ### Web / Extension（冻结）
@@ -120,7 +122,8 @@ open build/GestureControl.app
 - macOS 原型必须由用户在系统设置中授予摄像头和辅助功能权限；无权限时只显示状态，不发送事件。
 - Xcode 26.6 已安装并接受 License；核心逻辑同时保留可执行检查和标准 `XCTest`。
 - 当前 `.app` 使用 ad-hoc 签名，仅供本机原型；重新构建后系统权限可能需要再次确认。
-- Core Graphics 滚动方向、不同 App 的滚动响应和 Vision 阈值仍需真实手势验收。
+- Core Graphics 滚动方向、不同 App 的滚动响应和手势阈值仍需真实手势验收。
+- MediaPipe 主运行时资源约 40 MB；只在本机 loopback 端口短暂提供，App 停止识别时关闭。
 
 - MediaPipe 控制台会输出 WebGL 初始化和 `NORM_RECT` 警告，已确认不影响识别。
 - Three.js 主包构建后约 539 kB，Vite 会给出 chunk 体积警告，但不影响构建与 60 FPS 实测。

@@ -32,6 +32,11 @@ public enum HandShape: Equatable, Sendable {
     case other
 }
 
+public enum Handedness: Equatable, Sendable {
+    case left
+    case right
+}
+
 public struct NormalizedPoint: Equatable, Sendable {
     public var x: Double
     public var y: Double
@@ -47,10 +52,16 @@ public struct NormalizedPoint: Equatable, Sendable {
 public struct HandPose: Equatable, Sendable {
     public var points: [HandJoint: NormalizedPoint]
     public var confidence: Double
+    public var handedness: Handedness?
 
-    public init(points: [HandJoint: NormalizedPoint], confidence: Double) {
+    public init(
+        points: [HandJoint: NormalizedPoint],
+        confidence: Double,
+        handedness: Handedness? = nil
+    ) {
         self.points = points
         self.confidence = confidence
+        self.handedness = handedness
     }
 
     public func point(_ joint: HandJoint) -> NormalizedPoint? {
@@ -110,7 +121,7 @@ public func isOpenPalm(_ pose: HandPose) -> Bool {
 }
 
 public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
-    guard pose.points.count >= 15,
+    guard pose.points.count >= 12,
           pose.point(.wrist) != nil else { return false }
 
     let fingerChains: [[HandJoint]] = [
@@ -123,28 +134,34 @@ public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
     let completeFingers = fingerChains.filter { chain in
         chain.allSatisfy { pose.point($0) != nil }
     }.count
-    guard completeFingers >= 3 else { return false }
+    guard completeFingers >= 2 else { return false }
 
     let xs = pose.points.values.map(\.x)
     let ys = pose.points.values.map(\.y)
     guard let minX = xs.min(), let maxX = xs.max(),
           let minY = ys.min(), let maxY = ys.max() else { return false }
-    return maxX - minX >= 0.06 && maxY - minY >= 0.06
+    // A side-on hand can be extremely narrow in one axis. Requiring both axes
+    // to be wide rejected valid profile poses; a face false-positive cluster
+    // remains small in every direction.
+    return max(maxX - minX, maxY - minY) >= 0.08
 }
 
 public func classifyHandShape(_ pose: HandPose, pinchThreshold: Double = 0.20) -> HandShape {
     if pinchStrength(pose) <= pinchThreshold { return .pinching }
 
-    let extended = [
+    let extended: [Bool?] = [
         fingerIsExtended(pose, tip: .indexTip, pip: .indexPIP, mcp: .indexMCP),
         fingerIsExtended(pose, tip: .middleTip, pip: .middlePIP, mcp: .middleMCP),
         fingerIsExtended(pose, tip: .ringTip, pip: .ringPIP, mcp: .ringMCP),
         fingerIsExtended(pose, tip: .littleTip, pip: .littlePIP, mcp: .littleMCP),
     ]
 
-    if extended.allSatisfy({ $0 }) { return .openPalm }
-    if extended[0] && extended.dropFirst().allSatisfy({ !$0 }) { return .pointing }
-    if extended.allSatisfy({ !$0 }) { return .fist }
+    let known = extended.compactMap { $0 }
+    guard known.count >= 3 else { return .other }
+    if known.allSatisfy({ $0 }) { return .openPalm }
+    if extended[0] == true,
+       extended.dropFirst().allSatisfy({ $0 == false }) { return .pointing }
+    if known.allSatisfy({ !$0 }) { return .fist }
     return .other
 }
 
@@ -153,11 +170,11 @@ private func fingerIsExtended(
     tip: HandJoint,
     pip: HandJoint,
     mcp: HandJoint
-) -> Bool {
+) -> Bool? {
     guard let wrist = pose.point(.wrist),
           let tipPoint = pose.point(tip),
           let pipPoint = pose.point(pip),
-          let mcpPoint = pose.point(mcp) else { return false }
+          let mcpPoint = pose.point(mcp) else { return nil }
     let tipDistance = pointDistance(tipPoint, wrist)
     let pipDistance = pointDistance(pipPoint, wrist)
     let mcpDistance = pointDistance(mcpPoint, wrist)

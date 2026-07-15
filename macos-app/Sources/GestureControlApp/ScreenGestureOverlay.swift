@@ -13,7 +13,10 @@ final class ScreenGestureOverlayController {
     func show() {
         guard let model, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         if panel == nil {
-            let hosting = NSHostingController(rootView: ScreenGestureOverlayView(model: model))
+            let bottomInset = max(0, screen.visibleFrame.minY - screen.frame.minY)
+            let hosting = NSHostingController(
+                rootView: ScreenGestureOverlayView(model: model, bottomInset: bottomInset)
+            )
             hosting.view.wantsLayer = true
             hosting.view.layer?.backgroundColor = NSColor.clear.cgColor
 
@@ -45,12 +48,15 @@ final class ScreenGestureOverlayController {
 
 private struct ScreenGestureOverlayView: View {
     @ObservedObject var model: AppModel
+    let bottomInset: CGFloat
 
     var body: some View {
         ZStack {
             Color.clear
             HandSkeletonView(
                 pose: model.latestPose,
+                isPinching: model.isPinching,
+                mirrored: true,
                 lineWidth: 4,
                 pointDiameter: 12
             )
@@ -68,7 +74,7 @@ private struct ScreenGestureOverlayView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
                 .background(.black.opacity(0.72), in: Capsule())
-                .padding(.bottom, 34)
+                .padding(.bottom, bottomInset + 28)
             }
         }
         .ignoresSafeArea()

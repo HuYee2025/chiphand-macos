@@ -1,0 +1,24 @@
+{
+  "version": "0.3.0",
+  "date": "2026-07-15",
+  "tag": "macos-v0.3.0",
+  "summary": "Switch the native app to an embedded MediaPipe Hand Landmarker runtime and route scrolls through the macOS HID event tap.",
+  "scope": [
+    "Use MediaPipe GPU first for 21 landmarks, handedness, and two-hand detection; retain Apple Vision as fallback.",
+    "Serve the bundled WASM and model only from an in-process 127.0.0.1 server for WKWebView.",
+    "Render a mirrored calibration view, simplified display skeleton, dynamic pose labels, and a pinch midpoint dot.",
+    "Inject global HID scroll-wheel events at the focused target window so Chromium receives them.",
+    "Provide a normal Dock control window as well as the menu-bar entry."
+  ],
+  "validation": [
+    "MediaPipe GPU reached ready state and returned a live left-hand pose on the installed app.",
+    "npm test: 32 tests passed",
+    "swift test: 7 XCTest cases passed",
+    "swift run GestureControlCoreChecks: 10 checks passed",
+    "TypeScript and Swift builds, Info.plist lint, entitlements, and ad-hoc signature verification passed"
+  ],
+  "notes": [
+    "The final ad-hoc binary needs one Accessibility reauthorization before real Chrome scrolling can be accepted.",
+    "Cross-application direction and false-trigger rates still require user hand testing."
+  ]
+}

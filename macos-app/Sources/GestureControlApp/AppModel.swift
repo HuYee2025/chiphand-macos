@@ -2,16 +2,23 @@ import AppKit
 import AVFoundation
 import Combine
 import GestureControlCore
+import OSLog
 import QuartzCore
 
 @MainActor
 final class AppModel: ObservableObject {
+    private let logger = Logger(
+        subsystem: "com.huyee.gesture-control.prototype",
+        category: "recognition"
+    )
     @Published private(set) var isRunning = false
     @Published private(set) var cameraPermission = PermissionService.cameraState
     @Published private(set) var accessibilityPermission = PermissionService.accessibilityState
     @Published private(set) var status = "已停止"
     @Published private(set) var handStatus = "等待启动"
     @Published private(set) var latestPose: HandPose?
+    @Published private(set) var isPinching = false
+    @Published private(set) var recognitionEngine = "MediaPipe"
     @Published var screenOverlayEnabled = true {
         didSet {
             if isRunning && screenOverlayEnabled {
@@ -23,10 +30,21 @@ final class AppModel: ObservableObject {
     }
     @Published var debugWindowEnabled = false {
         didSet {
-            if isRunning && debugWindowEnabled {
-                debugWindowController.show()
+            guard isRunning else {
+                debugWindowController.hide()
+                return
+            }
+            if usingAppleVisionFallback {
+                if debugWindowEnabled {
+                    camera.start()
+                    debugWindowController.show()
+                } else {
+                    debugWindowController.hide()
+                }
             } else {
                 debugWindowController.hide()
+                camera.stop()
+                mediaPipeService.setPreviewVisible(debugWindowEnabled)
             }
         }
     }
@@ -40,6 +58,7 @@ final class AppModel: ObservableObject {
     let camera = CameraCaptureService()
 
     private let handPoseService = HandPoseService()
+    private let mediaPipeService = MediaPipeHandPoseService()
     private let gestureEngine = GestureEngine()
     private let emitter: ScrollEmitting = SystemScrollEmitter()
     private var processingFrame = false
@@ -51,6 +70,7 @@ final class AppModel: ObservableObject {
     private lazy var debugWindowController = DebugWindowController(model: self)
     private lazy var screenOverlayController = ScreenGestureOverlayController(model: self)
     private var actionFeedback: (message: String, until: TimeInterval)?
+    private var usingAppleVisionFallback = false
 
     init() {
         let defaults = UserDefaults.standard
@@ -67,6 +87,18 @@ final class AppModel: ObservableObject {
         }
         camera.onError = { [weak self] message in
             Task { @MainActor in self?.handleCameraError(message) }
+        }
+        mediaPipeService.onPose = { [weak self] pose in
+            self?.consume(pose: pose)
+        }
+        mediaPipeService.onReady = { [weak self] delegate in
+            guard let self, self.isRunning, !self.usingAppleVisionFallback else { return }
+            self.logger.info("recognition ready: \(delegate, privacy: .public)")
+            self.recognitionEngine = delegate
+            self.status = "手势控制中"
+        }
+        mediaPipeService.onError = { [weak self] message in
+            self?.handleMediaPipeError(message)
         }
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
@@ -88,6 +120,13 @@ final class AppModel: ObservableObject {
             .sink { [weak self] _ in
                 Task { @MainActor in self?.refreshPermissions() }
             }
+        if ProcessInfo.processInfo.environment["GESTURE_CONTROL_DIAGNOSTIC_MEDIA"] == "1" {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.debugWindowEnabled = true
+                self.beginRunning()
+            }
+        }
     }
 
     deinit {
@@ -126,9 +165,12 @@ final class AppModel: ObservableObject {
     func stop() {
         pendingStart = false
         isRunning = false
+        mediaPipeService.stop()
+        usingAppleVisionFallback = false
         camera.stop()
         cancelCurrentGesture()
         latestPose = nil
+        isPinching = false
         debugWindowController.hide()
         screenOverlayController.hide()
         actionFeedback = nil
@@ -173,7 +215,10 @@ final class AppModel: ObservableObject {
 
     private nonisolated func process(_ sampleBuffer: CMSampleBuffer) {
         Task { @MainActor [weak self] in
-            guard let self, self.isRunning, !self.processingFrame else { return }
+            guard let self,
+                  self.isRunning,
+                  self.usingAppleVisionFallback,
+                  !self.processingFrame else { return }
             self.processingFrame = true
             let service = self.handPoseService
             Task.detached(priority: .userInitiated) { [weak self] in
@@ -193,6 +238,7 @@ final class AppModel: ObservableObject {
         latestPose = pose
         let now = CACurrentMediaTime()
         let outputs = gestureEngine.update(pose: pose, at: now)
+        isPinching = gestureEngine.isPinching()
         for output in outputs { handle(output, at: now) }
         updateHandStatus(for: pose, at: now)
     }
@@ -231,10 +277,16 @@ final class AppModel: ObservableObject {
             handStatus = "未检测到手掌"
             return
         }
-        if gestureEngine.isPinching() {
-            handStatus = pinchTargetPID == nil
+        let handName: String
+        switch pose.handedness {
+        case .left: handName = "左手 · "
+        case .right: handName = "右手 · "
+        case nil: handName = ""
+        }
+        if isPinching {
+            handStatus = handName + (pinchTargetPID == nil
                 ? "已捏合 · 前台应用不可控制"
-                : "已捏合 · 上下移动滚动"
+                : "已捏合 · 上下移动滚动")
             return
         }
 
@@ -243,15 +295,15 @@ final class AppModel: ObservableObject {
             pinchThreshold: gestureEngine.configuration.pinchThreshold
         ) {
         case .openPalm:
-            handStatus = "张开手掌 · 左右挥动翻页"
+            handStatus = handName + "张开手掌 · 左右挥动翻页"
         case .fist:
-            handStatus = "已握拳 · 不执行操作"
+            handStatus = handName + "已握拳 · 不执行操作"
         case .pointing:
-            handStatus = "食指伸出 · 不执行操作"
+            handStatus = handName + "食指伸出 · 不执行操作"
         case .pinching:
-            handStatus = "正在确认捏合…"
+            handStatus = handName + "正在确认捏合…"
         case .other:
-            handStatus = "已识别手掌姿态"
+            handStatus = handName + "已识别手掌姿态"
         }
     }
 
@@ -267,22 +319,41 @@ final class AppModel: ObservableObject {
     private func cancelCurrentGesture() {
         _ = gestureEngine.cancelActiveGesture()
         pinchTargetPID = nil
+        isPinching = false
     }
 
     private func handleCameraError(_ message: String) {
-        stop()
-        status = "摄像头错误：\(message)"
+        if usingAppleVisionFallback {
+            stop()
+            status = "摄像头错误：\(message)"
+        } else {
+            debugWindowEnabled = false
+            status = "MediaPipe 控制中；校准窗口错误：\(message)"
+        }
+    }
+
+    private func handleMediaPipeError(_ message: String) {
+        guard isRunning, !usingAppleVisionFallback else { return }
+        logger.error("MediaPipe error: \(message, privacy: .public)")
+        mediaPipeService.stop()
+        usingAppleVisionFallback = true
+        recognitionEngine = "Apple Vision 备用"
+        status = "MediaPipe 启动失败，已切换备用：\(message)"
+        camera.start()
+        if debugWindowEnabled { debugWindowController.show() }
     }
 
     private func beginRunning() {
         guard !isRunning else { return }
         pendingStart = false
         isRunning = true
-        handStatus = "正在寻找手掌"
-        status = "手势控制中"
-        camera.start()
+        handStatus = "正在启动 MediaPipe…"
+        status = "正在加载 MediaPipe…"
+        recognitionEngine = "MediaPipe 启动中"
+        usingAppleVisionFallback = false
+        mediaPipeService.start()
+        mediaPipeService.setPreviewVisible(debugWindowEnabled)
         if screenOverlayEnabled { screenOverlayController.show() }
-        if debugWindowEnabled { debugWindowController.show() }
     }
 
     private func saveAndApplySettings() {

@@ -13,6 +13,9 @@ struct MenuBarView: View {
                     Text(model.status)
                         .font(.caption)
                         .foregroundStyle(model.isRunning ? .green : .secondary)
+                    Text("识别引擎：\(model.recognitionEngine)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Circle()

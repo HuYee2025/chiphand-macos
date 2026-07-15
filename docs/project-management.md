@@ -3,8 +3,8 @@
 ## 项目状态
 
 - 当前阶段：第 04 阶段——macOS 系统级手势控制原型
-- 当前版本：浏览器插件 `1.0.1` 已冻结；macOS 原型 `0.2.0`
-- 当前目标：完成原生菜单栏 App 的摄像头/辅助功能授权与跨应用实机验收
+- 当前版本：浏览器插件 `1.0.1` 已冻结；macOS 原型 `0.3.0`
+- 当前目标：完成 MediaPipe 原生 App 的最终辅助功能授权与 Chrome/跨应用实机验收
 
 ## 阶段推进
 
@@ -13,14 +13,14 @@
 | 01 | 已完成 | 独立黑洞手势控制 MVP | `docs/dev-log/archive/01-hand-control-demo.md` |
 | 02 | 已收束 | 调整方向灵敏度、旋转手感和跨设备体验 | `docs/dev-log/archive/02-interaction-tuning-pivot.md` |
 | 03 | 已收束 | Chrome 后台手势浏览插件 MVP | `docs/dev-log/archive/03-browser-extension-v1-pivot.md` |
-| 04 | 进行中 | macOS 系统级菜单栏手势控制原型 | 等待权限与真实手势验收 |
+| 04 | 进行中 | macOS 系统级手势控制原型 | MediaPipe GPU 已跑通，等待系统滚动实机验收 |
 
 ## 岗位拆分
 
 | 岗位 | 负责内容 | 当前状态 |
 | --- | --- | --- |
 | 产品/策划 | 方向、范围、优先级 | macOS 系统级原型为主线，浏览器插件冻结 |
-| 开发 | 功能实现、修 Bug、验证 | macOS `0.2.0` 完整 21 点骨架、误识别过滤、动态状态和全屏 HUD |
+| 开发 | 功能实现、修 Bug、验证 | macOS `0.3.0` MediaPipe 主引擎、HID 系统滚动、正常 Dock App 与全屏 HUD |
 | 内容/文案 | 设定、脚本、说明文字 | 菜单栏状态、权限说明和本地 README 已完成 |
 | 美术/资产 | 图片、视觉、素材管理 | 使用系统菜单栏与 SF Symbols，暂不制作独立资产 |
 | 发布 | GitHub、部署、版本说明 | 本地 ad-hoc `.app` 已生成；未签名发布或推送 GitHub |
@@ -44,6 +44,7 @@
 - 完成自建浏览动作验收页和独立 Extension 构建。
 - 建立 `0.2.0` 本地版本记录。
 - 完成 macOS `0.1.0` 原型：AVFoundation、Apple Vision、系统滚动、菜单栏控制和权限引导。
+- 完成 macOS `0.3.0`：MediaPipe GPU 主引擎、Apple Vision 备用、内置 localhost 运行时和 Chromium 可接收的 HID 滚动事件。
 - 新增 10 项纯 Swift 核心检查与可复现 `.app` 打包脚本。
 - GitHub 仓库：`https://github.com/HuYee2025/black-hole-gesture-control`。
 
@@ -64,6 +65,7 @@
 | 2026-07-12 | MediaPipe 在 Web Worker 中运行 | 主线程方案实测最低约 19 FPS | 摄像头开启后恢复约 60 FPS |
 | 2026-07-13 | 先做 Chrome Side Panel 插件 | 最大化复用现有 Web 识别引擎并降低 Mac 权限成本 | 新增 `dist-extension/` 构建 |
 | 2026-07-15 | 主线转为 macOS 系统级原型 | 消除浏览器标签页和页面注入约束 | 新增 `macos-app/`，浏览器插件冻结 |
+| 2026-07-15 | macOS 主识别引擎改用 MediaPipe | 官方限制与浏览器版实测都显示其侧手、左右手和跟踪能力更适合本项目 | Apple Vision 降为备用，App 内嵌离线 WASM 运行时 |
 
 ## 质量门
 

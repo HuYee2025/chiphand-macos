@@ -15,22 +15,22 @@
 - 拇指与食指捏住约 0.08 秒后，上下拖动手掌连续滚动；手向上拖会查看下方内容，松开或丢手立即停止。
 - 张开手掌向左/右快速挥动，分别向上/向下滚动约 75% 屏幕。
 - 捏合有接触/释放阈值与跳变保护，左右挥动保持 650ms 冷却，避免重复触发。
-- 菜单栏手掌图标承担常驻入口；全屏透明 HUD 显示 21 点骨架、捏合位置和动态手势状态，摄像头只作为可选校准窗口。
+- Dock App 和菜单栏手掌图标都可作为入口；全屏透明 HUD 显示简化骨架、捏合位置和动态手势状态，摄像头只作为可选校准窗口。
 
 ## 功能/内容结构
 
-- 原生 SwiftUI 菜单栏 App、AVFoundation 摄像头、Apple Vision 手部关键点与 Core Graphics 系统滚动事件。
+- 原生 SwiftUI App、内嵌 MediaPipe Hand Landmarker（21 点/左右手/GPU 优先）、Apple Vision 备用与 Core Graphics HID 系统滚动事件。
 - 菜单栏提供启停、权限状态、灵敏度、全屏骨架 HUD 和摄像头校准窗口开关。
 - 系统事件只发给当前前台 App；切换 App 时取消正在进行的捏合。
 
 ## 视觉与风格
 
-- 使用原生 macOS 菜单栏、SF Symbols 和点击穿透的系统透明 HUD，不修改网页内容。
+- 使用原生 macOS 窗口、菜单栏、SF Symbols 和点击穿透的系统透明 HUD，不修改网页内容。
 - 原型验收期默认显示全屏骨架与底部状态；摄像头窗口默认关闭，只在校准镜像和误识别时打开。
 
 ## 技术约束
 
-- 技术栈为 Swift、SwiftUI、AVFoundation、Vision、ApplicationServices 和 Core Graphics。
+- 技术栈为 Swift、SwiftUI、WKWebView、MediaPipe WASM、AVFoundation、Vision、ApplicationServices 和 Core Graphics。
 - 摄像头画面和关键点完全留在本机，不保存、不上传。
 - 系统级输出必须获得摄像头和辅助功能权限；不申请屏幕录制权限。
 - 系统控制比网页控制更严格：丢手不续帧，立即停止输出。
