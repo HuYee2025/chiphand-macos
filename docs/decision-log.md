@@ -25,6 +25,27 @@
 
 ## 当前决策
 
+## 2026-07-15 v0.7.2 食指尖轨迹与严格握拳食指姿态
+
+背景：
+- `0.7.1` 虽改用 `Pointing_Up`，但移动轨迹仍错误取自手掌中心，用户只移动食指时很难达到跨中线距离；分类置信度单帧下降还会立即清空起点。
+
+决策：
+- 翻页起点、距离、水平主导和跨中线全部改用镜像后的 `indexTip` 坐标，手掌中心不再参与食指翻页。
+- 食指姿态要求拇指、中指、无名指、小指收拢，仅食指伸直；严格 OK 捏合仍优先。
+- 从首次稳定候选帧保存指尖起点；正式激活后允许 `Pointing_Up` 分类波动 180ms，只要关键点仍满足严格食指姿态就继续跟踪。
+
+原因：
+- 动作意图来自指尖轨迹，整只手不应被迫横移；短暂分类容错能覆盖挥动过程中常见的姿态置信度波动，同时严格姿态防止普通指向误触。
+
+影响：
+- 升级为 `0.7.2`（build 12）；`macos-v0.7.1` 保持为本轮修改前回滚点。
+
+相关文件：
+- `macos-app/Sources/GestureControlCore/GestureEngine.swift`
+- `macos-app/Sources/GestureControlCore/HandPose.swift`
+- `macos-app/Tests/GestureControlCoreTests/GestureEngineTests.swift`
+
 ## 2026-07-15 v0.7.1 食指替换 V 手势翻页
 
 背景：

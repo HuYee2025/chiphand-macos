@@ -52,11 +52,36 @@ final class GestureEngineTests: XCTestCase {
         )
     }
 
-    private func makePointingPose(screenX: Double) -> HandPose {
-        makePose(
-            palmX: 1 - screenX,
-            recognizedGesture: .pointingUp,
-            gestureConfidence: 0.90
+    private func makePointingPose(
+        screenTipX: Double,
+        recognizedGesture: RecognizedGesture = .pointingUp,
+        gestureConfidence: Double = 0.90
+    ) -> HandPose {
+        let pose = makePose(
+            palmX: 0.50,
+            indexX: 1 - screenTipX,
+            pinchY: 0.82,
+            recognizedGesture: recognizedGesture,
+            gestureConfidence: gestureConfidence
+        )
+        var points = pose.points
+        points[.thumbCMC] = .init(x: 0.45, y: 0.32)
+        points[.thumbMP] = .init(x: 0.43, y: 0.36)
+        points[.thumbIP] = .init(x: 0.44, y: 0.40)
+        points[.thumbTip] = .init(x: 0.45, y: 0.37)
+        for (tip, pip, x) in [
+            (HandJoint.middleTip, HandJoint.middlePIP, 0.47),
+            (.ringTip, .ringPIP, 0.54),
+            (.littleTip, .littlePIP, 0.60),
+        ] {
+            points[pip] = .init(x: x, y: 0.43)
+            points[tip] = .init(x: x, y: 0.34)
+        }
+        return HandPose(
+            points: points,
+            confidence: pose.confidence,
+            recognizedGesture: recognizedGesture,
+            gestureConfidence: gestureConfidence
         )
     }
 
@@ -229,33 +254,33 @@ final class GestureEngineTests: XCTestCase {
 
     func testPointingLeftToRightAcrossCenterPagesDown() {
         let engine = GestureEngine()
-        let start = makePointingPose(screenX: 0.30)
+        let start = makePointingPose(screenTipX: 0.30)
         XCTAssertTrue(engine.update(pose: start, at: 0).isEmpty)
         XCTAssertTrue(engine.update(pose: start, at: 0.23).isEmpty)
-        XCTAssertEqual(engine.update(pose: makePointingPose(screenX: 0.52), at: 0.40), [.page(.down)])
-        XCTAssertTrue(engine.update(pose: makePointingPose(screenX: 0.62), at: 0.50).isEmpty)
+        XCTAssertEqual(engine.update(pose: makePointingPose(screenTipX: 0.52), at: 0.40), [.page(.down)])
+        XCTAssertTrue(engine.update(pose: makePointingPose(screenTipX: 0.62), at: 0.50).isEmpty)
     }
 
     func testPointingRightToLeftAcrossCenterPagesUp() {
         let engine = GestureEngine()
-        let start = makePointingPose(screenX: 0.70)
+        let start = makePointingPose(screenTipX: 0.70)
         XCTAssertTrue(engine.update(pose: start, at: 0).isEmpty)
         XCTAssertTrue(engine.update(pose: start, at: 0.23).isEmpty)
-        XCTAssertEqual(engine.update(pose: makePointingPose(screenX: 0.48), at: 0.40), [.page(.up)])
+        XCTAssertEqual(engine.update(pose: makePointingPose(screenTipX: 0.48), at: 0.40), [.page(.up)])
     }
 
     func testStaticAndNearCenterPointingDoNotPage() {
         let engine = GestureEngine()
-        let pointing = makePointingPose(screenX: 0.45)
+        let pointing = makePointingPose(screenTipX: 0.45)
         XCTAssertTrue(engine.update(pose: pointing, at: 0).isEmpty)
         XCTAssertTrue(engine.update(pose: pointing, at: 0.23).isEmpty)
-        XCTAssertTrue(engine.update(pose: makePointingPose(screenX: 0.65), at: 0.50).isEmpty)
+        XCTAssertTrue(engine.update(pose: makePointingPose(screenTipX: 0.65), at: 0.50).isEmpty)
     }
 
     func testPointingRequiresReleaseBeforeItCanRepeat() {
         let engine = GestureEngine()
-        let start = makePointingPose(screenX: 0.30)
-        let moved = makePointingPose(screenX: 0.52)
+        let start = makePointingPose(screenTipX: 0.30)
+        let moved = makePointingPose(screenTipX: 0.52)
         _ = engine.update(pose: start, at: 0)
         _ = engine.update(pose: start, at: 0.23)
         XCTAssertEqual(engine.update(pose: moved, at: 0.40), [.page(.down)])
@@ -266,6 +291,56 @@ final class GestureEngineTests: XCTestCase {
         XCTAssertTrue(engine.update(pose: start, at: 0.70).isEmpty)
         XCTAssertTrue(engine.update(pose: start, at: 0.93).isEmpty)
         XCTAssertEqual(engine.update(pose: moved, at: 1.10), [.page(.down)])
+    }
+
+    func testPointingContinuesThroughBriefClassifierDropout() {
+        let engine = GestureEngine()
+        let start = makePointingPose(screenTipX: 0.30)
+        _ = engine.update(pose: start, at: 0)
+        _ = engine.update(pose: start, at: 0.23)
+
+        let movedWithClassifierDropout = makePointingPose(
+            screenTipX: 0.52,
+            recognizedGesture: .none,
+            gestureConfidence: 0
+        )
+        XCTAssertEqual(
+            engine.update(pose: movedWithClassifierDropout, at: 0.40),
+            [.page(.down)]
+        )
+    }
+
+    func testStrictPointingRequiresAClosedHandAroundTheIndexFinger() {
+        let strict = makePointingPose(
+            screenTipX: 0.50,
+            recognizedGesture: .none,
+            gestureConfidence: 0
+        )
+        XCTAssertTrue(isStrictPointing(strict))
+
+        let openPalm = makePose(indexX: 0.50, pinchY: 0.82)
+        XCTAssertFalse(isStrictPointing(openPalm))
+
+        var openThumbPoints = strict.points
+        openThumbPoints[.thumbMP] = .init(x: 0.40, y: 0.40)
+        openThumbPoints[.thumbIP] = .init(x: 0.31, y: 0.52)
+        openThumbPoints[.thumbTip] = .init(x: 0.20, y: 0.68)
+        let openThumb = HandPose(points: openThumbPoints, confidence: 0.95)
+        XCTAssertFalse(isStrictPointing(openThumb))
+    }
+
+    func testPointingDropoutBeyondGraceDoesNotPage() {
+        let engine = GestureEngine()
+        let start = makePointingPose(screenTipX: 0.30)
+        _ = engine.update(pose: start, at: 0)
+        _ = engine.update(pose: start, at: 0.23)
+
+        let movedTooLate = makePointingPose(
+            screenTipX: 0.52,
+            recognizedGesture: .none,
+            gestureConfidence: 0
+        )
+        XCTAssertTrue(engine.update(pose: movedTooLate, at: 0.42).isEmpty)
     }
 
     func testVictoryIsReservedAndNeverPages() {

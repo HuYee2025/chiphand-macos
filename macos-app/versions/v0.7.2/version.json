@@ -1,0 +1,24 @@
+{
+  "version": "0.7.2",
+  "date": "2026-07-15",
+  "tag": "macos-v0.7.2",
+  "summary": "Track strict pointing gestures by index fingertip instead of palm center and tolerate brief classifier dropouts.",
+  "scope": [
+    "Use mirrored indexTip coordinates for pointing start, distance, dominance and center crossing.",
+    "Require a closed thumb, middle, ring and little finger with only the index finger extended.",
+    "Capture the fingertip at the first stable candidate frame rather than after activation movement is lost.",
+    "Continue fingertip tracking through up to 180ms of Pointing_Up classifier fluctuation when landmark geometry remains valid."
+  ],
+  "validation": [
+    "swift test passed 22 tests including fixed-palm fingertip movement, classifier grace and strict pointing geometry",
+    "GestureControlCoreChecks passed 15 checks",
+    "TypeScript typecheck and 32 Web regression tests passed",
+    "Swift warnings-as-errors build passed",
+    "Release app build and strict codesign verification passed",
+    "Installed bundle reports version 0.7.2 build 12 and MediaPipe GPU reached ready state"
+  ],
+  "notes": [
+    "The 14 percent distance and center-crossing safety gates remain unchanged for the first physical trial.",
+    "macos-v0.7.1 remains the rollback point before this fingertip tracking fix."
+  ]
+}

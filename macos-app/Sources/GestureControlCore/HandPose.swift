@@ -162,6 +162,15 @@ public func isStrictPinch(_ pose: HandPose, pinchThreshold: Double = 0.20) -> Bo
     ].allSatisfy { $0 == true }
 }
 
+public func isStrictPointing(_ pose: HandPose) -> Bool {
+    guard fingerIsExtended(pose, tip: .indexTip, pip: .indexPIP, mcp: .indexMCP) == true,
+          fingerIsExtended(pose, tip: .middleTip, pip: .middlePIP, mcp: .middleMCP) == false,
+          fingerIsExtended(pose, tip: .ringTip, pip: .ringPIP, mcp: .ringMCP) == false,
+          fingerIsExtended(pose, tip: .littleTip, pip: .littlePIP, mcp: .littleMCP) == false,
+          thumbIsFoldedTowardPalm(pose) == true else { return false }
+    return true
+}
+
 public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
     guard pose.points.count >= 12,
           pose.point(.wrist) != nil else { return false }
@@ -191,7 +200,7 @@ public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
 public func classifyHandShape(_ pose: HandPose, pinchThreshold: Double = 0.20) -> HandShape {
     if isStrictPinch(pose, pinchThreshold: pinchThreshold) { return .pinching }
     if pose.gestureConfidence >= 0.70 {
-        if pose.recognizedGesture == .pointingUp { return .pointing }
+        if pose.recognizedGesture == .pointingUp, isStrictPointing(pose) { return .pointing }
         if pose.recognizedGesture == .victory { return .victory }
         if pose.recognizedGesture == .thumbUp { return .thumbsUp }
     }
@@ -206,8 +215,7 @@ public func classifyHandShape(_ pose: HandPose, pinchThreshold: Double = 0.20) -
     let known = extended.compactMap { $0 }
     guard known.count >= 3 else { return .other }
     if known.allSatisfy({ $0 }) { return .openPalm }
-    if extended[0] == true,
-       extended.dropFirst().allSatisfy({ $0 == false }) { return .pointing }
+    if isStrictPointing(pose) { return .pointing }
     if known.allSatisfy({ !$0 }) { return .fist }
     return .other
 }
@@ -226,4 +234,19 @@ private func fingerIsExtended(
     let pipDistance = pointDistance(pipPoint, wrist)
     let mcpDistance = pointDistance(mcpPoint, wrist)
     return tipDistance > pipDistance * 1.04 && tipDistance > mcpDistance * 1.12
+}
+
+private func thumbIsFoldedTowardPalm(_ pose: HandPose) -> Bool? {
+    guard let tip = pose.point(.thumbTip) else { return nil }
+    let palmAnchors = [
+        HandJoint.indexMCP,
+        .middleMCP,
+        .ringMCP,
+        .indexPIP,
+        .middlePIP,
+    ].compactMap(pose.point)
+    guard let closestPalmDistance = palmAnchors.map({ pointDistance(tip, $0) }).min() else {
+        return nil
+    }
+    return closestPalmDistance <= handScale(pose) * 0.90
 }

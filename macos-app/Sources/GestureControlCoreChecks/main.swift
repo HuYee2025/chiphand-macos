@@ -61,11 +61,36 @@ private func makePinchPose(screenX: Double, y: Double = 0.50) -> HandPose {
     )
 }
 
-private func makePointingPose(screenX: Double) -> HandPose {
-    makePose(
-        palmX: 1 - screenX,
-        recognizedGesture: .pointingUp,
-        gestureConfidence: 0.90
+private func makePointingPose(
+    screenTipX: Double,
+    recognizedGesture: RecognizedGesture = .pointingUp,
+    gestureConfidence: Double = 0.90
+) -> HandPose {
+    let pose = makePose(
+        palmX: 0.50,
+        indexX: 1 - screenTipX,
+        pinchY: 0.82,
+        recognizedGesture: recognizedGesture,
+        gestureConfidence: gestureConfidence
+    )
+    var points = pose.points
+    points[.thumbCMC] = .init(x: 0.45, y: 0.32)
+    points[.thumbMP] = .init(x: 0.43, y: 0.36)
+    points[.thumbIP] = .init(x: 0.44, y: 0.40)
+    points[.thumbTip] = .init(x: 0.45, y: 0.37)
+    for (tip, pip, x) in [
+        (HandJoint.middleTip, HandJoint.middlePIP, 0.47),
+        (.ringTip, .ringPIP, 0.54),
+        (.littleTip, .littlePIP, 0.60),
+    ] {
+        points[pip] = .init(x: x, y: 0.43)
+        points[tip] = .init(x: x, y: 0.34)
+    }
+    return HandPose(
+        points: points,
+        confidence: pose.confidence,
+        recognizedGesture: recognizedGesture,
+        gestureConfidence: gestureConfidence
     )
 }
 
@@ -113,19 +138,33 @@ do {
 
 do {
     let engine = GestureEngine()
-    let start = makePointingPose(screenX: 0.30)
+    let start = makePointingPose(screenTipX: 0.30)
     _ = engine.update(pose: start, at: 0)
     _ = engine.update(pose: start, at: 0.23)
-    check(engine.update(pose: makePointingPose(screenX: 0.52), at: 0.40) == [.page(.down)], "食指右滑映射下翻")
+    check(engine.update(pose: makePointingPose(screenTipX: 0.52), at: 0.40) == [.page(.down)], "食指尖右滑映射下翻")
 }
 
 do {
     let engine = GestureEngine()
-    let start = makePointingPose(screenX: 0.70)
+    let start = makePointingPose(screenTipX: 0.70)
     _ = engine.update(pose: start, at: 0)
     _ = engine.update(pose: start, at: 0.23)
-    check(engine.update(pose: makePointingPose(screenX: 0.48), at: 0.40) == [.page(.up)], "食指左滑映射上翻")
+    check(engine.update(pose: makePointingPose(screenTipX: 0.48), at: 0.40) == [.page(.up)], "食指尖左滑映射上翻")
     check(engine.update(pose: makePose(palmX: 0.20), at: 0.60).isEmpty, "张开手掌不再翻页")
+}
+
+do {
+    let engine = GestureEngine()
+    let start = makePointingPose(screenTipX: 0.30)
+    _ = engine.update(pose: start, at: 0)
+    _ = engine.update(pose: start, at: 0.23)
+    let dropout = makePointingPose(
+        screenTipX: 0.52,
+        recognizedGesture: .none,
+        gestureConfidence: 0
+    )
+    check(engine.update(pose: dropout, at: 0.40) == [.page(.down)], "食指分类短暂波动仍跟踪指尖")
+    check(isStrictPointing(start), "食指姿态要求其余手指收拢")
 }
 
 do {

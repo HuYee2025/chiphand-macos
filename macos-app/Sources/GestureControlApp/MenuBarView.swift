@@ -68,7 +68,7 @@ struct MenuBarView: View {
 
             GroupBox("操作") {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("食指左右跨中线：翻页")
+                    Text("握拳竖食指左右跨中线：翻页")
                     Text("OK 捏合上下移动：滚动")
                     Text("OK 捏合左右跨中线：返回 / 前进")
                     Text("张开手掌：暂不执行操作")

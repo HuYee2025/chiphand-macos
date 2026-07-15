@@ -429,7 +429,7 @@ final class AppModel: ObservableObject {
         case .fist:
             handStatus = handPrefix + "已握拳 · 不执行操作"
         case .pointing:
-            handStatus = handPrefix + "食指手势 · 左右跨中线翻页"
+            handStatus = handPrefix + "握拳竖食指 · 左右跨中线翻页"
         case .pinching:
             handStatus = handPrefix + "OK 手势·正在确认捏合…"
         case .victory:

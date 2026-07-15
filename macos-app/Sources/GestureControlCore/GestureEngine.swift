@@ -43,6 +43,7 @@ public struct GestureConfiguration: Equatable, Sendable {
     public var minimumConfidence: Double
     public var cannedGestureMinimumConfidence: Double
     public var pointingActivationSeconds: TimeInterval
+    public var pointingClassificationGraceSeconds: TimeInterval
     public var gestureReleaseSeconds: TimeInterval
     public var thumbsUpActivationSeconds: TimeInterval
 
@@ -62,6 +63,7 @@ public struct GestureConfiguration: Equatable, Sendable {
         minimumConfidence: Double = 0.55,
         cannedGestureMinimumConfidence: Double = 0.70,
         pointingActivationSeconds: TimeInterval = 0.22,
+        pointingClassificationGraceSeconds: TimeInterval = 0.18,
         gestureReleaseSeconds: TimeInterval = 0.15,
         thumbsUpActivationSeconds: TimeInterval = 0.30
     ) {
@@ -80,6 +82,7 @@ public struct GestureConfiguration: Equatable, Sendable {
         self.minimumConfidence = minimumConfidence
         self.cannedGestureMinimumConfidence = cannedGestureMinimumConfidence
         self.pointingActivationSeconds = pointingActivationSeconds
+        self.pointingClassificationGraceSeconds = pointingClassificationGraceSeconds
         self.gestureReleaseSeconds = gestureReleaseSeconds
         self.thumbsUpActivationSeconds = thumbsUpActivationSeconds
     }
@@ -87,12 +90,6 @@ public struct GestureConfiguration: Equatable, Sendable {
 
 public final class GestureEngine {
     public var configuration: GestureConfiguration
-
-    private struct SwipeSample {
-        var x: Double
-        var y: Double
-        var time: TimeInterval
-    }
 
     private var pinchCandidateSince: TimeInterval?
     private var pinchActive = false
@@ -102,7 +99,9 @@ public final class GestureEngine {
     private var pinchNavigationTriggered = false
 
     private var pointingCandidateSince: TimeInterval?
-    private var pointingStartPalm: SwipeSample?
+    private var pointingStartTip: NormalizedPoint?
+    private var pointingActive = false
+    private var pointingLastConfirmedAt: TimeInterval?
     private var pointingNeedsRelease = false
     private var pointingExitSince: TimeInterval?
 
@@ -162,9 +161,20 @@ public final class GestureEngine {
 
         let cannedGestureIsConfident =
             pose.gestureConfidence >= configuration.cannedGestureMinimumConfidence
-        if cannedGestureIsConfident, pose.recognizedGesture == .pointingUp {
+        if cannedGestureIsConfident,
+           pose.recognizedGesture == .pointingUp,
+           isStrictPointing(pose) {
             output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
-            output.append(contentsOf: updatePointingPage(pose: pose, at: now))
+            output.append(contentsOf: updatePointingPage(pose: pose, at: now, confirmed: true))
+            return output
+        }
+
+        if pointingActive,
+           let lastConfirmedAt = pointingLastConfirmedAt,
+           now - lastConfirmedAt <= configuration.pointingClassificationGraceSeconds,
+           isStrictPointing(pose) {
+            output.append(contentsOf: updateThumbsUp(isDetected: false, at: now))
+            output.append(contentsOf: updatePointingPage(pose: pose, at: now, confirmed: false))
             return output
         }
 
@@ -275,35 +285,49 @@ public final class GestureEngine {
         }
     }
 
-    private func updatePointingPage(pose: HandPose, at now: TimeInterval) -> [GestureOutput] {
+    private func updatePointingPage(
+        pose: HandPose,
+        at now: TimeInterval,
+        confirmed: Bool
+    ) -> [GestureOutput] {
+        guard let current = pose.point(.indexTip).map(screenPoint) else { return [] }
+        if confirmed {
+            pointingLastConfirmedAt = now
+            pointingExitSince = nil
+        }
         guard !pointingNeedsRelease else { return [] }
-        pointingExitSince = nil
-        pointingCandidateSince = pointingCandidateSince ?? now
-        guard now - (pointingCandidateSince ?? now) >= configuration.pointingActivationSeconds,
-              let palm = palmCenter(pose) else { return [] }
 
-        let current = SwipeSample(x: 1 - palm.x, y: palm.y, time: now)
-        if pointingStartPalm == nil {
-            pointingStartPalm = current
+        if pointingCandidateSince == nil {
+            pointingCandidateSince = now
+            pointingStartTip = current
+            pointingActive = false
             return []
         }
-        guard let start = pointingStartPalm,
+
+        if !pointingActive {
+            guard now - (pointingCandidateSince ?? now) >= configuration.pointingActivationSeconds else {
+                return []
+            }
+            pointingActive = true
+        }
+
+        guard let start = pointingStartTip,
               let direction = navigationDirection(forStartX: start.x),
-              crossedCenter(
-                from: NormalizedPoint(x: start.x, y: start.y),
-                to: NormalizedPoint(x: current.x, y: current.y),
-                direction: direction
-              ) else { return [] }
+              crossedCenter(from: start, to: current, direction: direction) else { return [] }
 
         pointingNeedsRelease = true
         pointingCandidateSince = nil
-        pointingStartPalm = nil
+        pointingStartTip = nil
+        pointingActive = false
+        pointingLastConfirmedAt = nil
         return [.page(direction == .back ? .down : .up)]
     }
 
     private func observePointingRelease(at now: TimeInterval) {
         pointingCandidateSince = nil
-        pointingStartPalm = nil
+        pointingStartTip = nil
+        pointingActive = false
+        pointingLastConfirmedAt = nil
         guard pointingNeedsRelease else { return }
         pointingExitSince = pointingExitSince ?? now
         if now - (pointingExitSince ?? now) >= configuration.gestureReleaseSeconds {
@@ -314,7 +338,9 @@ public final class GestureEngine {
 
     private func resetPointingCompletely() {
         pointingCandidateSince = nil
-        pointingStartPalm = nil
+        pointingStartTip = nil
+        pointingActive = false
+        pointingLastConfirmedAt = nil
         pointingNeedsRelease = false
         pointingExitSince = nil
     }
