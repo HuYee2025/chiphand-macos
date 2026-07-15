@@ -6,7 +6,7 @@
 
 - Swift 6.3 / SwiftUI `MenuBarExtra`，部署目标 macOS 14+。
 - AVFoundation：640×480 摄像头会话与可选镜像预览。
-- Vision `VNDetectHumanHandPoseRequest`：单手关键点检测。
+- Vision `VNDetectHumanHandPoseRequest`：单手 21 点关键点检测。
 - Core Graphics `CGEvent`：向前台 App PID 发送连续滚动事件。
 - ApplicationServices：检查辅助功能信任；AppKit `NSWorkspace`：跟踪前台 App 切换。
 
@@ -24,11 +24,12 @@
 
 - `GestureControlCore`：平台无关的关键点归一化、捏合迟滞、左右挥动、650ms 冷却和稳定重新激活。
 - `CameraCaptureService`：后台队列持有 `AVCaptureSession`，丢弃迟到帧，不阻塞菜单栏 UI。
-- `HandPoseService`：串行执行 Apple Vision 单手关键点请求；只保留当前处理帧，避免积压。
+- `HandPoseService`：串行执行 Apple Vision 单手 21 点请求；以点数、完整手指链、点云跨度和置信度中位数过滤脸部假点云，只保留当前处理帧。
 - `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；App 切换立即取消捏合。
 - `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件形成约 75% 屏幕的平滑滚动。
-- `MenuBarView`：启停、权限状态、两项灵敏度和调试预览；默认无 Dock 图标。
-- `DebugWindowController`：控制开启后默认弹出置顶测试窗，叠加镜像摄像头、手部骨架、捏合连线和实时状态；关闭测试窗不停止识别。
+- `MenuBarView`：启停、权限状态、两项灵敏度、操作说明、全屏 HUD 与摄像头校准开关；默认无 Dock 图标。
+- `ScreenGestureOverlayController`：在主屏幕绘制点击穿透的 21 点骨架、捏合线和动态状态，不抢前台焦点、不阻挡鼠标。
+- `DebugWindowController`：可选摄像头校准窗口；视频保持自拍镜像，骨架使用匹配坐标，不再额外水平反转。
 - 权限协调：启动按钮只记录启动意图，不再自动跳转系统设置；App 每秒刷新 Camera/Accessibility 状态，授权生效后自动继续启动。
 
 ### Web / Extension（冻结）

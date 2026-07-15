@@ -80,13 +80,15 @@ struct DebugWindowView: View {
 
 struct HandSkeletonView: View {
     let pose: HandPose?
+    var lineWidth: CGFloat = 2.5
+    var pointDiameter: CGFloat = 8
 
     private let connections: [(HandJoint, HandJoint)] = [
-        (.wrist, .thumbTip),
-        (.wrist, .indexMCP), (.indexMCP, .indexTip),
-        (.wrist, .middleMCP), (.middleMCP, .middleTip),
-        (.wrist, .ringMCP), (.ringMCP, .ringTip),
-        (.wrist, .littleMCP), (.littleMCP, .littleTip),
+        (.wrist, .thumbCMC), (.thumbCMC, .thumbMP), (.thumbMP, .thumbIP), (.thumbIP, .thumbTip),
+        (.wrist, .indexMCP), (.indexMCP, .indexPIP), (.indexPIP, .indexDIP), (.indexDIP, .indexTip),
+        (.wrist, .middleMCP), (.middleMCP, .middlePIP), (.middlePIP, .middleDIP), (.middleDIP, .middleTip),
+        (.wrist, .ringMCP), (.ringMCP, .ringPIP), (.ringPIP, .ringDIP), (.ringDIP, .ringTip),
+        (.wrist, .littleMCP), (.littleMCP, .littlePIP), (.littlePIP, .littleDIP), (.littleDIP, .littleTip),
         (.indexMCP, .middleMCP), (.middleMCP, .ringMCP), (.ringMCP, .littleMCP),
     ]
 
@@ -98,7 +100,7 @@ struct HandSkeletonView: View {
                 var path = Path()
                 path.move(to: screenPoint(first, size: size))
                 path.addLine(to: screenPoint(second, size: size))
-                context.stroke(path, with: .color(.cyan.opacity(0.9)), lineWidth: 2.5)
+                context.stroke(path, with: .color(.cyan.opacity(0.9)), lineWidth: lineWidth)
             }
 
             if let thumb = pose.point(.thumbTip), let index = pose.point(.indexTip) {
@@ -109,21 +111,29 @@ struct HandSkeletonView: View {
                 context.stroke(
                     pinchPath,
                     with: .color(pinching ? .green : .yellow.opacity(0.8)),
-                    style: StrokeStyle(lineWidth: pinching ? 5 : 2, lineCap: .round)
+                    style: StrokeStyle(lineWidth: pinching ? lineWidth * 2 : lineWidth, lineCap: .round)
                 )
             }
 
             for point in pose.points.values {
                 let center = screenPoint(point, size: size)
-                let rect = CGRect(x: center.x - 4, y: center.y - 4, width: 8, height: 8)
+                let radius = pointDiameter / 2
+                let rect = CGRect(
+                    x: center.x - radius,
+                    y: center.y - radius,
+                    width: pointDiameter,
+                    height: pointDiameter
+                )
                 context.fill(Path(ellipseIn: rect), with: .color(.white))
-                context.stroke(Path(ellipseIn: rect), with: .color(.cyan), lineWidth: 1.5)
+                context.stroke(Path(ellipseIn: rect), with: .color(.cyan), lineWidth: max(1.5, lineWidth * 0.6))
             }
         }
         .allowsHitTesting(false)
     }
 
     private func screenPoint(_ point: NormalizedPoint, size: CGSize) -> CGPoint {
-        CGPoint(x: (1 - point.x) * size.width, y: (1 - point.y) * size.height)
+        // AVCapture preview is already presented in selfie orientation on this
+        // camera path. Keep Vision's x coordinate unchanged so both layers align.
+        CGPoint(x: point.x * size.width, y: (1 - point.y) * size.height)
     }
 }

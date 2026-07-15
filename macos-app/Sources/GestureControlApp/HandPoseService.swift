@@ -18,14 +18,25 @@ final class HandPoseService: @unchecked Sendable {
 
         let mapping: [(HandJoint, VNHumanHandPoseObservation.JointName)] = [
             (.wrist, .wrist),
+            (.thumbCMC, .thumbCMC),
+            (.thumbMP, .thumbMP),
+            (.thumbIP, .thumbIP),
             (.thumbTip, .thumbTip),
             (.indexMCP, .indexMCP),
+            (.indexPIP, .indexPIP),
+            (.indexDIP, .indexDIP),
             (.indexTip, .indexTip),
             (.middleMCP, .middleMCP),
+            (.middlePIP, .middlePIP),
+            (.middleDIP, .middleDIP),
             (.middleTip, .middleTip),
             (.ringMCP, .ringMCP),
+            (.ringPIP, .ringPIP),
+            (.ringDIP, .ringDIP),
             (.ringTip, .ringTip),
             (.littleMCP, .littleMCP),
+            (.littlePIP, .littlePIP),
+            (.littleDIP, .littleDIP),
             (.littleTip, .littleTip),
         ]
 
@@ -38,8 +49,10 @@ final class HandPoseService: @unchecked Sendable {
                 confidence: Double(point.confidence)
             )
         }
-        guard points[.wrist] != nil else { return nil }
-        let confidence = points.values.map(\.confidence).min() ?? 0
-        return HandPose(points: points, confidence: confidence)
+        let sortedConfidences = points.values.map(\.confidence).sorted()
+        guard !sortedConfidences.isEmpty else { return nil }
+        let confidence = sortedConfidences[sortedConfidences.count / 2]
+        let pose = HandPose(points: points, confidence: confidence)
+        return isPlausibleHandPose(pose) ? pose : nil
     }
 }

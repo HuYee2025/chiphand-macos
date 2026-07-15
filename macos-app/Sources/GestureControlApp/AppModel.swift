@@ -12,7 +12,16 @@ final class AppModel: ObservableObject {
     @Published private(set) var status = "已停止"
     @Published private(set) var handStatus = "等待启动"
     @Published private(set) var latestPose: HandPose?
-    @Published var debugWindowEnabled = true {
+    @Published var screenOverlayEnabled = true {
+        didSet {
+            if isRunning && screenOverlayEnabled {
+                screenOverlayController.show()
+            } else {
+                screenOverlayController.hide()
+            }
+        }
+    }
+    @Published var debugWindowEnabled = false {
         didSet {
             if isRunning && debugWindowEnabled {
                 debugWindowController.show()
@@ -35,16 +44,23 @@ final class AppModel: ObservableObject {
     private let emitter: ScrollEmitting = SystemScrollEmitter()
     private var processingFrame = false
     private var pinchTargetPID: pid_t?
+    private var lastEligiblePID: pid_t?
     private var pendingStart = false
     private var workspaceObserver: NSObjectProtocol?
     private var permissionTimer: AnyCancellable?
     private lazy var debugWindowController = DebugWindowController(model: self)
+    private lazy var screenOverlayController = ScreenGestureOverlayController(model: self)
+    private var actionFeedback: (message: String, until: TimeInterval)?
 
     init() {
         let defaults = UserDefaults.standard
         swipeSensitivity = defaults.object(forKey: "swipeSensitivity") as? Double ?? 50
         pinchSensitivity = defaults.object(forKey: "pinchSensitivity") as? Double ?? 50
         applySettings()
+        if let application = NSWorkspace.shared.frontmostApplication,
+           application.bundleIdentifier != Bundle.main.bundleIdentifier {
+            lastEligiblePID = application.processIdentifier
+        }
 
         camera.onFrame = { [weak self] sampleBuffer in
             self?.process(sampleBuffer)
@@ -56,8 +72,16 @@ final class AppModel: ObservableObject {
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.cancelCurrentGesture() }
+        ) { [weak self] notification in
+            Task { @MainActor in
+                guard let self else { return }
+                if let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                    as? NSRunningApplication,
+                   application.bundleIdentifier != Bundle.main.bundleIdentifier {
+                    self.lastEligiblePID = application.processIdentifier
+                }
+                self.cancelCurrentGesture()
+            }
         }
         permissionTimer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
@@ -106,6 +130,8 @@ final class AppModel: ObservableObject {
         cancelCurrentGesture()
         latestPose = nil
         debugWindowController.hide()
+        screenOverlayController.hide()
+        actionFeedback = nil
         handStatus = "等待启动"
         status = "已停止"
     }
@@ -131,6 +157,20 @@ final class AppModel: ObservableObject {
         status = "请打开 GestureControl 开关；授权后会自动启动"
     }
 
+    func testPageDown() {
+        guard accessibilityPermission == .granted else {
+            handStatus = "辅助功能未生效，无法发送滚动"
+            return
+        }
+        guard let target = eligibleFrontmostPID() else {
+            handStatus = "没有可控制的前台应用"
+            return
+        }
+        emitter.emitPage(.down, to: target)
+        handStatus = "测试下翻事件已发送"
+        actionFeedback = ("测试下翻事件已发送", CACurrentMediaTime() + 0.8)
+    }
+
     private nonisolated func process(_ sampleBuffer: CMSampleBuffer) {
         Task { @MainActor [weak self] in
             guard let self, self.isRunning, !self.processingFrame else { return }
@@ -151,16 +191,19 @@ final class AppModel: ObservableObject {
     private func consume(pose: HandPose?) {
         guard isRunning else { return }
         latestPose = pose
-        handStatus = pose == nil ? "正在寻找手掌" : "已检测到手掌"
-        let outputs = gestureEngine.update(pose: pose, at: CACurrentMediaTime())
-        for output in outputs { handle(output) }
+        let now = CACurrentMediaTime()
+        let outputs = gestureEngine.update(pose: pose, at: now)
+        for output in outputs { handle(output, at: now) }
+        updateHandStatus(for: pose, at: now)
     }
 
-    private func handle(_ output: GestureOutput) {
+    private func handle(_ output: GestureOutput, at now: TimeInterval) {
         switch output {
         case .pinchBegan:
             pinchTargetPID = eligibleFrontmostPID()
-            handStatus = pinchTargetPID == nil ? "前台应用不可控制" : "已捏合 · 上下拖动"
+            if pinchTargetPID == nil {
+                actionFeedback = ("已捏合 · 前台应用不可控制", now + 0.8)
+            }
         case let .pinchScroll(delta):
             guard let target = pinchTargetPID else { return }
             emitter.emitContinuous(normalizedDelta: delta, to: target)
@@ -170,14 +213,55 @@ final class AppModel: ObservableObject {
         case let .page(direction):
             guard let target = eligibleFrontmostPID() else { return }
             emitter.emitPage(direction, to: target)
-            handStatus = direction == .down ? "右挥 · 下翻" : "左挥 · 上翻"
+            actionFeedback = (
+                direction == .down ? "右挥 · 已下翻" : "左挥 · 已上翻",
+                now + 0.8
+            )
+        }
+    }
+
+    private func updateHandStatus(for pose: HandPose?, at now: TimeInterval) {
+        if let feedback = actionFeedback, now < feedback.until {
+            handStatus = feedback.message
+            return
+        }
+        actionFeedback = nil
+
+        guard let pose else {
+            handStatus = "未检测到手掌"
+            return
+        }
+        if gestureEngine.isPinching() {
+            handStatus = pinchTargetPID == nil
+                ? "已捏合 · 前台应用不可控制"
+                : "已捏合 · 上下移动滚动"
+            return
+        }
+
+        switch classifyHandShape(
+            pose,
+            pinchThreshold: gestureEngine.configuration.pinchThreshold
+        ) {
+        case .openPalm:
+            handStatus = "张开手掌 · 左右挥动翻页"
+        case .fist:
+            handStatus = "已握拳 · 不执行操作"
+        case .pointing:
+            handStatus = "食指伸出 · 不执行操作"
+        case .pinching:
+            handStatus = "正在确认捏合…"
+        case .other:
+            handStatus = "已识别手掌姿态"
         }
     }
 
     private func eligibleFrontmostPID() -> pid_t? {
-        guard let application = NSWorkspace.shared.frontmostApplication,
-              application.bundleIdentifier != Bundle.main.bundleIdentifier else { return nil }
-        return application.processIdentifier
+        if let application = NSWorkspace.shared.frontmostApplication,
+           application.bundleIdentifier != Bundle.main.bundleIdentifier {
+            lastEligiblePID = application.processIdentifier
+            return application.processIdentifier
+        }
+        return lastEligiblePID
     }
 
     private func cancelCurrentGesture() {
@@ -197,6 +281,7 @@ final class AppModel: ObservableObject {
         handStatus = "正在寻找手掌"
         status = "手势控制中"
         camera.start()
+        if screenOverlayEnabled { screenOverlayController.show() }
         if debugWindowEnabled { debugWindowController.show() }
     }
 

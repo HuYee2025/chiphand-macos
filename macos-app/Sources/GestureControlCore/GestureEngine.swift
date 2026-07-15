@@ -34,7 +34,7 @@ public struct GestureConfiguration: Equatable, Sendable {
         swipeHistorySeconds: TimeInterval = 0.36,
         swipeMinimumDuration: TimeInterval = 0.10,
         swipeCooldownSeconds: TimeInterval = 0.65,
-        minimumConfidence: Double = 0.65
+        minimumConfidence: Double = 0.55
     ) {
         self.pinchThreshold = pinchThreshold
         self.pinchReleaseThreshold = pinchReleaseThreshold

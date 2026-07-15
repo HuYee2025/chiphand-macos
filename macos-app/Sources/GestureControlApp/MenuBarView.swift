@@ -51,7 +51,21 @@ struct MenuBarView: View {
                 .padding(.vertical, 2)
             }
 
-            Toggle("显示悬浮识别窗口", isOn: $model.debugWindowEnabled)
+            GroupBox("操作") {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("张开手掌左右挥动：翻页")
+                    Text("拇指食指捏住后上下移动：滚动")
+                    Text("握拳、单指：只显示状态")
+                    Button("测试系统下翻") { model.testPageDown() }
+                        .controlSize(.small)
+                }
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 2)
+            }
+
+            Toggle("全屏显示手掌骨架", isOn: $model.screenOverlayEnabled)
+            Toggle("显示摄像头校准窗口", isOn: $model.debugWindowEnabled)
             HStack {
                 Button("刷新权限") { model.refreshPermissions() }
                 Spacer()

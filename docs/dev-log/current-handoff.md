@@ -4,7 +4,7 @@
 
 - 第 04 阶段：macOS 系统级手势控制原型。
 - 浏览器插件冻结在本地 `v1.0.1`；不要继续多页面重构，除非用户重新改变方向。
-- macOS 原型版本：`macos-app/VERSION` = `0.1.1`。
+- macOS 原型版本：`macos-app/VERSION` = `0.2.0`。
 - 当前分支：`codex/macos-system-prototype`。
 
 ## 已完成
@@ -20,20 +20,23 @@
 - `0.1.1` 修复辅助功能已打开却反复跳设置：启动不再自动跳转，权限每秒刷新，生效后自动继续。
 - `0.1.1` 新增默认开启的置顶测试窗，显示摄像头、手部骨架、捏合连线和识别状态。
 - App 已固定安装到 `/Applications/GestureControl.app`；旧辅助功能记录已重置。
+- `0.2.0` 使用完整 21 点骨架，修复视频/骨架错位，并用结构校验过滤脸部假点云。
+- `0.2.0` 修复置信度计算导致“看得见手、动作不执行”的问题。
+- `0.2.0` 新增全屏透明 HUD、动态手势状态和“测试系统下翻”；摄像头窗口默认改为关闭。
 
 ## 已验证
 
-- `swift test`：5 项 `XCTest` 全部通过。
+- `swift test`：7 项 `XCTest` 全部通过。
 - `swift run GestureControlCoreChecks`：10 项全部通过。
 - `swift build --target GestureControlApp`：通过。
 - Release `.app` 构建、Info.plist、camera entitlement、ad-hoc codesign：通过。
 - `GestureControl.app` 进程可成功启动。
-- `/Applications/GestureControl.app` 已更新为 `0.1.1`，签名校验通过并成功启动。
+- `/Applications/GestureControl.app` 已更新为 `0.2.0`，签名校验通过并成功启动。
 - Xcode 26.6 License 已接受；已建立标准 `XCTest` Target。
 
 ## 尚未验证
 
-- 重置旧记录后，用户需要对新安装的 `0.1.1` 再授予一次辅助功能权限。
+- 安装最终 `0.2.0` 后已重置旧记录，用户需要再授予一次辅助功能权限。
 - 尚未用真实手掌确认 Vision 阈值、左右方向和 Core Graphics 滚动符号。
 - 尚未在 Chrome、Safari、Preview、Notion 做跨应用成功率和误触测试。
 - 悬浮识别窗已实现但尚待用户授权后做真实摄像头与骨架验收。
@@ -41,10 +44,11 @@
 
 ## 下一步
 
-1. 点击菜单栏手掌图标和“开启手势控制”；若显示辅助功能未生效，再点权限行“设置”。
-2. 在重新出现的 GestureControl 条目上打开开关；App 检测到权限后应自动启动并弹出悬浮识别窗。
-3. 在测试窗确认视频、蓝色骨架和捏合连线，再到长网页验证右挥下翻、左挥上翻、手向上拖查看下方内容。
-4. 完成 Chrome、Safari、Preview、Notion 各 20 次动作和两分钟静止误触记录，再调整 Vision 阈值与滚动增益。
+1. 点击菜单栏手掌图标和“开启手势控制”；若辅助功能未生效，点权限行“设置”并重新打开 GestureControl 开关。
+2. 先在长网页点击“测试系统下翻”；成功后说明权限和系统输出链路正常。
+3. 确认全屏 21 点骨架随手移动，手离开时立即消失；必要时打开摄像头校准窗口检查对齐。
+4. 验证动态状态、右挥下翻、左挥上翻、捏住手向上拖查看下方内容。
+5. 完成 Chrome、Safari、Preview、Notion 各 20 次动作和两分钟静止误触记录，再调整 Vision 阈值与滚动增益。
 
 ## 重要边界
 

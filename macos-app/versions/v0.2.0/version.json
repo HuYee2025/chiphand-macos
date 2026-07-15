@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "date": "2026-07-15",
+  "tag": "macos-v0.2.0",
+  "summary": "Restore the full 21-point hand model, reject face false positives, and move gesture feedback to a full-screen transparent HUD.",
+  "scope": [
+    "Align the mirrored camera preview and Vision skeleton coordinates.",
+    "Use all 21 Apple Vision hand joints and reject sparse or implausibly small point clouds.",
+    "Use median joint confidence so valid hands reach the gesture engine.",
+    "Show a click-through full-screen skeleton, pinch line, and dynamic hand-state label.",
+    "Add a direct system page-down diagnostic action."
+  ],
+  "validation": [
+    "swift test: 7 XCTest cases passed",
+    "swift run GestureControlCoreChecks: 10 checks passed",
+    "swift build --target GestureControlApp",
+    "release app build, ad-hoc signature verification, and installation as version 0.2.0"
+  ],
+  "notes": [
+    "Camera calibration preview is off by default; full-screen gesture HUD is on by default.",
+    "Real-hand direction and cross-application scrolling still require user validation."
+  ]
+}

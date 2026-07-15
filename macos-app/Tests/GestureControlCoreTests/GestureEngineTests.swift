@@ -11,14 +11,25 @@ final class GestureEngineTests: XCTestCase {
         HandPose(
             points: [
                 .wrist: .init(x: palmX, y: 0.20),
+                .thumbCMC: .init(x: palmX - 0.05, y: 0.31),
+                .thumbMP: .init(x: palmX - 0.12, y: 0.38),
+                .thumbIP: .init(x: (palmX - 0.12 + thumbX) / 2, y: (0.38 + pinchY) / 2),
                 .thumbTip: .init(x: thumbX, y: pinchY),
                 .indexMCP: .init(x: palmX - 0.09, y: 0.42),
+                .indexPIP: .init(x: palmX - 0.09, y: 0.56),
+                .indexDIP: .init(x: (palmX - 0.09 + indexX) / 2, y: 0.69),
                 .indexTip: .init(x: indexX, y: pinchY),
                 .middleMCP: .init(x: palmX - 0.03, y: 0.44),
+                .middlePIP: .init(x: palmX - 0.03, y: 0.58),
+                .middleDIP: .init(x: palmX - 0.03, y: 0.70),
                 .middleTip: .init(x: palmX - 0.03, y: 0.82),
                 .ringMCP: .init(x: palmX + 0.04, y: 0.43),
+                .ringPIP: .init(x: palmX + 0.04, y: 0.56),
+                .ringDIP: .init(x: palmX + 0.04, y: 0.67),
                 .ringTip: .init(x: palmX + 0.04, y: 0.78),
                 .littleMCP: .init(x: palmX + 0.10, y: 0.40),
+                .littlePIP: .init(x: palmX + 0.105, y: 0.51),
+                .littleDIP: .init(x: palmX + 0.108, y: 0.61),
                 .littleTip: .init(x: palmX + 0.11, y: 0.70),
             ],
             confidence: 0.95
@@ -77,5 +88,38 @@ final class GestureEngineTests: XCTestCase {
 
         XCTAssertEqual(engine.cancelActiveGesture(), [.pinchEnded])
         XCTAssertTrue(engine.update(pose: makePose(palmX: 0.40), at: 0.10).isEmpty)
+    }
+
+    func testRejectsSparseFaceLikePointCloud() {
+        let sparse = HandPose(
+            points: [
+                .wrist: .init(x: 0.50, y: 0.50),
+                .thumbTip: .init(x: 0.52, y: 0.51),
+                .indexTip: .init(x: 0.53, y: 0.52),
+                .middleTip: .init(x: 0.54, y: 0.51),
+            ],
+            confidence: 0.90
+        )
+
+        XCTAssertFalse(isPlausibleHandPose(sparse))
+    }
+
+    func testRecognizesOpenPalmAndFist() {
+        let openPalm = makePose(indexX: 0.41, pinchY: 0.82)
+        XCTAssertTrue(isPlausibleHandPose(openPalm))
+        XCTAssertEqual(classifyHandShape(openPalm), .openPalm)
+
+        var fistPoints = openPalm.points
+        for (tip, pip, x) in [
+            (HandJoint.indexTip, HandJoint.indexPIP, 0.41),
+            (.middleTip, .middlePIP, 0.47),
+            (.ringTip, .ringPIP, 0.54),
+            (.littleTip, .littlePIP, 0.60),
+        ] {
+            fistPoints[pip] = .init(x: x, y: 0.43)
+            fistPoints[tip] = .init(x: x, y: 0.34)
+        }
+        let fist = HandPose(points: fistPoints, confidence: 0.95)
+        XCTAssertEqual(classifyHandShape(fist), .fist)
     }
 }
