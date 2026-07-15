@@ -29,7 +29,21 @@ public enum HandShape: Equatable, Sendable {
     case fist
     case pointing
     case pinching
+    case victory
+    case thumbsUp
     case other
+}
+
+public enum RecognizedGesture: String, Equatable, Sendable {
+    case none = "None"
+    case closedFist = "Closed_Fist"
+    case openPalm = "Open_Palm"
+    case pointingUp = "Pointing_Up"
+    case thumbDown = "Thumb_Down"
+    case thumbUp = "Thumb_Up"
+    case victory = "Victory"
+    case iLoveYou = "ILoveYou"
+    case unknown = "Unknown"
 }
 
 public enum Handedness: Equatable, Sendable {
@@ -53,15 +67,24 @@ public struct HandPose: Equatable, Sendable {
     public var points: [HandJoint: NormalizedPoint]
     public var confidence: Double
     public var handedness: Handedness?
+    public var recognizedGesture: RecognizedGesture
+    public var gestureConfidence: Double
+    public var inferenceDuration: TimeInterval
 
     public init(
         points: [HandJoint: NormalizedPoint],
         confidence: Double,
-        handedness: Handedness? = nil
+        handedness: Handedness? = nil,
+        recognizedGesture: RecognizedGesture = .none,
+        gestureConfidence: Double = 0,
+        inferenceDuration: TimeInterval = 0
     ) {
         self.points = points
         self.confidence = confidence
         self.handedness = handedness
+        self.recognizedGesture = recognizedGesture
+        self.gestureConfidence = gestureConfidence
+        self.inferenceDuration = inferenceDuration
     }
 
     public func point(_ joint: HandJoint) -> NormalizedPoint? {
@@ -120,6 +143,15 @@ public func isOpenPalm(_ pose: HandPose) -> Bool {
     }
 }
 
+public func isStrictPinch(_ pose: HandPose, pinchThreshold: Double = 0.20) -> Bool {
+    guard pinchStrength(pose) <= pinchThreshold else { return false }
+    return [
+        fingerIsExtended(pose, tip: .middleTip, pip: .middlePIP, mcp: .middleMCP),
+        fingerIsExtended(pose, tip: .ringTip, pip: .ringPIP, mcp: .ringMCP),
+        fingerIsExtended(pose, tip: .littleTip, pip: .littlePIP, mcp: .littleMCP),
+    ].allSatisfy { $0 == true }
+}
+
 public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
     guard pose.points.count >= 12,
           pose.point(.wrist) != nil else { return false }
@@ -147,7 +179,11 @@ public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
 }
 
 public func classifyHandShape(_ pose: HandPose, pinchThreshold: Double = 0.20) -> HandShape {
-    if pinchStrength(pose) <= pinchThreshold { return .pinching }
+    if isStrictPinch(pose, pinchThreshold: pinchThreshold) { return .pinching }
+    if pose.gestureConfidence >= 0.70 {
+        if pose.recognizedGesture == .victory { return .victory }
+        if pose.recognizedGesture == .thumbUp { return .thumbsUp }
+    }
 
     let extended: [Bool?] = [
         fingerIsExtended(pose, tip: .indexTip, pip: .indexPIP, mcp: .indexMCP),

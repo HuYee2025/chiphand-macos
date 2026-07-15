@@ -3,8 +3,8 @@
 ## 项目状态
 
 - 当前阶段：第 04 阶段——macOS 系统级手势控制原型
-- 当前版本：浏览器插件 `1.0.1` 已冻结；macOS 原型 `0.3.0`
-- 当前目标：完成 MediaPipe 原生 App 的最终辅助功能授权与 Chrome/跨应用实机验收
+- 当前版本：浏览器插件 `1.0.1` 已冻结；macOS 原型 `0.4.0`，`0.3.0` 为 ⭐ 重要稳定回滚版
+- 当前目标：验收严格 OK 捏合、V 左挥返回、点赞识别和 Dock 上方状态反馈
 
 ## 阶段推进
 
@@ -13,22 +13,22 @@
 | 01 | 已完成 | 独立黑洞手势控制 MVP | `docs/dev-log/archive/01-hand-control-demo.md` |
 | 02 | 已收束 | 调整方向灵敏度、旋转手感和跨设备体验 | `docs/dev-log/archive/02-interaction-tuning-pivot.md` |
 | 03 | 已收束 | Chrome 后台手势浏览插件 MVP | `docs/dev-log/archive/03-browser-extension-v1-pivot.md` |
-| 04 | 进行中 | macOS 系统级手势控制原型 | MediaPipe GPU 已跑通，等待系统滚动实机验收 |
+| 04 | 进行中 | macOS 系统级手势控制原型 | Gesture Recognizer GPU 已跑通，等待 v0.4.0 手势实机验收 |
 
 ## 岗位拆分
 
 | 岗位 | 负责内容 | 当前状态 |
 | --- | --- | --- |
 | 产品/策划 | 方向、范围、优先级 | macOS 系统级原型为主线，浏览器插件冻结 |
-| 开发 | 功能实现、修 Bug、验证 | macOS `0.3.0` MediaPipe 主引擎、HID 系统滚动、正常 Dock App 与全屏 HUD |
+| 开发 | 功能实现、修 Bug、验证 | macOS `0.4.0` Gesture Recognizer、浏览器返回、严格 OK 捏合与点赞状态 |
 | 内容/文案 | 设定、脚本、说明文字 | 菜单栏状态、权限说明和本地 README 已完成 |
 | 美术/资产 | 图片、视觉、素材管理 | 使用系统菜单栏与 SF Symbols，暂不制作独立资产 |
 | 发布 | GitHub、部署、版本说明 | 本地 ad-hoc `.app` 已生成；未签名发布或推送 GitHub |
 
 ## 当前任务
 
-- 用“测试系统下翻”确认辅助功能与滚动输出链路。
-- 在 Chrome、Safari、Preview、Notion 验证 21 点 HUD、左挥上翻、右挥下翻和捏住上下拖动滚动。
+- 在 Chrome、Safari、Edge、夸克验证 V 左挥返回；确认静止 V 和非浏览器不误触。
+- 实测严格 OK 捏合、点赞状态、原有张手翻页及底部状态条不会被 Dock 遮挡。
 
 ## 已完成
 
@@ -45,6 +45,8 @@
 - 建立 `0.2.0` 本地版本记录。
 - 完成 macOS `0.1.0` 原型：AVFoundation、Apple Vision、系统滚动、菜单栏控制和权限引导。
 - 完成 macOS `0.3.0`：MediaPipe GPU 主引擎、Apple Vision 备用、内置 localhost 运行时和 Chromium 可接收的 HID 滚动事件。
+- 将 `0.3.0` 标记为 ⭐ 重要稳定版；`0.4.0` 升级 Gesture Recognizer，单手识别，新增 V 左挥返回和点赞状态。
+- 捏合升级为严格 OK 手势，中指、无名指、小指未张开时不启动滚动。
 - 新增 10 项纯 Swift 核心检查与可复现 `.app` 打包脚本。
 - GitHub 仓库：`https://github.com/HuYee2025/black-hole-gesture-control`。
 

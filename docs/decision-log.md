@@ -25,6 +25,32 @@
 
 ## 当前决策
 
+## 2026-07-15 v0.4.0 Gesture Recognizer、严格 OK 捏合与浏览器返回
+
+背景：
+- 用户需要高识别率的返回和点赞姿态，并发现普通握拳容易被两指距离规则误判为捏合。
+- 当前 MediaPipe 已配置最多双手，但 App 只消费一只手，产生无效计算。
+
+决策：
+- 主模型改用 MediaPipe Gesture Recognizer，`numHands` 固定为 1；保留 21 点用于原有翻页、骨架和连续滚动。
+- 捏合必须同时满足拇指食指接触及中指、无名指、小指张开，即严格 OK 手势。
+- `Victory` 稳定 220ms 后向物理左侧移动 14% 触发浏览器返回；`Thumb_Up` 稳定 300ms 只显示测试状态。
+- 返回只对 Chrome、Safari、Edge、夸克发送 `Command + [`；未来双手采用先稳定做出有效手势者锁定控制权。
+- `macos-v0.3.0` 保持不变并标记为 ⭐ 重要稳定版；新功能进入 `0.4.0`。
+
+原因：
+- 官方手势分类比继续堆几何阈值更适合区分 V、竖拇指和握拳；严格 OK 条件能直接消除握拳误触。
+- 单手上限符合当前产品范围，减少第二只手检测的无效负担。
+
+影响：
+- Apple Vision 备用模式继续支持旧手势，但不提供 V 返回和点赞分类。
+- 系统首次新增受限键盘事件；仍不移动鼠标、不点击网页、不执行真实点赞。
+
+相关文件：
+- `src/native-recognizer.ts`
+- `macos-app/Sources/GestureControlCore/GestureEngine.swift`
+- `macos-app/Sources/GestureControlApp/AppModel.swift`
+
 ## 2026-07-15 MediaPipe 主引擎、HID 滚动与正常 Dock App
 
 背景：

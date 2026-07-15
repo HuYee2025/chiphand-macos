@@ -52,6 +52,9 @@ struct DebugWindowView: View {
                     coordinateMode: .cameraAspectFill,
                     mirrored: true
                 )
+                if model.isThumbsUp {
+                    ThumbsUpBadgeView(pose: model.latestPose, mirrored: true)
+                }
                 if model.latestPose == nil {
                     Text("请把一只手完整放入画面")
                         .font(.callout.weight(.medium))

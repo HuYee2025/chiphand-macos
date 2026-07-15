@@ -1,0 +1,26 @@
+{
+  "version": "0.4.0",
+  "date": "2026-07-15",
+  "tag": "macos-v0.4.0",
+  "summary": "Upgrade the native app to MediaPipe Gesture Recognizer, add guarded browser back and thumbs-up feedback, and require a strict OK pose for pinch scrolling.",
+  "scope": [
+    "Use a single-hand Gesture Recognizer runtime while preserving 21 landmarks, handedness, and the existing scroll math.",
+    "Trigger browser back only after a stable Victory pose moves physically left, and only for Chrome, Safari, Edge, or Quark.",
+    "Recognize Thumb_Up as display-only feedback without clicking a page or changing a like.",
+    "Require thumb-index contact plus extended middle, ring, and little fingers before pinch scrolling can start.",
+    "Report inference time and live FPS, adapt from 30 FPS to 24 FPS under sustained load, and keep the HUD status above the Dock."
+  ],
+  "validation": [
+    "npm test: 32 tests passed",
+    "npm run typecheck: passed",
+    "swift test: 12 XCTest cases passed",
+    "swift run GestureControlCoreChecks: 10 checks passed",
+    "Release app build, Info.plist validation, bundled gesture model check, and ad-hoc codesign verification passed",
+    "Packaged Gesture Recognizer reached MediaPipe GPU ready with the local camera/runtime chain"
+  ],
+  "notes": [
+    "Real-hand acceptance is still required for four-browser back behavior, 60-second inference performance, and two-minute false-trigger rate.",
+    "Apple Vision fallback keeps the previous landmark gestures but does not provide Victory or Thumb_Up classification.",
+    "macos-v0.3.0 remains the starred stable rollback point and was not moved or overwritten."
+  ]
+}

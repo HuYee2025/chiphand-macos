@@ -5,10 +5,10 @@
 ### 当前主线：macOS 原型
 
 - Swift 6.3 / SwiftUI `Window` + `MenuBarExtra`，部署目标 macOS 14+。
-- WKWebView + `@mediapipe/tasks-vision` 0.10.35：主引擎使用 Hand Landmarker 21 点、左右手、最多双手检测，GPU 优先。
+- WKWebView + `@mediapipe/tasks-vision` 0.10.35：主引擎使用 Gesture Recognizer，单手 21 点、左右手与内置姿态分类，GPU 优先。
 - Network.framework：进程内只监听 `127.0.0.1`，向 WKWebView 提供打包在 App 内的 HTML、WASM 与模型。
 - AVFoundation + Vision：MediaPipe 启动失败时的本机备用识别路径。
-- Core Graphics `CGEvent`：通过 `.cghidEventTap` 注入连续滚动和翻页事件。
+- Core Graphics `CGEvent`：通过 `.cghidEventTap` 注入连续滚动、翻页和受限的浏览器返回按键。
 - ApplicationServices：检查辅助功能信任；AppKit `NSWorkspace`：跟踪前台 App 切换。
 
 ### 冻结分支：Web / Extension
@@ -23,14 +23,15 @@
 
 ### macOS 原型
 
-- `GestureControlCore`：平台无关的关键点归一化、捏合迟滞、左右挥动、650ms 冷却和稳定重新激活。
-- `MediaPipeHandPoseService`：WKWebView 主识别运行时；接收完整 21 点、左右手和置信度，并可直接显示同源视频/骨架校准窗口。
+- `GestureControlCore`：平台无关的关键点归一化、严格 OK 捏合迟滞、左右挥动、V 左挥返回、点赞稳定状态和冷却/重新激活。
+- `MediaPipeHandPoseService`：WKWebView 主识别运行时；接收完整 21 点、左右手、内置手势、置信度、推理耗时和 FPS，并可显示同源校准窗口。
 - `LocalMediaServer`：仅在 loopback 随机端口提供离线运行资源，避免 `file://` 对 ES Module、WASM 与摄像头安全上下文的限制。
 - `CameraCaptureService` + `HandPoseService`：Apple Vision 备用路径；最多双手请求，按结构与置信度筛选一只手连续跟踪。
 - `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；App 切换立即取消捏合。
 - `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件，并从 HID event tap 注入到目标窗口中心。
+- `SystemNavigationEmitter`：V 手势左挥后发送 `Command + [`；AppModel 只允许 Chrome、Safari、Edge 和夸克调用。
 - `MenuBarView`：启停、权限状态、两项灵敏度、操作说明、全屏 HUD 与摄像头校准开关；同一界面同时用于 Dock 控制窗与菜单栏弹窗。
-- `ScreenGestureOverlayController`：在主屏幕绘制点击穿透的镜像简化骨架、捏合圆点和动态状态，不抢前台焦点、不阻挡鼠标；底部状态避开 Dock。
+- `ScreenGestureOverlayController`：在主屏幕绘制点击穿透的镜像简化骨架、严格捏合圆点、点赞标记和动态状态；状态条高于 Dock 至少 36px，离屏幕底部至少 120px。
 - 校准窗口：MediaPipe 主路径直接显示同一 WKWebView 的自拍镜像视频与骨架；Apple Vision 备用路径由 `DebugWindowController` 显示相同方向。
 - 权限协调：启动按钮只记录启动意图，不再自动跳转系统设置；App 每秒刷新 Camera/Accessibility 状态，授权生效后自动继续启动。
 
@@ -129,4 +130,4 @@ open build/GestureControl.app
 - Three.js 主包构建后约 539 kB，Vite 会给出 chunk 体积警告，但不影响构建与 60 FPS 实测。
 - Windows 与手机尚需对应真机验收。
 - Chrome 内置页、Chrome Web Store 等受保护页面禁止脚本注入。
-- 当前版本只执行原生 `scrollBy()`，不使用合成键盘事件。
+- 浏览器返回使用受 bundle allowlist 限制的 `Command + [`；其余网页控制仍不使用合成键盘事件。

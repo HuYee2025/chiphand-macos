@@ -1,6 +1,14 @@
 # Changelog
 
-## macOS 0.3.0 - 2026-07-15
+## macOS 0.4.0 - 2026-07-15
+
+- MediaPipe 主引擎升级为 Gesture Recognizer，保持 21 点骨架并原生识别 `Victory` 与 `Thumb_Up`；单手上限改为 1，停止无效的第二只手计算。
+- 新增 V 手势稳定后向左挥动返回上一页，仅对 Chrome、Safari、Edge 和夸克发送 `Command + [`；静止 V、右挥或非浏览器不执行。
+- 新增竖起拇指点赞识别与全屏点赞标记，目前仅显示测试状态，不点击网页、不产生真实点赞。
+- 捏合改为严格 OK 手势：食指与拇指尖接触，同时中指、无名指、小指必须张开，解决握拳和无意晃动误触滚动。
+- 新增推理耗时、实时 FPS 和 30/24 FPS 自适应调度；Apple Vision 备用模式明确标注新手势不可用。
+
+## macOS 0.3.0 · ⭐ 重要稳定版 - 2026-07-15
 
 - 主识别引擎从 Apple Vision 切换为本机 MediaPipe Hand Landmarker：21 点、左右手、最多双手检测、GPU 优先，Apple Vision 仅在 MediaPipe 启动失败时备用。
 - 内置仅监听 `127.0.0.1` 的静态资源服务，在 WKWebView 中离线运行 WASM 与模型；摄像头画面和关键点不上传。

@@ -6,7 +6,7 @@ import GestureControlCore
 final class HandPoseService: @unchecked Sendable {
     private let request: VNDetectHumanHandPoseRequest = {
         let request = VNDetectHumanHandPoseRequest()
-        request.maximumHandCount = 2
+        request.maximumHandCount = 1
         return request
     }()
     private var selectedHandedness: Handedness?
@@ -94,7 +94,10 @@ final class HandPoseService: @unchecked Sendable {
         return HandPose(
             points: points,
             confidence: pose.confidence,
-            handedness: pose.handedness
+            handedness: pose.handedness,
+            recognizedGesture: pose.recognizedGesture,
+            gestureConfidence: pose.gestureConfidence,
+            inferenceDuration: pose.inferenceDuration
         )
     }
 }

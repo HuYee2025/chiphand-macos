@@ -6,7 +6,9 @@ final class GestureEngineTests: XCTestCase {
         palmX: Double = 0.5,
         thumbX: Double = 0.30,
         indexX: Double = 0.46,
-        pinchY: Double = 0.50
+        pinchY: Double = 0.50,
+        recognizedGesture: RecognizedGesture = .none,
+        gestureConfidence: Double = 0
     ) -> HandPose {
         HandPose(
             points: [
@@ -32,7 +34,9 @@ final class GestureEngineTests: XCTestCase {
                 .littleDIP: .init(x: palmX + 0.108, y: 0.61),
                 .littleTip: .init(x: palmX + 0.11, y: 0.70),
             ],
-            confidence: 0.95
+            confidence: 0.95,
+            recognizedGesture: recognizedGesture,
+            gestureConfidence: gestureConfidence
         )
     }
 
@@ -121,5 +125,94 @@ final class GestureEngineTests: XCTestCase {
         }
         let fist = HandPose(points: fistPoints, confidence: 0.95)
         XCTAssertEqual(classifyHandShape(fist), .fist)
+    }
+
+    func testFistWithCloseThumbAndIndexDoesNotStartPinch() {
+        var points = makePose(thumbX: 0.49, indexX: 0.51).points
+        for (tip, pip, x) in [
+            (HandJoint.middleTip, HandJoint.middlePIP, 0.47),
+            (.ringTip, .ringPIP, 0.54),
+            (.littleTip, .littlePIP, 0.60),
+        ] {
+            points[pip] = .init(x: x, y: 0.43)
+            points[tip] = .init(x: x, y: 0.34)
+        }
+        let fistLikePinch = HandPose(points: points, confidence: 0.95)
+
+        XCTAssertFalse(isStrictPinch(fistLikePinch, pinchThreshold: 0.18))
+        let engine = GestureEngine()
+        XCTAssertTrue(engine.update(pose: fistLikePinch, at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: fistLikePinch, at: 0.10).isEmpty)
+        XCTAssertFalse(engine.isPinching())
+    }
+
+    func testVictoryMustStabilizeThenMovePhysicalLeftToGoBack() {
+        let engine = GestureEngine()
+        let victoryAtStart = makePose(
+            palmX: 0.35,
+            recognizedGesture: .victory,
+            gestureConfidence: 0.90
+        )
+        XCTAssertTrue(engine.update(pose: victoryAtStart, at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: victoryAtStart, at: 0.23).isEmpty)
+
+        let victoryMovedLeft = makePose(
+            palmX: 0.50,
+            recognizedGesture: .victory,
+            gestureConfidence: 0.90
+        )
+        XCTAssertEqual(engine.update(pose: victoryMovedLeft, at: 0.40), [.back])
+        XCTAssertTrue(engine.update(pose: victoryMovedLeft, at: 0.50).isEmpty)
+    }
+
+    func testStaticVictoryDoesNotGoBack() {
+        let engine = GestureEngine()
+        let victory = makePose(
+            palmX: 0.45,
+            recognizedGesture: .victory,
+            gestureConfidence: 0.90
+        )
+        XCTAssertTrue(engine.update(pose: victory, at: 0).isEmpty)
+        XCTAssertTrue(engine.update(pose: victory, at: 0.23).isEmpty)
+        XCTAssertTrue(engine.update(pose: victory, at: 0.50).isEmpty)
+        XCTAssertTrue(engine.update(pose: victory, at: 0.90).isEmpty)
+    }
+
+    func testBackRequiresReleaseAndCooldownBeforeItCanRepeat() {
+        let engine = GestureEngine()
+        let start = makePose(
+            palmX: 0.35,
+            recognizedGesture: .victory,
+            gestureConfidence: 0.90
+        )
+        let moved = makePose(
+            palmX: 0.50,
+            recognizedGesture: .victory,
+            gestureConfidence: 0.90
+        )
+        _ = engine.update(pose: start, at: 0)
+        _ = engine.update(pose: start, at: 0.23)
+        XCTAssertEqual(engine.update(pose: moved, at: 0.40), [.back])
+
+        XCTAssertTrue(engine.update(pose: makePose(), at: 0.50).isEmpty)
+        XCTAssertTrue(engine.update(pose: makePose(), at: 0.66).isEmpty)
+        XCTAssertTrue(engine.update(pose: start, at: 1.26).isEmpty)
+        XCTAssertTrue(engine.update(pose: start, at: 1.49).isEmpty)
+        XCTAssertEqual(engine.update(pose: moved, at: 1.66), [.back])
+    }
+
+    func testThumbsUpIsStatusOnlyAndUsesStableActivation() {
+        let engine = GestureEngine()
+        let thumbsUp = makePose(
+            recognizedGesture: .thumbUp,
+            gestureConfidence: 0.90
+        )
+        XCTAssertTrue(engine.update(pose: thumbsUp, at: 0).isEmpty)
+        XCTAssertEqual(engine.update(pose: thumbsUp, at: 0.31), [.thumbsUpBegan])
+        XCTAssertTrue(engine.isThumbsUpRecognized())
+
+        XCTAssertTrue(engine.update(pose: makePose(), at: 0.40).isEmpty)
+        XCTAssertEqual(engine.update(pose: makePose(), at: 0.56), [.thumbsUpEnded])
+        XCTAssertFalse(engine.isThumbsUpRecognized())
     }
 }

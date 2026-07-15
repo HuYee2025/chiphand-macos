@@ -11,6 +11,7 @@ final class MediaPipeHandPoseService: NSObject {
     )
     var onPose: ((HandPose?) -> Void)?
     var onReady: ((String) -> Void)?
+    var onPerformance: ((Int, Double) -> Void)?
     var onError: ((String) -> Void)?
 
     private var webView: WKWebView?
@@ -147,10 +148,16 @@ final class MediaPipeHandPoseService: NSObject {
         case "Right": handedness = .right
         default: handedness = nil
         }
+        let recognizedGesture = RecognizedGesture(
+            rawValue: body["gesture"] as? String ?? "None"
+        ) ?? .unknown
         return HandPose(
             points: points,
             confidence: body["confidence"] as? Double ?? 0,
-            handedness: handedness
+            handedness: handedness,
+            recognizedGesture: recognizedGesture,
+            gestureConfidence: body["gestureConfidence"] as? Double ?? 0,
+            inferenceDuration: (body["inferenceDuration"] as? Double ?? 0) / 1_000
         )
     }
 }
@@ -172,6 +179,10 @@ extension MediaPipeHandPoseService: WKScriptMessageHandler {
             case "ready":
                 self.onReady?("MediaPipe \(body["delegate"] as? String ?? "")")
             case "pose":
+                self.onPerformance?(
+                    body["recognitionFPS"] as? Int ?? 0,
+                    body["inferenceDuration"] as? Double ?? 0
+                )
                 self.onPose?(self.decodePose(body))
             case "lost":
                 self.onPose?(nil)

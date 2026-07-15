@@ -1,4 +1,5 @@
 import AppKit
+import GestureControlCore
 import SwiftUI
 
 @MainActor
@@ -60,6 +61,9 @@ private struct ScreenGestureOverlayView: View {
                 lineWidth: 4,
                 pointDiameter: 12
             )
+            if model.isThumbsUp {
+                ThumbsUpBadgeView(pose: model.latestPose, mirrored: true)
+            }
 
             VStack {
                 Spacer()
@@ -74,10 +78,33 @@ private struct ScreenGestureOverlayView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
                 .background(.black.opacity(0.72), in: Capsule())
-                .padding(.bottom, bottomInset + 28)
+                .padding(.bottom, max(bottomInset + 36, 120))
             }
         }
         .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
+struct ThumbsUpBadgeView: View {
+    let pose: HandPose?
+    var mirrored = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            if let pose, let palm = palmCenter(pose) {
+                Image(systemName: "hand.thumbsup.fill")
+                    .font(.system(size: 30, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(13)
+                    .background(.green.opacity(0.92), in: Circle())
+                    .overlay(Circle().stroke(.white, lineWidth: 3))
+                    .position(
+                        x: (mirrored ? 1 - palm.x : palm.x) * geometry.size.width,
+                        y: (1 - palm.y) * geometry.size.height
+                    )
+            }
+        }
         .allowsHitTesting(false)
     }
 }

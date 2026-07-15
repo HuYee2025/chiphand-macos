@@ -16,6 +16,11 @@ struct MenuBarView: View {
                     Text("识别引擎：\(model.recognitionEngine)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    if model.isRunning, model.inferenceDurationMS > 0 {
+                        Text(String(format: "推理 %.1f ms", model.inferenceDurationMS))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 Circle()
@@ -57,7 +62,9 @@ struct MenuBarView: View {
             GroupBox("操作") {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("张开手掌左右挥动：翻页")
-                    Text("拇指食指捏住后上下移动：滚动")
+                    Text("V 手势向左挥动：浏览器返回")
+                    Text("OK 手势捏住后上下移动：滚动")
+                    Text("竖起拇指：识别点赞（不执行）")
                     Text("握拳、单指：只显示状态")
                     Button("测试系统下翻") { model.testPageDown() }
                         .controlSize(.small)

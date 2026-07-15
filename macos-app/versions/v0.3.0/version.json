@@ -1,5 +1,7 @@
 {
   "version": "0.3.0",
+  "displayName": "⭐ 重要稳定版",
+  "milestone": "starred-stable",
   "date": "2026-07-15",
   "tag": "macos-v0.3.0",
   "summary": "Switch the native app to an embedded MediaPipe Hand Landmarker runtime and route scrolls through the macOS HID event tap.",

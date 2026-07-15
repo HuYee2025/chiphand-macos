@@ -10,6 +10,9 @@ const publicWasm = resolve(publicRoot, "wasm");
 const modelPath = resolve(publicRoot, "hand_landmarker.task");
 const modelUrl =
   "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const gestureModelPath = resolve(publicRoot, "gesture_recognizer.task");
+const gestureModelUrl =
+  "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task";
 
 async function exists(path) {
   try {
@@ -23,15 +26,16 @@ async function exists(path) {
 await mkdir(publicRoot, { recursive: true });
 await cp(packageWasm, publicWasm, { recursive: true, force: true });
 
-if (!(await exists(modelPath))) {
+async function downloadIfMissing(path, url) {
+  if (await exists(path)) return;
   try {
-    const response = await fetch(modelUrl, { signal: AbortSignal.timeout(15_000) });
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} ${response.statusText}`);
     }
-    await writeFile(modelPath, Buffer.from(await response.arrayBuffer()));
+    await writeFile(path, Buffer.from(await response.arrayBuffer()));
   } catch (error) {
-    const fallback = spawnSync("curl", ["-fL", modelUrl, "-o", modelPath], {
+    const fallback = spawnSync("curl", ["-fL", url, "-o", path], {
       stdio: "inherit",
     });
     if (fallback.status !== 0) {
@@ -40,4 +44,7 @@ if (!(await exists(modelPath))) {
   }
 }
 
-console.log("MediaPipe WASM and hand model are ready in public/mediapipe.");
+await downloadIfMissing(modelPath, modelUrl);
+await downloadIfMissing(gestureModelPath, gestureModelUrl);
+
+console.log("MediaPipe WASM, hand model, and gesture model are ready in public/mediapipe.");

@@ -18,6 +18,9 @@ final class AppModel: ObservableObject {
     @Published private(set) var handStatus = "等待启动"
     @Published private(set) var latestPose: HandPose?
     @Published private(set) var isPinching = false
+    @Published private(set) var isThumbsUp = false
+    @Published private(set) var recognitionFPS = 0
+    @Published private(set) var inferenceDurationMS = 0.0
     @Published private(set) var recognitionEngine = "MediaPipe"
     @Published var screenOverlayEnabled = true {
         didSet {
@@ -61,6 +64,7 @@ final class AppModel: ObservableObject {
     private let mediaPipeService = MediaPipeHandPoseService()
     private let gestureEngine = GestureEngine()
     private let emitter: ScrollEmitting = SystemScrollEmitter()
+    private let navigationEmitter: NavigationEmitting = SystemNavigationEmitter()
     private var processingFrame = false
     private var pinchTargetPID: pid_t?
     private var lastEligiblePID: pid_t?
@@ -71,6 +75,13 @@ final class AppModel: ObservableObject {
     private lazy var screenOverlayController = ScreenGestureOverlayController(model: self)
     private var actionFeedback: (message: String, until: TimeInterval)?
     private var usingAppleVisionFallback = false
+    private var recognitionDelegate = "MediaPipe"
+    private let backBrowserBundleIdentifiers: Set<String> = [
+        "com.google.Chrome",
+        "com.apple.Safari",
+        "com.microsoft.edgemac",
+        "com.quark.desktop",
+    ]
 
     init() {
         let defaults = UserDefaults.standard
@@ -94,8 +105,15 @@ final class AppModel: ObservableObject {
         mediaPipeService.onReady = { [weak self] delegate in
             guard let self, self.isRunning, !self.usingAppleVisionFallback else { return }
             self.logger.info("recognition ready: \(delegate, privacy: .public)")
+            self.recognitionDelegate = delegate
             self.recognitionEngine = delegate
             self.status = "手势控制中"
+        }
+        mediaPipeService.onPerformance = { [weak self] framesPerSecond, inferenceDuration in
+            guard let self, !self.usingAppleVisionFallback else { return }
+            self.recognitionFPS = framesPerSecond
+            self.inferenceDurationMS = inferenceDuration
+            self.recognitionEngine = "\(self.recognitionDelegate) · \(framesPerSecond) FPS"
         }
         mediaPipeService.onError = { [weak self] message in
             self?.handleMediaPipeError(message)
@@ -171,6 +189,9 @@ final class AppModel: ObservableObject {
         cancelCurrentGesture()
         latestPose = nil
         isPinching = false
+        isThumbsUp = false
+        recognitionFPS = 0
+        inferenceDurationMS = 0
         debugWindowController.hide()
         screenOverlayController.hide()
         actionFeedback = nil
@@ -239,6 +260,7 @@ final class AppModel: ObservableObject {
         let now = CACurrentMediaTime()
         let outputs = gestureEngine.update(pose: pose, at: now)
         isPinching = gestureEngine.isPinching()
+        isThumbsUp = gestureEngine.isThumbsUpRecognized()
         for output in outputs { handle(output, at: now) }
         updateHandStatus(for: pose, at: now)
     }
@@ -263,6 +285,17 @@ final class AppModel: ObservableObject {
                 direction == .down ? "右挥 · 已下翻" : "左挥 · 已上翻",
                 now + 0.8
             )
+        case .back:
+            guard browserBackTargetIsFrontmost() else {
+                actionFeedback = ("V 左挥 · 当前应用不支持返回", now + 0.9)
+                return
+            }
+            navigationEmitter.emitBack()
+            actionFeedback = ("V 左挥 · 已返回上一页", now + 0.9)
+        case .thumbsUpBegan:
+            isThumbsUp = true
+        case .thumbsUpEnded:
+            isThumbsUp = false
         }
     }
 
@@ -289,6 +322,10 @@ final class AppModel: ObservableObject {
                 : "已捏合 · 上下移动滚动")
             return
         }
+        if isThumbsUp {
+            handStatus = handName + "👍 点赞手势已识别（测试模式）"
+            return
+        }
 
         switch classifyHandShape(
             pose,
@@ -301,10 +338,21 @@ final class AppModel: ObservableObject {
         case .pointing:
             handStatus = handName + "食指伸出 · 不执行操作"
         case .pinching:
-            handStatus = handName + "正在确认捏合…"
+            handStatus = handName + "OK 手势·正在确认捏合…"
+        case .victory:
+            handStatus = handName + "V 手势·向左挥动返回"
+        case .thumbsUp:
+            handStatus = handName + "👍 正在确认点赞手势…"
         case .other:
             handStatus = handName + "已识别手掌姿态"
         }
+    }
+
+    private func browserBackTargetIsFrontmost() -> Bool {
+        guard let application = NSWorkspace.shared.frontmostApplication,
+              let bundleIdentifier = application.bundleIdentifier,
+              application.bundleIdentifier != Bundle.main.bundleIdentifier else { return false }
+        return backBrowserBundleIdentifiers.contains(bundleIdentifier)
     }
 
     private func eligibleFrontmostPID() -> pid_t? {
@@ -320,6 +368,7 @@ final class AppModel: ObservableObject {
         _ = gestureEngine.cancelActiveGesture()
         pinchTargetPID = nil
         isPinching = false
+        isThumbsUp = false
     }
 
     private func handleCameraError(_ message: String) {
@@ -337,7 +386,7 @@ final class AppModel: ObservableObject {
         logger.error("MediaPipe error: \(message, privacy: .public)")
         mediaPipeService.stop()
         usingAppleVisionFallback = true
-        recognitionEngine = "Apple Vision 备用"
+        recognitionEngine = "Apple Vision 备用·新手势不可用"
         status = "MediaPipe 启动失败，已切换备用：\(message)"
         camera.start()
         if debugWindowEnabled { debugWindowController.show() }
@@ -350,6 +399,9 @@ final class AppModel: ObservableObject {
         handStatus = "正在启动 MediaPipe…"
         status = "正在加载 MediaPipe…"
         recognitionEngine = "MediaPipe 启动中"
+        recognitionDelegate = "MediaPipe"
+        recognitionFPS = 0
+        inferenceDurationMS = 0
         usingAppleVisionFallback = false
         mediaPipeService.start()
         mediaPipeService.setPreviewVisible(debugWindowEnabled)

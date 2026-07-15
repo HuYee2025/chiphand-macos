@@ -8,4 +8,8 @@ const target = resolve(root, "macos-app/Resources/MediaPipeRecognizer/mediapipe"
 
 await mkdir(target, { recursive: true });
 await cp(resolve(source, "wasm"), resolve(target, "wasm"), { recursive: true, force: true });
-await cp(resolve(source, "hand_landmarker.task"), resolve(target, "hand_landmarker.task"), { force: true });
+await cp(
+  resolve(source, "gesture_recognizer.task"),
+  resolve(target, "gesture_recognizer.task"),
+  { force: true },
+);

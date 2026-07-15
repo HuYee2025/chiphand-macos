@@ -1,7 +1,7 @@
 import {
   FilesetResolver,
-  HandLandmarker,
-  type HandLandmarkerResult,
+  GestureRecognizer,
+  type GestureRecognizerResult,
   type NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
 
@@ -9,7 +9,16 @@ type Handedness = "Left" | "Right";
 type NativeMessage =
   | { type: "ready"; delegate: "GPU" | "CPU" }
   | { type: "progress"; message: string }
-  | { type: "pose"; handedness: Handedness | null; confidence: number; landmarks: NormalizedLandmark[] }
+  | {
+      type: "pose";
+      handedness: Handedness | null;
+      confidence: number;
+      gesture: string;
+      gestureConfidence: number;
+      inferenceDuration: number;
+      recognitionFPS: number;
+      landmarks: NormalizedLandmark[];
+    }
   | { type: "lost" }
   | { type: "error"; message: string };
 
@@ -44,7 +53,7 @@ const DISPLAY_CONNECTIONS = [
 ] as const;
 const DISPLAY_POINTS = [0, 1, 3, 4, 5, 6, 8, 9, 10, 12, 13, 14, 16, 17, 18, 20] as const;
 
-let landmarker: HandLandmarker | null = null;
+let recognizer: GestureRecognizer | null = null;
 let stream: MediaStream | null = null;
 let active = false;
 let timer: number | null = null;
@@ -52,6 +61,11 @@ let lastVideoTime = -1;
 let lastInferenceAt = 0;
 let selectedHand: Handedness | null = null;
 let previousLandmarks: NormalizedLandmark[] | null = null;
+let targetFPS = 30;
+let fastWindows = 0;
+let inferenceDurations: number[] = [];
+let frameTimes: number[] = [];
+let recognitionFPS = 0;
 
 function post(message: NativeMessage): void {
   window.webkit?.messageHandlers?.handPose?.postMessage(message);
@@ -61,7 +75,7 @@ function normalizeHandedness(name: string | undefined): Handedness | null {
   return name === "Left" || name === "Right" ? name : null;
 }
 
-function selectHandIndex(result: HandLandmarkerResult): number {
+function selectHandIndex(result: GestureRecognizerResult): number {
   if (result.landmarks.length === 0) return -1;
   const preferred = result.handedness.findIndex(
     (categories) => normalizeHandedness(categories[0]?.categoryName) === selectedHand,
@@ -102,10 +116,27 @@ function isPinching(landmarks: readonly NormalizedLandmark[]): boolean {
   const palm = [5, 9, 13, 17].map((index) => landmarks[index]).filter(Boolean) as NormalizedLandmark[];
   if (palm.length === 0) return false;
   const scale = palm.reduce((sum, point) => sum + distance(wrist, point), 0) / palm.length;
-  return distance(thumb, index) / Math.max(scale, 0.000_001) <= 0.18;
+  const fingersAreOpen = [
+    [12, 10, 9],
+    [16, 14, 13],
+    [20, 18, 17],
+  ].every(([tipIndex, pipIndex, mcpIndex]) => {
+    const tip = landmarks[tipIndex];
+    const pip = landmarks[pipIndex];
+    const mcp = landmarks[mcpIndex];
+    return tip && pip && mcp
+      && distance(tip, wrist) > distance(pip, wrist) * 1.04
+      && distance(tip, wrist) > distance(mcp, wrist) * 1.12;
+  });
+  return fingersAreOpen && distance(thumb, index) / Math.max(scale, 0.000_001) <= 0.18;
 }
 
-function drawSkeleton(landmarks: readonly NormalizedLandmark[], handedness: Handedness | null): void {
+function drawSkeleton(
+  landmarks: readonly NormalizedLandmark[],
+  handedness: Handedness | null,
+  gesture: string,
+  gestureConfidence: number,
+): void {
   const width = video.videoWidth || 640;
   const height = video.videoHeight || 480;
   if (canvas.width !== width || canvas.height !== height) {
@@ -149,36 +180,54 @@ function drawSkeleton(landmarks: readonly NormalizedLandmark[], handedness: Hand
     context.strokeStyle = "white";
     context.stroke();
   }
+  if (gesture === "Thumb_Up" && gestureConfidence >= 0.70) {
+    const palm = [0, 5, 9, 13, 17]
+      .map((index) => landmarks[index])
+      .filter(Boolean) as NormalizedLandmark[];
+    if (palm.length > 0) {
+      const x = palm.reduce((sum, point) => sum + point.x, 0) / palm.length * width;
+      const y = palm.reduce((sum, point) => sum + point.y, 0) / palm.length * height;
+      context.save();
+      context.translate(x, y);
+      context.scale(-1, 1);
+      context.font = "42px -apple-system, BlinkMacSystemFont, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText("👍", 0, 0);
+      context.restore();
+    }
+  }
 }
 
 function clearSkeleton(): void {
   context.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-async function createLandmarker(): Promise<"GPU" | "CPU"> {
+async function createRecognizer(): Promise<"GPU" | "CPU"> {
   const wasmRoot = new URL("./mediapipe/wasm", window.location.href).href;
-  const modelUrl = new URL("./mediapipe/hand_landmarker.task", window.location.href).href;
+  const modelUrl = new URL("./mediapipe/gesture_recognizer.task", window.location.href).href;
   // WKWebView currently evaluates MediaPipe's ES6 WASM loader as a classic
   // script. The non-module loader uses the same model/runtime without the
   // unsupported `import.meta` path.
   const vision = await FilesetResolver.forVisionTasks(wasmRoot, false);
   const shared = {
     runningMode: "VIDEO" as const,
-    numHands: 2,
+    numHands: 1,
     minHandDetectionConfidence: 0.45,
     minHandPresenceConfidence: 0.45,
     minTrackingConfidence: 0.45,
+    cannedGesturesClassifierOptions: { scoreThreshold: 0.50 },
   };
 
   try {
-    landmarker = await HandLandmarker.createFromOptions(vision, {
+    recognizer = await GestureRecognizer.createFromOptions(vision, {
       ...shared,
       baseOptions: { modelAssetPath: modelUrl, delegate: "GPU" },
       canvas: new OffscreenCanvas(1, 1),
     });
     return "GPU";
   } catch {
-    landmarker = await HandLandmarker.createFromOptions(vision, {
+    recognizer = await GestureRecognizer.createFromOptions(vision, {
       ...shared,
       baseOptions: { modelAssetPath: modelUrl, delegate: "CPU" },
     });
@@ -186,17 +235,43 @@ async function createLandmarker(): Promise<"GPU" | "CPU"> {
   }
 }
 
+function updatePerformance(inferenceDuration: number, frameTime: number): void {
+  inferenceDurations.push(inferenceDuration);
+  if (inferenceDurations.length > 120) inferenceDurations.shift();
+  frameTimes.push(frameTime);
+  frameTimes = frameTimes.filter((time) => frameTime - time <= 1000);
+  recognitionFPS = frameTimes.length;
+  if (inferenceDurations.length < 120) return;
+
+  const sorted = [...inferenceDurations].sort((a, b) => a - b);
+  const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 0;
+  inferenceDurations = [];
+  if (targetFPS === 30 && p95 > 40) {
+    targetFPS = 24;
+    fastWindows = 0;
+  } else if (targetFPS === 24) {
+    fastWindows = p95 < 30 ? fastWindows + 1 : 0;
+    if (fastWindows >= 5) {
+      targetFPS = 30;
+      fastWindows = 0;
+    }
+  }
+}
+
 function loop(): void {
-  if (!active || !landmarker) return;
+  if (!active || !recognizer) return;
   timer = window.setTimeout(loop, 16);
   const now = performance.now();
-  if (now - lastInferenceAt < 1000 / 30 || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+  if (now - lastInferenceAt < 1000 / targetFPS || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
   if (video.currentTime === lastVideoTime) return;
   lastInferenceAt = now;
   lastVideoTime = video.currentTime;
 
   try {
-    const result = landmarker.detectForVideo(video, now);
+    const inferenceStartedAt = performance.now();
+    const result = recognizer.recognizeForVideo(video, now);
+    const inferenceDuration = performance.now() - inferenceStartedAt;
+    updatePerformance(inferenceDuration, now);
     const index = selectHandIndex(result);
     if (index < 0) {
       selectedHand = null;
@@ -207,13 +282,18 @@ function loop(): void {
     }
     const category = result.handedness[index]?.[0];
     selectedHand = normalizeHandedness(category?.categoryName);
+    const gesture = result.gestures[index]?.[0];
     const landmarks = smoothLandmarks(result.landmarks[index] ?? []);
     previousLandmarks = landmarks;
-    drawSkeleton(landmarks, selectedHand);
+    drawSkeleton(landmarks, selectedHand, gesture?.categoryName ?? "None", gesture?.score ?? 0);
     post({
       type: "pose",
       handedness: selectedHand,
       confidence: category?.score ?? 0,
+      gesture: gesture?.categoryName ?? "None",
+      gestureConfidence: gesture?.score ?? 0,
+      inferenceDuration,
+      recognitionFPS,
       landmarks,
     });
   } catch (error) {
@@ -224,7 +304,7 @@ function loop(): void {
 async function start(): Promise<void> {
   try {
     post({ type: "progress", message: "正在加载 MediaPipe 模型" });
-    const delegate = await createLandmarker();
+    const delegate = await createRecognizer();
     post({ type: "progress", message: `模型已加载（${delegate}），正在打开摄像头` });
     stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -249,10 +329,15 @@ window.stopRecognition = () => {
   stream?.getTracks().forEach((track) => track.stop());
   stream = null;
   video.srcObject = null;
-  landmarker?.close();
-  landmarker = null;
+  recognizer?.close();
+  recognizer = null;
   selectedHand = null;
   previousLandmarks = null;
+  targetFPS = 30;
+  fastWindows = 0;
+  inferenceDurations = [];
+  frameTimes = [];
+  recognitionFPS = 0;
   clearSkeleton();
 };
 
