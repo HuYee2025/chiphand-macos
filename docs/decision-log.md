@@ -25,6 +25,27 @@
 
 ## 当前决策
 
+## 2026-07-16 v0.8.5 中线同步触发
+
+背景：
+- `0.8.4` 的闪光绑定 `.navigate`，但导航还会等待总水平位移达到 `14%`；从靠近中线的合法起点开始时，黄球已经越线一段距离才闪光。
+
+决策：
+- 严格 OK 完成水平方向锁后，首次到达或越过 x=50% 的同一帧立即输出导航并闪光。
+- 删除方向锁后的重复最小位移与水平主导检查；保留 7% 起点保护、4% 水平锁定、锁定前 1.4 倍水平主导和单次触发。
+- 蓝线长度从 `88pt` 增加到 `176pt`，持续时间不变。
+
+原因：
+- 用户需要把蓝线当成精确的“现在可以松手”标记；视觉反馈必须和黄球跨线发生在同一帧，而不是事后确认。
+
+影响：
+- 升级为 `0.8.5` build 19；`macos-v0.8.4` 保持为回滚点。
+
+相关文件：
+- `macos-app/Sources/GestureControlCore/GestureEngine.swift`
+- `macos-app/Sources/GestureControlApp/ScreenGestureOverlay.swift`
+- `macos-app/Tests/GestureControlCoreTests/GestureEngineTests.swift`
+
 ## 2026-07-16 v0.8.4 跨中线瞬时闪光
 
 背景：

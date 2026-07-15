@@ -1,0 +1,22 @@
+{
+  "version": "0.8.5",
+  "date": "2026-07-16",
+  "tag": "macos-v0.8.5",
+  "summary": "Trigger navigation and its center-line flash on the first frame the locked pinch reaches the midpoint, with a longer visual marker.",
+  "scope": [
+    "After horizontal navigation locks, emit on the first frame at or across x=50% instead of waiting for a second displacement threshold.",
+    "Keep the 7% start guard, 4% horizontal intent lock, pre-lock dominance, direction lock and one-shot behavior.",
+    "Increase the HUD center flash from 88pt to 176pt while retaining its 240ms glow animation.",
+    "Leave vertical scrolling, open-palm paging, pointer clicking and the browser allowlist unchanged."
+  ],
+  "validation": [
+    "swift test passed 33 tests including exact-center triggers in both directions",
+    "GestureControlCoreChecks passed 22 checks",
+    "Swift warnings-as-errors and Release builds passed",
+    "Strict codesign and installed 0.8.5 build 19 checks passed"
+  ],
+  "notes": [
+    "macos-v0.8.4 remains the rollback point.",
+    "The flash still appears only in the full-screen HUD and remains behind the yellow pinch point."
+  ]
+}

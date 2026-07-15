@@ -200,6 +200,30 @@ final class GestureEngineTests: XCTestCase {
         XCTAssertTrue(engine.update(pose: makePinchPose(screenX: 0.62), at: 0.24).isEmpty)
     }
 
+    func testPinchNavigationTriggersOnFirstFrameAtCenter() {
+        let back = GestureEngine()
+        _ = back.update(pose: makePinchPose(screenX: 0.40), at: 0)
+        _ = back.update(pose: makePinchPose(screenX: 0.40), at: 0.09)
+        XCTAssertTrue(back.update(pose: makePinchPose(screenX: 0.45), at: 0.12).isEmpty)
+        XCTAssertEqual(back.pinchInteractionMode(), .navigation(.back))
+        XCTAssertTrue(back.update(pose: makePinchPose(screenX: 0.49), at: 0.16).isEmpty)
+        XCTAssertEqual(
+            back.update(pose: makePinchPose(screenX: 0.50), at: 0.20),
+            [.navigate(.back)]
+        )
+
+        let forward = GestureEngine()
+        _ = forward.update(pose: makePinchPose(screenX: 0.60), at: 0)
+        _ = forward.update(pose: makePinchPose(screenX: 0.60), at: 0.09)
+        XCTAssertTrue(forward.update(pose: makePinchPose(screenX: 0.55), at: 0.12).isEmpty)
+        XCTAssertEqual(forward.pinchInteractionMode(), .navigation(.forward))
+        XCTAssertTrue(forward.update(pose: makePinchPose(screenX: 0.51), at: 0.16).isEmpty)
+        XCTAssertEqual(
+            forward.update(pose: makePinchPose(screenX: 0.50), at: 0.20),
+            [.navigate(.forward)]
+        )
+    }
+
     func testPinchRightToLeftAcrossCenterNavigatesForwardOnce() {
         let engine = GestureEngine()
         _ = engine.update(pose: makePinchPose(screenX: 0.70), at: 0)

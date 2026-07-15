@@ -551,10 +551,6 @@ public final class GestureEngine {
         direction: NavigationDirection
     ) -> Bool {
         let deltaX = current.x - start.x
-        let deltaY = current.y - start.y
-        let minimumDisplacement = max(0.14, configuration.swipeMinimumDisplacement)
-        guard abs(deltaX) >= minimumDisplacement,
-              abs(deltaX) >= abs(deltaY) * configuration.horizontalDominance else { return false }
         switch direction {
         case .back:
             return deltaX > 0 && current.x >= configuration.navigationCenterX

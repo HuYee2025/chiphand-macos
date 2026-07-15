@@ -296,18 +296,18 @@ private struct CenterCrossingFlashView: View {
             ZStack {
                 Capsule()
                     .fill(Color.blue.opacity(0.28))
-                    .frame(width: 18, height: 88)
+                    .frame(width: 18, height: 176)
                     .blur(radius: 8)
                 Capsule()
                     .fill(Color.cyan.opacity(0.72))
-                    .frame(width: 8, height: 88)
+                    .frame(width: 8, height: 176)
                     .blur(radius: 3)
                 Capsule()
                     .fill(Color(red: 0.16, green: 0.58, blue: 1.0))
-                    .frame(width: 4, height: 88)
+                    .frame(width: 4, height: 176)
                 Capsule()
                     .fill(Color.white.opacity(0.82))
-                    .frame(width: 1.5, height: 82)
+                    .frame(width: 1.5, height: 166)
             }
             .position(
                 x: proxy.size.width / 2,
