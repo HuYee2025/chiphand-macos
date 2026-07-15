@@ -269,6 +269,7 @@ private struct ScreenGestureOverlayView: View {
                 pose: model.latestPose,
                 isPinching: model.isPinching,
                 showPointingTip: model.showsPointingTip,
+                pointerClickPoint: model.pointerClickContactPoint,
                 mirrored: true,
                 lineWidth: 4,
                 pointDiameter: 12

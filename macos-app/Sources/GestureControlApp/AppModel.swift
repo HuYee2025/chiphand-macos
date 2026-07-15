@@ -175,7 +175,20 @@ final class AppModel: ObservableObject {
     var showsPointingTip: Bool {
         guard pointerModeIsAvailable(),
               let latestPose else { return false }
+        if pointerInteractionState != nil {
+            return isPointerInteractionPose(latestPose)
+        }
         return isPointingFingerConfiguration(latestPose)
+    }
+
+    var pointerClickContactPoint: NormalizedPoint? {
+        guard pointerModeIsAvailable(),
+              pointerInteractionState == .clickArmed,
+              let latestPose,
+              isPointerInteractionPose(latestPose),
+              middleThumbPinchStrength(latestPose)
+                <= gestureEngine.configuration.pointerClickContactThreshold else { return nil }
+        return middleThumbPinchCenter(latestPose)
     }
 
     func toggle() {
@@ -393,7 +406,7 @@ final class AppModel: ObservableObject {
             pointerInteractionState = state
         case let .pointerClicked(point):
             pointerEmitter.click(at: point)
-            pointerInteractionState = nil
+            pointerInteractionState = .clickReady
             actionFeedback = ("已点击", now + 0.8)
         case .pointerClickRejected:
             pointerInteractionState = nil
@@ -458,8 +471,12 @@ final class AppModel: ObservableObject {
             handStatus = handPrefix + "当前应用不支持食指指针"
             return
         }
+        if pointerInteractionState == .clickArmed {
+            handStatus = handPrefix + "食指已定位 · 拇指中指轻捏点击"
+            return
+        }
         if pointerInteractionState == .clickReady {
-            handStatus = handPrefix + "食指已定位 · 张开拇指点击"
+            handStatus = handPrefix + "食指已定位 · 张开拇指和中指"
             return
         }
         if pointerInteractionState == .moving {

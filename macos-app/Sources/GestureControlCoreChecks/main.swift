@@ -98,16 +98,21 @@ private func makePointingPose(
     )
 }
 
-private func makeThumbOpenPointingPose(screenTipX: Double) -> HandPose {
+private func makeMiddleThumbClickPose(
+    screenTipX: Double,
+    touching: Bool
+) -> HandPose {
     let pointing = makePointingPose(
         screenTipX: screenTipX,
         recognizedGesture: .none,
         gestureConfidence: 0
     )
     var points = pointing.points
-    points[.thumbMP] = .init(x: 0.40, y: 0.40)
-    points[.thumbIP] = .init(x: 0.31, y: 0.52)
-    points[.thumbTip] = .init(x: 0.20, y: 0.68)
+    points[.thumbMP] = .init(x: 0.40, y: 0.42)
+    points[.thumbIP] = .init(x: touching ? 0.34 : 0.28, y: 0.50)
+    points[.thumbTip] = .init(x: touching ? 0.31 : 0.20, y: touching ? 0.56 : 0.55)
+    points[.middlePIP] = .init(x: 0.47, y: 0.46)
+    points[.middleTip] = .init(x: touching ? 0.30 : 0.55, y: touching ? 0.55 : 0.65)
     return HandPose(points: points, confidence: pointing.confidence)
 }
 
@@ -176,6 +181,8 @@ do {
 do {
     let engine = GestureEngine()
     let pointing = makePointingPose(screenTipX: 0.42)
+    let separated = makeMiddleThumbClickPose(screenTipX: 0.42, touching: false)
+    let touching = makeMiddleThumbClickPose(screenTipX: 0.42, touching: true)
     check(
         engine.update(pose: pointing, at: 0, pointerModeEnabled: true).isEmpty,
         "食指指针需要稳定激活"
@@ -188,46 +195,47 @@ do {
     }
     let ready = engine.update(pose: pointing, at: 0.52, pointerModeEnabled: true)
     if case .pointerMoved(_, .clickReady)? = ready.first {
-        check(true, "食指停稳后进入拇指点击待命")
+        check(true, "食指停稳后等待张开拇指和中指")
     } else {
-        check(false, "食指停稳后进入拇指点击待命")
+        check(false, "食指停稳后等待张开拇指和中指")
     }
-    check(engine.update(
-        pose: makeThumbOpenPointingPose(screenTipX: 0.42),
+    _ = engine.update(
+        pose: separated,
         at: 0.60,
         pointerModeEnabled: true
-    ).isEmpty, "张开拇指需要短暂稳定")
+    )
+    let armed = engine.update(pose: separated, at: 0.71, pointerModeEnabled: true)
+    if case .pointerMoved(_, .clickArmed)? = armed.first {
+        check(true, "拇指中指分开后进入点击待命")
+    } else {
+        check(false, "拇指中指分开后进入点击待命")
+    }
+    check(engine.update(pose: touching, at: 0.75, pointerModeEnabled: true).isEmpty,
+          "拇指中指接触需要短暂稳定")
     let click = engine.update(
-        pose: makeThumbOpenPointingPose(screenTipX: 0.42),
-        at: 0.73,
+        pose: touching,
+        at: 0.84,
         pointerModeEnabled: true
     )
-    check(
-        click.count == 2 && click.first == .pointerEnded,
-        "食指定位后张开拇指只结束一次指针"
-    )
-    if click.count == 2, case .pointerClicked = click[1] {
-        check(true, "食指定位后张开拇指输出单击")
+    if click.count == 1, case .pointerClicked = click[0] {
+        check(true, "食指定位后拇指中指接触输出单击")
     } else {
-        check(false, "食指定位后张开拇指输出单击")
+        check(false, "食指定位后拇指中指接触输出单击")
     }
 }
 
 do {
     let engine = GestureEngine()
     let pointing = makePointingPose(screenTipX: 0.42)
+    let touching = makeMiddleThumbClickPose(screenTipX: 0.42, touching: true)
     _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
     _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
-    check(engine.update(
-        pose: makeThumbOpenPointingPose(screenTipX: 0.42),
-        at: 0.20,
-        pointerModeEnabled: true
-    ).isEmpty, "未稳定食指张开拇指等待确认")
-    check(engine.update(
-        pose: makeThumbOpenPointingPose(screenTipX: 0.42),
-        at: 0.33,
-        pointerModeEnabled: true
-    ) == [.pointerEnded, .pointerClickRejected], "食指未停稳张开拇指不点击")
+    let early = engine.update(pose: touching, at: 0.20, pointerModeEnabled: true)
+    let held = engine.update(pose: touching, at: 0.33, pointerModeEnabled: true)
+    check(!early.contains { if case .pointerClicked = $0 { true } else { false } },
+          "未完成分开待命时不点击")
+    check(!held.contains { if case .pointerClicked = $0 { true } else { false } },
+          "持续接触不会误点击")
 }
 
 do {

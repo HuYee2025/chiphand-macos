@@ -25,6 +25,29 @@
 
 ## 当前决策
 
+## 2026-07-16 v0.8.2 拇指中指接触点击
+
+背景：
+- `0.8.1` 的食指鼠标跟踪准确流畅，但单纯张开拇指只有展开程度、没有明确接触瞬间，实机未能稳定触发点击。
+
+决策：
+- 保持食指坐标映射、平滑、死区和跳变保护完全不变；只替换点击触发器。
+- 食指定位后允许中指和拇指自由移动，同时要求食指伸直、无名指和小指收拢；两指先分开 100ms 进入待命，再接触 80ms 点击冻结位置。
+- 接触处显示第二个黄色圆点；一次接触最多点击一次，必须重新分开才能再次触发。
+- 继续使用 `0.8.1` 的 `.privateState` 无修饰键普通左键，避免 Command-click。
+
+原因：
+- 两个指尖的归一化接触距离是明确几何信号，比单指弯曲或拇指展开程度稳定；它与严格 OK 的拇指食指接触也不会混淆。
+
+影响：
+- 升级为 `0.8.2`（build 16）；`macos-v0.8.1` 保持为回滚点。
+
+相关文件：
+- `macos-app/Sources/GestureControlCore/HandPose.swift`
+- `macos-app/Sources/GestureControlCore/GestureEngine.swift`
+- `macos-app/Sources/GestureControlApp/DebugWindow.swift`
+- `macos-app/Sources/GestureControlApp/AppModel.swift`
+
 ## 2026-07-15 v0.8.1 拇指点击与纯左键事件
 
 背景：

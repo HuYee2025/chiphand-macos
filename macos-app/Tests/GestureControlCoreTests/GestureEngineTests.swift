@@ -105,29 +105,21 @@ final class GestureEngineTests: XCTestCase {
         )
     }
 
-    private func makeThumbOpenPointingPose(screenTipX: Double) -> HandPose {
+    private func makeMiddleThumbClickPose(
+        screenTipX: Double,
+        touching: Bool
+    ) -> HandPose {
         let pointing = makePointingPose(
             screenTipX: screenTipX,
             recognizedGesture: .none,
             gestureConfidence: 0
         )
         var points = pointing.points
-        points[.thumbMP] = .init(x: 0.40, y: 0.40)
-        points[.thumbIP] = .init(x: 0.31, y: 0.52)
-        points[.thumbTip] = .init(x: 0.20, y: 0.68)
-        return HandPose(points: points, confidence: pointing.confidence)
-    }
-
-    private func makeThumbTransitionPointingPose(screenTipX: Double) -> HandPose {
-        let pointing = makePointingPose(
-            screenTipX: screenTipX,
-            recognizedGesture: .none,
-            gestureConfidence: 0
-        )
-        var points = pointing.points
-        points[.thumbMP] = .init(x: 0.45, y: 0.34)
-        points[.thumbIP] = .init(x: 0.46, y: 0.27)
-        points[.thumbTip] = .init(x: 0.47, y: 0.20)
+        points[.thumbMP] = .init(x: 0.40, y: 0.42)
+        points[.thumbIP] = .init(x: touching ? 0.34 : 0.28, y: 0.50)
+        points[.thumbTip] = .init(x: touching ? 0.31 : 0.20, y: touching ? 0.56 : 0.55)
+        points[.middlePIP] = .init(x: 0.47, y: 0.46)
+        points[.middleTip] = .init(x: touching ? 0.30 : 0.55, y: touching ? 0.55 : 0.65)
         return HandPose(points: points, confidence: pointing.confidence)
     }
 
@@ -388,9 +380,11 @@ final class GestureEngineTests: XCTestCase {
         )
     }
 
-    func testStablePointerArmsThumbOpenClick() {
+    func testStablePointerArmsMiddleThumbClick() {
         let engine = GestureEngine()
         let pointing = makePointingPose(screenTipX: 0.42)
+        let separated = makeMiddleThumbClickPose(screenTipX: 0.42, touching: false)
+        let touching = makeMiddleThumbClickPose(screenTipX: 0.42, touching: true)
         _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
         _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
 
@@ -399,80 +393,59 @@ final class GestureEngineTests: XCTestCase {
             x: 0.42,
             state: .clickReady
         )
-        XCTAssertTrue(engine.update(
-            pose: makeThumbOpenPointingPose(screenTipX: 0.42),
+        assertPointerMoved(engine.update(
+            pose: separated,
             at: 0.60,
+            pointerModeEnabled: true
+        ), x: 0.42, state: .clickReady)
+        assertPointerMoved(engine.update(
+            pose: separated,
+            at: 0.71,
+            pointerModeEnabled: true
+        ), x: 0.42, state: .clickArmed)
+        XCTAssertTrue(engine.update(
+            pose: touching,
+            at: 0.75,
             pointerModeEnabled: true
         ).isEmpty)
         let click = engine.update(
-            pose: makeThumbOpenPointingPose(screenTipX: 0.42),
-            at: 0.73,
+            pose: touching,
+            at: 0.84,
             pointerModeEnabled: true
         )
-        XCTAssertEqual(click.first, .pointerEnded)
-        guard click.count == 2, case let .pointerClicked(point) = click[1] else {
-            return XCTFail("稳定食指张开拇指应输出一次点击")
+        guard click.count == 1, case let .pointerClicked(point) = click[0] else {
+            return XCTFail("稳定食指下拇指中指接触应输出一次点击")
         }
         XCTAssertEqual(point.x, 0.42, accuracy: 0.000_001)
         XCTAssertEqual(point.y, 0.82, accuracy: 0.000_001)
     }
 
-    func testPointerSurvivesThumbOpeningTransitionFrames() {
+    func testPointerKeepsTrackingWhileMiddleAndThumbMove() {
         let engine = GestureEngine()
         let pointing = makePointingPose(screenTipX: 0.42)
-        let transition = makeThumbTransitionPointingPose(screenTipX: 0.42)
-        XCTAssertTrue(isPointingFingerConfiguration(transition))
-        XCTAssertFalse(isStrictPointing(transition))
-        XCTAssertFalse(isPointingWithThumbOpen(transition))
+        let separated = makeMiddleThumbClickPose(screenTipX: 0.44, touching: false)
+        XCTAssertTrue(isPointerInteractionPose(separated))
+        XCTAssertFalse(isStrictPointing(separated))
         _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
         _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
-        _ = engine.update(pose: pointing, at: 0.52, pointerModeEnabled: true)
-
-        XCTAssertTrue(engine.update(
-            pose: transition,
-            at: 0.58,
-            pointerModeEnabled: true
-        ).isEmpty)
-        XCTAssertTrue(engine.update(
-            pose: makeThumbOpenPointingPose(screenTipX: 0.42),
-            at: 0.66,
-            pointerModeEnabled: true
-        ).isEmpty)
-        XCTAssertEqual(
-            engine.update(
-                pose: makeThumbOpenPointingPose(screenTipX: 0.42),
-                at: 0.79,
-                pointerModeEnabled: true
-            ).count,
-            2
+        assertPointerMoved(
+            engine.update(pose: separated, at: 0.25, pointerModeEnabled: true),
+            x: 0.44,
+            state: .moving
         )
     }
 
-    func testUnstablePointerThumbOpenRejectsClick() {
+    func testMiddleThumbContactDoesNothingUntilSeparatedAndArmed() {
         let engine = GestureEngine()
         let pointing = makePointingPose(screenTipX: 0.42)
+        let touching = makeMiddleThumbClickPose(screenTipX: 0.42, touching: true)
         _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
         _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
 
-        XCTAssertTrue(engine.update(
-            pose: makeThumbOpenPointingPose(screenTipX: 0.42),
-            at: 0.20,
-            pointerModeEnabled: true
-        ).isEmpty)
-        XCTAssertEqual(engine.update(
-                pose: makeThumbOpenPointingPose(screenTipX: 0.42),
-                at: 0.33,
-                pointerModeEnabled: true
-            ),
-            [.pointerEnded, .pointerClickRejected]
-        )
-        XCTAssertTrue(
-            engine.update(
-                pose: makeThumbOpenPointingPose(screenTipX: 0.72),
-                at: 0.50,
-                pointerModeEnabled: true
-            ).isEmpty
-        )
+        let first = engine.update(pose: touching, at: 0.20, pointerModeEnabled: true)
+        let second = engine.update(pose: touching, at: 0.33, pointerModeEnabled: true)
+        XCTAssertFalse(first.contains { if case .pointerClicked = $0 { true } else { false } })
+        XCTAssertFalse(second.contains { if case .pointerClicked = $0 { true } else { false } })
     }
 
     func testOpenPalmAfterPointerDoesNotClickAndCanStillPage() {
@@ -499,21 +472,25 @@ final class GestureEngineTests: XCTestCase {
         )
     }
 
-    func testThumbOpenClickFiresOnlyOnceUntilThumbIsFolded() {
+    func testMiddleThumbClickFiresOnlyOnceUntilReleased() {
         let engine = GestureEngine()
         let pointing = makePointingPose(screenTipX: 0.42)
-        let openThumb = makeThumbOpenPointingPose(screenTipX: 0.42)
+        let separated = makeMiddleThumbClickPose(screenTipX: 0.42, touching: false)
+        let touching = makeMiddleThumbClickPose(screenTipX: 0.42, touching: true)
         _ = engine.update(pose: pointing, at: 0, pointerModeEnabled: true)
         _ = engine.update(pose: pointing, at: 0.16, pointerModeEnabled: true)
         _ = engine.update(pose: pointing, at: 0.52, pointerModeEnabled: true)
-        _ = engine.update(pose: openThumb, at: 0.60, pointerModeEnabled: true)
-        XCTAssertEqual(
-            engine.update(pose: openThumb, at: 0.73, pointerModeEnabled: true).count,
-            2
+        _ = engine.update(pose: separated, at: 0.60, pointerModeEnabled: true)
+        _ = engine.update(pose: separated, at: 0.71, pointerModeEnabled: true)
+        _ = engine.update(pose: touching, at: 0.75, pointerModeEnabled: true)
+        XCTAssertEqual(engine.update(pose: touching, at: 0.84, pointerModeEnabled: true).count, 1)
+        XCTAssertTrue(engine.update(pose: touching, at: 0.95, pointerModeEnabled: true).isEmpty)
+        XCTAssertTrue(engine.update(pose: separated, at: 1.00, pointerModeEnabled: true).isEmpty)
+        assertPointerMoved(
+            engine.update(pose: separated, at: 1.11, pointerModeEnabled: true),
+            x: 0.42,
+            state: .clickArmed
         )
-        XCTAssertTrue(engine.update(pose: openThumb, at: 0.90, pointerModeEnabled: true).isEmpty)
-        XCTAssertTrue(engine.update(pose: pointing, at: 1.00, pointerModeEnabled: true).isEmpty)
-        XCTAssertTrue(engine.update(pose: pointing, at: 1.16, pointerModeEnabled: true).isEmpty)
     }
 
     func testDirectOpenPalmStillPagesWhenPointerModeIsEnabled() {

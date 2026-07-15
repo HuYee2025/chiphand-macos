@@ -175,6 +175,12 @@ function isStrictPointing(landmarks: readonly NormalizedLandmark[]): boolean {
   return ratio !== null && ratio <= 0.90 && isPointingFingerConfiguration(landmarks);
 }
 
+function isPointerInteractionPose(landmarks: readonly NormalizedLandmark[]): boolean {
+  return fingerIsExtended(landmarks, 8, 6, 5)
+    && !fingerIsExtended(landmarks, 16, 14, 13)
+    && !fingerIsExtended(landmarks, 20, 18, 17);
+}
+
 function drawSkeleton(
   landmarks: readonly NormalizedLandmark[],
   handedness: Handedness | null,
@@ -228,7 +234,7 @@ function drawSkeleton(
       && ((gesture === "Pointing_Up"
         && gestureConfidence >= 0.70
         && isStrictPointing(landmarks))
-        || isPointingFingerConfiguration(landmarks))) {
+        || isPointerInteractionPose(landmarks))) {
     const index = landmarks[8];
     if (index) {
       context.beginPath();

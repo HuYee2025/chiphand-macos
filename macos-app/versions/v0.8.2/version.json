@@ -1,0 +1,24 @@
+{
+  "version": "0.8.2",
+  "date": "2026-07-16",
+  "tag": "macos-v0.8.2",
+  "summary": "Keep the accurate index pointer unchanged and replace thumb-open clicking with an armed middle-thumb contact.",
+  "scope": [
+    "Preserve the existing indexTip mapping, smoothing, 4pt deadzone and jump rejection.",
+    "Allow middle-finger and thumb motion after pointer activation while requiring the index, ring and little-finger control geometry.",
+    "Arm after middle and thumb remain separated for 100ms, then click after 80ms contact at the frozen pointer location.",
+    "Show a second yellow marker at the middle-thumb contact and require release before another click."
+  ],
+  "validation": [
+    "swift test passed 31 tests including click arming, contact activation, pointer continuity and one-shot release behavior",
+    "GestureControlCoreChecks passed 22 checks",
+    "TypeScript typecheck, 32 Web regression tests and Swift warnings-as-errors build passed",
+    "Release build, strict codesign and installed 0.8.2 build 16 checks passed",
+    "Installed UI confirmed the middle-thumb instruction, permissions remained allowed and MediaPipe GPU reached 26 FPS at 14.0ms"
+  ],
+  "notes": [
+    "The modifier-free private Core Graphics click source from v0.8.1 is retained.",
+    "macos-v0.8.1 remains the rollback point.",
+    "Final YouTube contact ergonomics remain a physical-hand acceptance test."
+  ]
+}

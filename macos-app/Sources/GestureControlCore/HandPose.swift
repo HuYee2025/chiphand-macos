@@ -129,6 +129,22 @@ public func pinchCenter(_ pose: HandPose) -> NormalizedPoint? {
     )
 }
 
+public func middleThumbPinchStrength(_ pose: HandPose) -> Double {
+    guard let thumb = pose.point(.thumbTip),
+          let middle = pose.point(.middleTip) else { return .infinity }
+    return pointDistance(thumb, middle) / handScale(pose)
+}
+
+public func middleThumbPinchCenter(_ pose: HandPose) -> NormalizedPoint? {
+    guard let thumb = pose.point(.thumbTip),
+          let middle = pose.point(.middleTip) else { return nil }
+    return NormalizedPoint(
+        x: (thumb.x + middle.x) / 2,
+        y: (thumb.y + middle.y) / 2,
+        confidence: min(thumb.confidence, middle.confidence)
+    )
+}
+
 public func palmCenter(_ pose: HandPose) -> NormalizedPoint? {
     let joints = [HandJoint.wrist, .indexMCP, .middleMCP, .ringMCP, .littleMCP].compactMap(pose.point)
     guard !joints.isEmpty else { return nil }
@@ -170,6 +186,12 @@ public func isStrictPointing(_ pose: HandPose) -> Bool {
 public func isPointingWithThumbOpen(_ pose: HandPose) -> Bool {
     isPointingFingerConfiguration(pose)
         && thumbCenterDistanceRatio(pose).map { $0 >= 1.05 } == true
+}
+
+public func isPointerInteractionPose(_ pose: HandPose) -> Bool {
+    fingerIsExtended(pose, tip: .indexTip, pip: .indexPIP, mcp: .indexMCP) == true
+        && fingerIsExtended(pose, tip: .ringTip, pip: .ringPIP, mcp: .ringMCP) == false
+        && fingerIsExtended(pose, tip: .littleTip, pip: .littlePIP, mcp: .littleMCP) == false
 }
 
 public func isPlausibleHandPose(_ pose: HandPose) -> Bool {
