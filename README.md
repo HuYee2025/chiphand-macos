@@ -6,10 +6,10 @@
 
 ## macOS 系统 App（当前主线）
 
-当前测试版为 `ChipHand 1.0.0`，支持 Apple Silicon 与 Intel，安装包已经包含 MediaPipe、WASM、模型和离线说明，最终用户不需要安装 Xcode、Node.js、Python 或浏览器插件。
+当前测试版为 `ChipHand 1.0.1`，支持 Apple Silicon 与 Intel，安装包已经包含 MediaPipe、WASM、模型和离线说明，最终用户不需要安装 Xcode、Node.js、Python 或浏览器插件。
 
 - [网页版安装与手势说明](docs/user-guide/index.html)
-- 本地测试包：`macos-app/releases/ChipHand-macOS-1.0.0-universal.dmg`
+- 本地测试包：`macos-app/releases/ChipHand-macOS-1.0.1-universal.dmg`
 
 ```bash
 cd macos-app

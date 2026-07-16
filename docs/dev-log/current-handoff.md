@@ -3,7 +3,7 @@
 ## 当前阶段
 
 - 第 05 阶段：薯片手开源发布候选版。
-- 当前版本：macOS `1.0.0 build 21`；品牌改造前回滚点 `macos-v0.8.6`，重要稳定版 `macos-v0.3.0`。
+- 当前版本：macOS `1.0.1 build 22`；公开候选版回滚点 `macos-v1.0.0`，重要稳定版 `macos-v0.3.0`。
 - 当前分支：`codex/macos-system-prototype`。
 - 暂不上传 GitHub；用户完成本机验收后再建立独立仓库。
 
@@ -16,6 +16,7 @@
 - App 包含 MediaPipe JavaScript/WASM/模型、说明、MIT License 和 Apache 2.0 第三方许可，不需要最终用户安装任何开发工具。
 - 构建改为 `arm64 + x86_64` Universal；新增 `package-release.sh` 生成 DMG、ZIP 和 SHA-256。
 - 已安装 `/Applications/薯片手.app`。旧 `/Applications/GestureControl.app` 文件未删除，只停止进程以保留回滚。
+- 删除“显示控制点”设置项；食指黄色控制点、鼠标跟随和拇指中指点击永久开启，旧版关闭记录在启动时自动清除。
 
 ## 本轮验证
 
@@ -25,13 +26,15 @@
 - Universal warnings-as-errors Release 构建通过，二进制含 `arm64 x86_64`。
 - Info.plist、严格 ad-hoc codesign、固定 designated requirement 均通过。
 - DMG 实际挂载检查通过：App、Applications 快捷方式、内置模型、离线说明和许可文件齐全。
+- `1.0.1` 安装版 UI 检查通过：只保留“全屏显示手掌骨架”和“显示摄像头校准窗口”两项复选框，不再出现“显示控制点”，底部版本为 `v1.0.1`。
+- DMG/ZIP SHA-256 校验通过，安装版为 `1.0.1 build 22`，二进制含 `arm64 x86_64`，签名验证通过。
 - Playwright 检查桌面和 390px 手机说明页，无缺图或布局溢出。
 - 安装版控制窗口和图标通过 UI 检查；“使用说明”按钮已成功打开 App 包内 `file://.../UserGuide/index.html`。
 
 ## 本地测试产物
 
-- `macos-app/releases/ChipHand-macOS-1.0.0-universal.dmg`
-- `macos-app/releases/ChipHand-macOS-1.0.0-universal.zip`
+- `macos-app/releases/ChipHand-macOS-1.0.1-universal.dmg`
+- `macos-app/releases/ChipHand-macOS-1.0.1-universal.zip`
 - `macos-app/releases/SHA256SUMS.txt`
 - `docs/user-guide/index.html`
 

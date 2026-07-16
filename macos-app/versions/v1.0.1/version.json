@@ -1,0 +1,19 @@
+{
+  "version": "1.0.1",
+  "build": 22,
+  "tag": "macos-v1.0.1",
+  "date": "2026-07-16",
+  "title": "食指控制点永久开启",
+  "changes": [
+    "Remove the misleading display-control-points toggle.",
+    "Always enable index-finger pointer tracking and yellow control-point feedback.",
+    "Discard the legacy disabled preference and show explicit unsupported-state messages."
+  ],
+  "verification": [
+    "33 Swift unit tests passed.",
+    "22 native core checks passed.",
+    "32 Web regression tests and TypeScript typecheck passed.",
+    "Universal warnings-as-errors Release build passed for arm64 and x86_64.",
+    "DMG mount, bundled model/help/icon, SHA-256, codesign, installed version and live UI checks passed."
+  ]
+}

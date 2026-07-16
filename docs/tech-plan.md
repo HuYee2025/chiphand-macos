@@ -8,7 +8,7 @@
 - WKWebView + `@mediapipe/tasks-vision` 0.10.35：主引擎使用 Gesture Recognizer，单手 21 点、左右手与内置姿态分类，GPU 优先。
 - Network.framework：进程内只监听 `127.0.0.1`，向 WKWebView 提供打包在 App 内的 HTML、WASM 与模型。
 - AVFoundation + Vision：MediaPipe 启动失败时的本机备用识别路径。
-- Core Graphics `CGEvent`：通过 `.cghidEventTap` 注入连续滚动、翻页、受限浏览器导航，以及可选的食指鼠标移动与单击。
+- Core Graphics `CGEvent`：通过 `.cghidEventTap` 注入连续滚动、翻页、受限浏览器导航，以及食指鼠标移动与单击。
 - ApplicationServices：检查辅助功能信任；AppKit `NSWorkspace`：跟踪前台 App 切换。
 
 ### 冻结分支：Web / Extension
@@ -31,7 +31,7 @@
 - `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件，并从 HID event tap 注入到目标窗口中心。
 - `SystemNavigationEmitter`：严格 OK 跨中线后按方向发送 `Command + [` 或 `Command + ]`；AppModel 只允许 Chrome、Safari、Edge 和夸克调用。
 - `SystemPointerEmitter`：把镜像 `indexTip` 直接映射到主屏幕并发送 HID `mouseMoved`；定位后的拇指中指捏合直接复用严格 OK 的距离、释放阈值和稳定时间，在冻结点使用独立 `.privateState` 事件源发送一次无修饰键左键按下/松开。只在四个浏览器和辅助功能有效时启用。
-- `MenuBarView`：使用克莱因蓝与薯片黄品牌系统，提供启停、权限步骤、两项灵敏度、手势速查、右手/左手互斥选择、显示控制点、全屏骨架、摄像头校准与离线说明入口。
+- `MenuBarView`：使用克莱因蓝与薯片黄品牌系统，提供启停、权限步骤、两项灵敏度、手势速查、右手/左手互斥选择、全屏骨架、摄像头校准与离线说明入口。食指控制点和鼠标控制固定启用，不提供容易误关的独立开关。
 - `ScreenGestureOverlayController`：使用两个 `NSPanel`。全屏层只绘制点击穿透的镜像简化骨架、严格捏合圆点和点赞标记；状态层固定为底部居中 `390×52`，右侧三道杠将其收为右边缘 `30×44` 左圆右方迷你条。迷你条用 AppKit 屏幕绝对鼠标坐标只改变纵向位置；双击迷你条恢复默认帧，双击展开内容在暂停/恢复识别之间切换。
 - 跨线反馈：水平导航方向锁成立后，`GestureEngine` 在黄球第一次到达或越过 x=50% 的同一帧输出 `.navigate`；`AppModel` 保存一次性纵向位置，全屏 HUD 绘制 `352pt` 白色核心、蓝色外发光竖线并约 `240ms` 淡出。骨架开关只隐藏连线、节点、捏合连线和点赞标记，不隐藏黄色控制点或闪光；摄像头校准窗口不显示闪光。
 - 暂停状态：`AppModel.isPaused` 与完整停止分离；暂停会停止 MediaPipe、Apple Vision、摄像头和所有系统事件，隐藏骨架但保留红色反馈条。恢复前重新检查摄像头与辅助功能权限，不自动打开系统设置。

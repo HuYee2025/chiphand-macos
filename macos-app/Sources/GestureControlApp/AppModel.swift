@@ -67,9 +67,7 @@ final class AppModel: ObservableObject {
     @Published var pinchSensitivity: Double {
         didSet { saveAndApplySettings() }
     }
-    @Published var pointerModeEnabled: Bool {
-        didSet { pointerModeDidChange() }
-    }
+    private let pointerModeEnabled = true
     @Published var controlHand: Handedness {
         didSet { controlHandDidChange() }
     }
@@ -108,7 +106,7 @@ final class AppModel: ObservableObject {
         controlHand = Handedness(rawValue: defaults.string(forKey: "controlHand") ?? "") ?? .right
         swipeSensitivity = defaults.object(forKey: "swipeSensitivity") as? Double ?? 50
         pinchSensitivity = defaults.object(forKey: "pinchSensitivity") as? Double ?? 50
-        pointerModeEnabled = defaults.object(forKey: "pointerModeEnabled") as? Bool ?? false
+        defaults.removeObject(forKey: "pointerModeEnabled")
         screenOverlayEnabled = defaults.object(forKey: "screenOverlayEnabled") as? Bool ?? true
         pointerInteractionState = nil
         applySettings()
@@ -492,12 +490,17 @@ final class AppModel: ObservableObject {
             handStatus = handPrefix + "👍 点赞手势已识别（测试模式）"
             return
         }
-        if pointerModeEnabled, usingAppleVisionFallback,
+        if usingAppleVisionFallback,
            classifyHandShape(pose) == .pointing {
             handStatus = handPrefix + "备用识别模式 · 食指指针不可用"
             return
         }
-        if pointerModeEnabled, classifyHandShape(pose) == .pointing,
+        if classifyHandShape(pose) == .pointing,
+           accessibilityPermission != .granted {
+            handStatus = handPrefix + "辅助功能未允许 · 食指指针不可用"
+            return
+        }
+        if classifyHandShape(pose) == .pointing,
            !browserNavigationTargetIsFrontmost() {
             handStatus = handPrefix + "当前应用不支持食指指针"
             return
@@ -538,9 +541,7 @@ final class AppModel: ObservableObject {
         case .fist:
             handStatus = handPrefix + "已握拳 · 不执行操作"
         case .pointing:
-            handStatus = handPrefix + (pointerModeEnabled
-                ? "正在确认食指指针…"
-                : "食指伸出 · 暂未设置操作")
+            handStatus = handPrefix + "正在确认食指指针…"
         case .pinching:
             handStatus = handPrefix + "OK 手势·正在确认捏合…"
         case .victory:
@@ -577,8 +578,7 @@ final class AppModel: ObservableObject {
     }
 
     private func pointerModeIsAvailable() -> Bool {
-        pointerModeEnabled
-            && !usingAppleVisionFallback
+        !usingAppleVisionFallback
             && accessibilityPermission == .granted
             && browserNavigationTargetIsFrontmost()
     }
@@ -673,18 +673,6 @@ final class AppModel: ObservableObject {
         UserDefaults.standard.set(swipeSensitivity, forKey: "swipeSensitivity")
         UserDefaults.standard.set(pinchSensitivity, forKey: "pinchSensitivity")
         applySettings()
-    }
-
-    private func pointerModeDidChange() {
-        UserDefaults.standard.set(pointerModeEnabled, forKey: "pointerModeEnabled")
-        mediaPipeService.setPointerModeEnabled(pointerModeEnabled)
-        cancelCurrentGesture()
-        actionFeedback = nil
-        if isRunning {
-            handStatus = pointerModeEnabled
-                ? "显示控制点已开启 · 等待\(handName(controlHand))"
-                : "显示控制点已关闭"
-        }
     }
 
     private func applySettings() {

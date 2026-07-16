@@ -150,8 +150,6 @@ struct MenuBarView: View {
     private var displayCard: some View {
         sectionCard("显示与控制", icon: "display") {
             VStack(alignment: .leading, spacing: 10) {
-                Toggle("显示控制点", isOn: $model.pointerModeEnabled)
-                    .tint(brandBlue)
                 Toggle("全屏显示手掌骨架", isOn: $model.screenOverlayEnabled)
                     .tint(brandBlue)
                 Toggle("显示摄像头校准窗口", isOn: $model.debugWindowEnabled)
@@ -178,7 +176,7 @@ struct MenuBarView: View {
             Button("刷新权限") { model.refreshPermissions() }
             Button("使用说明") { model.openUserGuide() }
             Spacer()
-            Text("v1.0.0")
+            Text("v1.0.1")
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
             Button("退出") { NSApplication.shared.terminate(nil) }
