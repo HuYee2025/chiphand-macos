@@ -296,6 +296,52 @@ h1 {
   color: rgba(255, 255, 255, 0.72);
 }
 
+.download-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+  padding: 22px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.download-panel > div:first-child {
+  display: grid;
+  gap: 7px;
+}
+
+.download-panel strong {
+  font-size: 18px;
+}
+
+.download-panel span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+}
+
+.download-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.download-text-link {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 13px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.download-text-link:hover,
+.download-text-link:focus-visible {
+  color: var(--yellow);
+}
+
 .steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -563,6 +609,15 @@ footer p {
   .privacy {
     grid-template-columns: 1fr;
     gap: 36px;
+  }
+
+  .download-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .download-actions {
+    justify-content: flex-start;
   }
 }
 
