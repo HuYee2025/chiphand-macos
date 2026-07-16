@@ -1,14 +1,14 @@
 import SwiftUI
 
 @main
-struct GestureControlApp: App {
+struct ChipHandApp: App {
     @StateObject private var model = AppModel()
 
     var body: some Scene {
-        Window("手势控制", id: "control") {
+        Window("薯片手", id: "control") {
             MenuBarView(model: model)
         }
-        .defaultSize(width: 348, height: 680)
+        .defaultSize(width: 380, height: 740)
         .windowResizability(.contentSize)
 
         MenuBarExtra {

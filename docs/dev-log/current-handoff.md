@@ -2,97 +2,47 @@
 
 ## 当前阶段
 
-- 第 04 阶段：macOS 系统级手势控制原型。
-- 浏览器插件冻结在本地 `v1.0.1`；macOS 当前版本 `0.8.6`，`macos-v0.8.5` 为本轮修改前回滚点，`macos-v0.3.0` 为 ⭐ 重要稳定版。
+- 第 05 阶段：薯片手开源发布候选版。
+- 当前版本：macOS `1.0.0 build 21`；品牌改造前回滚点 `macos-v0.8.6`，重要稳定版 `macos-v0.3.0`。
 - 当前分支：`codex/macos-system-prototype`。
+- 暂不上传 GitHub；用户完成本机验收后再建立独立仓库。
 
 ## 已完成
 
-- 主识别引擎升级为 MediaPipe Gesture Recognizer 0.10.35：单手、完整 21 点、左右手、`Victory`/`Thumb_Up` 等内置姿态、GPU 优先/CPU 备用；Apple Vision 仅作启动失败兜底。
-- MediaPipe HTML、WASM 和模型全部打包在 App 内，由进程内 `127.0.0.1` 随机端口提供给 WKWebView；摄像头画面和关键点不保存、不上传。
-- 校准视频、骨架和全屏 HUD 统一为自拍镜像；显示层使用腕点和每指 3 段，底层仍保留 21 点用于姿态与捏合判断。
-- 支持左右手颜色、张掌/握拳/单指/捏合/翻页动态状态；真实捏合时显示拇指食指中点圆，松开即消失。
-- 捏合改为严格 OK 手势：拇指食指接触且中指、无名指、小指张开；握拳和两指偶然靠近不会启动滚动。
-- 严格 OK 捏合加入方向锁：垂直移动连续滚动；左侧向右跨中线返回，右侧向左跨中线前进，仅允许 Chrome、Safari、Edge、夸克。
-- 张开手掌恢复左右挥动翻页：手掌中心向右达到水平距离即下翻，向左即上翻，不要求跨过屏幕中线；保留水平主导、650ms 冷却和离手/稳定后重激活。
-- 食指与 V 手势只显示状态，不再发送翻页事件。
-- 新增默认关闭的食指指针测试：四个浏览器中严格握拳竖食指移动真实鼠标；停稳后保持食指并用拇指中指轻捏执行一次单击，鼠标在退出后停留原位。
-- 食指指针继续使用 150ms 激活、180ms 分类容错、约 24pt/350ms 定位、4pt 死区和 18% 单帧跳变保护，本轮没有改动跟踪参数。
-- `0.8.3` 删除点击前“先分开 100ms”的门槛；拇指中指轻捏直接复用严格 OK 的 `0.18` 接触阈值、`0.20` 释放阈值和 `80ms` 稳定时间。
-- 只要指尖节点距离进入接触阈值即显示第二黄点，反馈条同时输出实时归一化距离。
-- `0.8.4` 在严格 OK 导航捏合确认跨中线时，以黄色捏合球的纵向位置为中心，于屏幕中线闪现 `88pt × 4pt` 蓝色发光竖线，约 `240ms` 后淡出。
-- `0.8.5` 将蓝线加长为 `176pt`；水平导航锁定后，黄球第一次到达或越过中线的同一帧立即导航并闪光，不再等待跨线后的额外位移。
-- `0.8.6` 将中线加长为 `352pt` 白色核心蓝色外光；设置改称“显示控制点”，关闭全屏骨架仍保留三个黄色操作点和跨线闪光。
-- 合成点击使用独立 `.privateState` Core Graphics 事件源并强制清空修饰键，确保网页收到普通左键而不是 Command-click。
-- 全屏骨架和 MediaPipe 校准窗口在有效食指指针上显示 22pt 黄色指尖点；Apple Vision 备用模式不发送鼠标事件。
-- 竖拇指点赞识别与标记继续保留，但不执行真实点赞。
-- 识别窗口显示实时 FPS 与推理耗时，30 FPS 性能不足时自动降到 24 FPS。
-- 全屏骨架 HUD 保持点击穿透；实时状态固定底部居中，右侧三道杠单击收到右边缘左圆右方迷你条。迷你条只能上下移动，双击恢复默认帧。
-- 双击展开反馈条可暂停/恢复识别；暂停停止摄像头、MediaPipe、Apple Vision 和系统事件，隐藏骨架，保留红点与“已暂停手势控制”。
-- 主菜单新增右手/左手互斥选择，默认右手并持久保存；未选择手和未知左右手数据在动作入口被严格丢弃，切换时立即取消活动手势。
-- 系统滚动改为 `.cghidEventTap` 全局注入，事件位置设为目标前台窗口中心，修复 Chromium 可能忽略 `postToPid` 滚轮事件的问题。
-- App 改为正常 Dock 控制窗口并保留菜单栏入口，解决菜单栏项目被隐藏后启动即退出、退出后找不到入口的问题。
-- 已安装 `/Applications/GestureControl.app`；诊断实测 MediaPipe GPU ready，并实时返回“左手 · 已识别手掌姿态”。
+- 产品正式命名为“薯片手 / ChipHand”，固定 bundle ID 为 `com.huyee.chiphand`。
+- 正式图标为克莱因蓝底、放大金黄色薯片；菜单栏继续使用小手表示停止、运行和暂停。
+- 主控制窗口完成蓝黄视觉改造，加入品牌文案、首次权限步骤、状态卡、手势速查和离线说明入口。
+- `docs/user-guide/` 新增完全离线的响应式网页，包含安装、Gatekeeper 放行、权限、四种核心手势、反馈窗口、隐私和排障；四张手势插图为白底黑线并用蓝/黄标注动作。
+- App 包含 MediaPipe JavaScript/WASM/模型、说明、MIT License 和 Apache 2.0 第三方许可，不需要最终用户安装任何开发工具。
+- 构建改为 `arm64 + x86_64` Universal；新增 `package-release.sh` 生成 DMG、ZIP 和 SHA-256。
+- 已安装 `/Applications/薯片手.app`。旧 `/Applications/GestureControl.app` 文件未删除，只停止进程以保留回滚。
 
-## 已验证
+## 本轮验证
 
-- `npm test`：32 项全部通过。
-- `npm run typecheck`：通过。
-- `swift test`：31 项 XCTest 全部通过，包括食指激活、定位、拇指展开过渡、拇指点击、单次消费、整掌不点击、分类容错、跳变保护及捏合优先级。
-- `swift run GestureControlCoreChecks`：22 项全部通过。
-- `swift build --target GestureControlApp`：通过。
-- Release `.app`、Info.plist、camera entitlement、ad-hoc codesign：通过。
-- v0.4.0 Gesture Recognizer 已在打包 App 中达到 MediaPipe GPU ready，摄像头、模型和 WKWebView 本机服务链路正常。
-- 最终 `0.4.0`（build 5）已安装并启动于 `/Applications/GestureControl.app`，ad-hoc 签名和内置手势模型校验通过。
-- `0.4.1`（build 6）为 ad-hoc 签名加入稳定 designated requirement；旧 GestureControl 辅助功能记录已单独重置，摄像头与辅助功能已由 App 实际读取为“已允许”。
-- `0.5.0`（build 7）的 Swift 编译和 12 项 XCTest 通过；运行时窗口检查确认骨架与 `390×52` 状态条已分离，最终版已安装到 `/Applications/GestureControl.app`。
-- `0.5.1`（build 8）已通过 Swift 编译、warnings-as-errors、12 项 XCTest 和 10 项核心检查，最终版已安装到 `/Applications/GestureControl.app`。
-- 实机窗口检查确认：默认条 `390×52`，右边缘迷你条 `30×44`；纵向拖动实测 Y 位置变化 270pt 而 X 保持不变，双击恢复默认帧成功。
-- 双击暂停实测为红色暂停状态、MediaPipe/摄像头/骨架窗口全部停止；再次双击后 MediaPipe GPU 恢复，摄像头与辅助功能仍为“已允许”。
-- `0.6.0` 核心过滤单测已通过：右手模式拒绝左手，左手模式拒绝右手，未知左右手也被拒绝。
-- 最终 `0.6.0`（build 9）已安装到 `/Applications/GestureControl.app`；界面实测右手/左手为互斥单选，切换与重启持久化正常，最终恢复为右手，摄像头和辅助功能仍显示“已允许”。
-- `0.7.0`（build 10）已通过 18 项 XCTest、12 项核心检查、32 项 Web 回归、TypeScript typecheck、warnings-as-errors、Release 构建和严格签名验证。
-- 最终 `0.7.0` 已安装到 `/Applications/GestureControl.app`；界面检查确认摄像头/辅助功能均为“已允许”，MediaPipe GPU 正常就绪，默认等待右手，新动作说明已显示。
-- `0.7.1`（build 11）已通过 19 项 XCTest、13 项核心检查、32 项 Web 回归、TypeScript typecheck、warnings-as-errors、Release 构建和严格签名验证。
-- 最终 `0.7.1` 已安装并启动；界面检查确认食指翻页/V 留空文案正确、权限仍为“已允许”，MediaPipe GPU 正常就绪并等待右手。
-- `0.7.2`（build 12）已通过 22 项 XCTest、15 项核心检查、32 项 Web 回归、TypeScript typecheck、warnings-as-errors、Release 构建和严格签名验证。
-- 最终 `0.7.2` 已安装并启动；界面检查确认“握拳竖食指左右跨中线”文案正确、权限仍为“已允许”，MediaPipe GPU 正常就绪并等待右手。
-- `0.7.3`（build 13）已通过 20 项 XCTest、14 项核心检查、32 项 Web 回归、TypeScript typecheck、warnings-as-errors、Release 构建和严格签名验证。
-- 最终 `0.7.3` 已安装并启动；界面检查确认张开手掌翻页、食指/V 留空文案正确，摄像头与辅助功能均为“已允许”，MediaPipe GPU 以 26 FPS / 14.0ms 正常就绪并等待右手。
-- `0.8.0`（build 14）已通过 28 项 XCTest、20 项核心检查、32 项 Web 回归、TypeScript typecheck、warnings-as-errors、Release 构建和严格签名验证。
-- 最终 `0.8.0` 已安装并启动；界面确认食指指针测试默认关闭、摄像头与辅助功能均为“已允许”，MediaPipe GPU 以约 25 FPS / 16.0ms 正常就绪并等待右手。
-- `0.8.1`（build 15）已通过 31 项 XCTest、22 项核心检查、32 项 Web 回归、TypeScript typecheck、warnings-as-errors、Release 构建和严格签名验证。
-- 最终 `0.8.1` 已安装并启动；界面确认新拇指点击说明正确，摄像头与辅助功能仍为“已允许”，MediaPipe GPU 正常就绪并等待右手。
-- `0.8.2`（build 16）已通过 31 项 XCTest、22 项核心检查、32 项 Web 回归、TypeScript typecheck、warnings-as-errors、Release 构建和严格签名验证。
-- 最终 `0.8.2` 已安装并启动；界面确认拇指中指轻捏说明正确，摄像头与辅助功能均为“已允许”，MediaPipe GPU 以约 26 FPS / 14.0ms 正常就绪并等待右手。
-- `0.8.3` build 17 已通过 32 项 XCTest、22 项核心检查、warnings-as-errors 编译、Release 构建和严格签名验证。
-- 最终 `0.8.3` 已安装并启动于 `/Applications/GestureControl.app`，签名 designated requirement 保持不变；待用户实机验收接触黄点和当前页单击。
-- `0.8.4` build 18 已通过 32 项 XCTest、22 项核心检查、warnings-as-errors 编译、Release 构建和严格签名验证。
-- 最终 `0.8.4` 已安装并启动于 `/Applications/GestureControl.app`；待用户实机验收跨线闪光的位置、亮度和持续时间。
-- `0.8.5` build 19 已通过 33 项 XCTest与 22 项核心检查；新增左右两个方向“首次到达中线立即导航”的边界覆盖。
-- 最终 `0.8.5` 已安装并启动于 `/Applications/GestureControl.app`；严格签名与固定 designated requirement 验证通过，待用户实机验收同步时机和蓝线长度。
-- `0.8.6` build 20 已通过 33 项 XCTest、22 项核心检查、warnings-as-errors 编译、Release 构建和严格签名验证。
-- 最终 `0.8.6` 已安装并启动于 `/Applications/GestureControl.app`；固定 designated requirement 保持不变，不需要重新授权辅助功能。
+- `swift test`：33 项通过。
+- `swift run GestureControlCoreChecks`：22 项通过。
+- `npm test`：32 项通过；`npm run typecheck` 通过。
+- Universal warnings-as-errors Release 构建通过，二进制含 `arm64 x86_64`。
+- Info.plist、严格 ad-hoc codesign、固定 designated requirement 均通过。
+- DMG 实际挂载检查通过：App、Applications 快捷方式、内置模型、离线说明和许可文件齐全。
+- Playwright 检查桌面和 390px 手机说明页，无缺图或布局溢出。
+- 安装版控制窗口和图标通过 UI 检查；“使用说明”按钮已成功打开 App 包内 `file://.../UserGuide/index.html`。
 
-## 尚未验证
+## 本地测试产物
 
-- 尚需用户主观验收迷你条造型、拖动手感与双击节奏。
-- 尚需用户用真实张开手掌验收双向翻页灵敏度及误触率。
-- 尚需用户在 YouTube 实测食指鼠标定位、双黄色点、拇指中指轻捏点击手感，以及链接是否始终在当前页打开。
-- 60 秒真实手掌下的平均推理耗时、有效 FPS 与两分钟静止误触率尚未记录。
-- 当前没有 Developer ID 正式签名、notarization 或自动更新。
-- 尚需实机确认物理右手/左手与菜单标签一致，并验证未选择手不会显示骨架或触发动作。
+- `macos-app/releases/ChipHand-macOS-1.0.0-universal.dmg`
+- `macos-app/releases/ChipHand-macOS-1.0.0-universal.zip`
+- `macos-app/releases/SHA256SUMS.txt`
+- `docs/user-guide/index.html`
 
-## 下一步
+## 尚需用户验证
 
-1. 在 Chrome 打开 YouTube 首页，主动开启“显示控制点”，验证黄色点、鼠标和悬停视频一致。
-2. 食指停稳后直接让拇指和中指轻捏，验证第二黄点、距离值和单次当前页点击；保持接触不得连点。
-3. 关闭“全屏显示手掌骨架”，验证页面只保留黄色控制点和白色核心蓝光中线；重新打开后完整骨架恢复。
-4. 在其他三个浏览器和非浏览器回归白名单、单手选择、点赞、暂停和性能。
+- 新 bundle ID 第一次启动时完成摄像头与辅助功能授权，确认不再进入权限循环。
+- 实机回归张掌翻页、严格 OK 上下滚动/跨中线导航、食指悬停与拇指中指点击。
+- 主观验收 Dock 图标、控制窗口和图文说明；发现问题先修候选版。
 
-## 重要边界
+## 下一步建议
 
-- 食指鼠标仅为默认关闭的浏览器测试功能；不扩展为全系统 Air Mouse、拖拽或多显示器映射。
-- 不申请屏幕录制或输入监控权限。
-- 不推送 GitHub、申请证书、notarize 或发布 App Store，除非用户明确要求。
-- 浏览器插件回滚点为本地 tag `v1.0.1`；macOS 重要稳定回滚点为 `macos-v0.3.0`。
+1. 用户从 DMG 按说明拖入“应用程序”，完成首次安全放行与两项权限。
+2. 依次测试“测试系统下翻”、张掌、严格 OK、食指点击和反馈条暂停/收起。
+3. 用户确认后再建立独立公开仓库，建议仓库名 `chiphand-macos`，上传源代码与正式 Release。

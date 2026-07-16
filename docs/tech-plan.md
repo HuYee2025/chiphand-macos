@@ -2,7 +2,7 @@
 
 ## 技术栈
 
-### 当前主线：macOS 原型
+### 当前主线：薯片手 ChipHand macOS App
 
 - Swift 6.3 / SwiftUI `Window` + `MenuBarExtra`，部署目标 macOS 14+。
 - WKWebView + `@mediapipe/tasks-vision` 0.10.35：主引擎使用 Gesture Recognizer，单手 21 点、左右手与内置姿态分类，GPU 优先。
@@ -31,7 +31,7 @@
 - `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件，并从 HID event tap 注入到目标窗口中心。
 - `SystemNavigationEmitter`：严格 OK 跨中线后按方向发送 `Command + [` 或 `Command + ]`；AppModel 只允许 Chrome、Safari、Edge 和夸克调用。
 - `SystemPointerEmitter`：把镜像 `indexTip` 直接映射到主屏幕并发送 HID `mouseMoved`；定位后的拇指中指捏合直接复用严格 OK 的距离、释放阈值和稳定时间，在冻结点使用独立 `.privateState` 事件源发送一次无修饰键左键按下/松开。只在四个浏览器和辅助功能有效时启用。
-- `MenuBarView`：启停、权限状态、两项灵敏度、右手/左手互斥选择、默认关闭的“显示控制点”、全屏骨架与摄像头校准开关。
+- `MenuBarView`：使用克莱因蓝与薯片黄品牌系统，提供启停、权限步骤、两项灵敏度、手势速查、右手/左手互斥选择、显示控制点、全屏骨架、摄像头校准与离线说明入口。
 - `ScreenGestureOverlayController`：使用两个 `NSPanel`。全屏层只绘制点击穿透的镜像简化骨架、严格捏合圆点和点赞标记；状态层固定为底部居中 `390×52`，右侧三道杠将其收为右边缘 `30×44` 左圆右方迷你条。迷你条用 AppKit 屏幕绝对鼠标坐标只改变纵向位置；双击迷你条恢复默认帧，双击展开内容在暂停/恢复识别之间切换。
 - 跨线反馈：水平导航方向锁成立后，`GestureEngine` 在黄球第一次到达或越过 x=50% 的同一帧输出 `.navigate`；`AppModel` 保存一次性纵向位置，全屏 HUD 绘制 `352pt` 白色核心、蓝色外发光竖线并约 `240ms` 淡出。骨架开关只隐藏连线、节点、捏合连线和点赞标记，不隐藏黄色控制点或闪光；摄像头校准窗口不显示闪光。
 - 暂停状态：`AppModel.isPaused` 与完整停止分离；暂停会停止 MediaPipe、Apple Vision、摄像头和所有系统事件，隐藏骨架但保留红色反馈条。恢复前重新检查摄像头与辅助功能权限，不自动打开系统设置。
@@ -71,9 +71,11 @@ npm run preview
 
 cd macos-app
 swift run GestureControlCoreChecks
-swift build --target GestureControlApp
+swift test
+swift build --target ChipHand
 ./scripts/build-app.sh
-open build/GestureControl.app
+open build/ChipHand.app
+./scripts/package-release.sh
 ```
 
 ## 质量门
@@ -110,8 +112,10 @@ open build/GestureControl.app
 
 ## 部署/发布
 
-- macOS 原型通过 `macos-app/scripts/build-app.sh` 生成 `macos-app/build/GestureControl.app`；当前使用 ad-hoc 签名，只供本机测试。
-- 正式分发前必须改用 Developer ID 签名、Hardened Runtime 和 notarization；当前阶段不执行。
+- `macos-app/scripts/build-app.sh` 生成 `macos-app/build/ChipHand.app`，包含 `arm64 + x86_64`、`.icns`、MediaPipe/WASM/模型、离线用户说明和许可文件。
+- `macos-app/scripts/package-release.sh` 生成 Universal DMG、ZIP 与 SHA-256 校验，产物位于 `macos-app/releases/`。
+- 用户明确不购买每年 99 美元的 Apple Developer 会员，因此免费开源版使用固定 `com.huyee.chiphand` designated requirement 的 ad-hoc 签名。下载用户首次需右键“打开”或在“隐私与安全性”点一次“仍要打开”。
+- 当前只生成本地测试包；用户验收后再建立独立公开仓库，不自动上传 GitHub。
 
 ### Web / Extension（冻结）
 
@@ -125,8 +129,7 @@ open build/GestureControl.app
 
 - macOS 原型必须由用户在系统设置中授予摄像头和辅助功能权限；无权限时只显示状态，不发送事件。
 - Xcode 26.6 已安装并接受 License；核心逻辑同时保留可执行检查和标准 `XCTest`。
-- 当前 `.app` 使用 ad-hoc 签名，仅供本机原型；更改 bundle identifier 或签名 requirement 时系统权限仍需重新确认。
-- 从 `0.4.1` 起 ad-hoc 签名包含固定 bundle identifier 的 designated requirement，避免 TCC 只绑定变化的 CDHash；首次升级需清理一次旧记录。
+- 当前 `.app` 使用 ad-hoc 签名；新品牌固定 bundle ID 为 `com.huyee.chiphand`。从旧 `GestureControl` 第一次升级时需要重新允许权限，后续保持同一 designated requirement。
 - Core Graphics 滚动方向、不同 App 的滚动响应和手势阈值仍需真实手势验收。
 - MediaPipe 主运行时资源约 40 MB；只在本机 loopback 端口短暂提供，App 停止识别时关闭。
 

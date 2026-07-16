@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "build": 21,
+  "tag": "macos-v1.0.0",
+  "date": "2026-07-16",
+  "title": "薯片手 ChipHand 首个开源候选版",
+  "changes": [
+    "Rename the product to 薯片手 / ChipHand and adopt the stable com.huyee.chiphand bundle identifier.",
+    "Add a complete Klein-blue and potato-yellow visual system with a generated full-size app icon.",
+    "Add an offline responsive user guide with four generated gesture illustrations and troubleshooting.",
+    "Bundle all runtime assets, documentation, MIT license, and Apache-2.0 third-party notices.",
+    "Build a universal arm64 and x86_64 app and package local DMG and ZIP artifacts with SHA-256 checksums."
+  ],
+  "verification": [
+    "swift test passed 33 tests",
+    "GestureControlCoreChecks passed 22 checks",
+    "Web regression suite passed 32 tests and TypeScript typecheck passed",
+    "Universal warnings-as-errors Release build passed for arm64 and x86_64",
+    "Strict ad-hoc codesign and designated requirement checks passed",
+    "DMG mounted successfully with app, model, offline guide, licenses, and Applications shortcut",
+    "Desktop and 390px mobile guide layouts passed real-browser visual inspection",
+    "Installed app window, full icon, and bundled help button passed local UI inspection"
+  ]
+}

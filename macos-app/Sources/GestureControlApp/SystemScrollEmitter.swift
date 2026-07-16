@@ -8,7 +8,7 @@ protocol ScrollEmitting {
 }
 
 final class SystemScrollEmitter: ScrollEmitting {
-    private let queue = DispatchQueue(label: "com.huyee.gesture-control.scroll")
+    private let queue = DispatchQueue(label: "com.huyee.chiphand.scroll")
 
     func emitContinuous(normalizedDelta: Double, to processID: pid_t) {
         let height = Double(CGDisplayPixelsHigh(CGMainDisplayID()))

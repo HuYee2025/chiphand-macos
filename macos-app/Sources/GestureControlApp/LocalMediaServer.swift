@@ -13,7 +13,7 @@ final class LocalMediaServer {
     }
 
     private let root: URL
-    private let queue = DispatchQueue(label: "com.huyee.gesture-control.mediapipe-http")
+    private let queue = DispatchQueue(label: "com.huyee.chiphand.mediapipe-http")
     private var listener: NWListener?
 
     init(root: URL) {

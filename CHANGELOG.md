@@ -1,5 +1,12 @@
 # Changelog
 
+## macOS 1.0.0 - 2026-07-16
+
+- macOS App 正式命名为“薯片手 / ChipHand”，完成克莱因蓝与金黄薯片视觉系统、正式 `.icns` 图标和重做后的控制窗口。
+- 新增离线网页版安装及手势说明、四张手势插图、App 内说明入口、MIT/Apache 许可文件。
+- 打包为 Apple Silicon + Intel Universal App，生成本地 DMG、ZIP 和 SHA-256 校验；所有 MediaPipe 运行资源均包含在 App 内。
+- 保留 `macos-v0.8.6` 为品牌改造前回滚点；本轮只准备本地测试，不推送 GitHub。
+
 ## macOS 0.8.6 - 2026-07-16
 
 - 跨中线闪光从 `176pt` 加长到 `352pt`，改为白色核心线条配蓝色外发光。

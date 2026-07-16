@@ -6,8 +6,8 @@ final class CameraCaptureService: NSObject, AVCaptureVideoDataOutputSampleBuffer
     var onFrame: (@Sendable (CMSampleBuffer) -> Void)?
     var onError: (@Sendable (String) -> Void)?
 
-    private let sessionQueue = DispatchQueue(label: "com.huyee.gesture-control.camera")
-    private let frameQueue = DispatchQueue(label: "com.huyee.gesture-control.frames", qos: .userInteractive)
+    private let sessionQueue = DispatchQueue(label: "com.huyee.chiphand.camera")
+    private let frameQueue = DispatchQueue(label: "com.huyee.chiphand.frames", qos: .userInteractive)
     private var configured = false
 
     func start() {

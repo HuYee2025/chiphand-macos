@@ -25,6 +25,30 @@
 
 ## 当前决策
 
+## 2026-07-16 v1.0.0 薯片手品牌与开源分发
+
+背景：
+- 核心手势已达到初代可用状态；用户不接受 Apple Developer 每年 99 美元会员费，希望转为其他人可直接下载的开源软件。
+
+决策：
+- 产品正式命名为“薯片手 / ChipHand”，中文主品牌优先；图标使用克莱因蓝底上的放大金黄色薯片，菜单栏继续使用单色小手表示运行状态。
+- 使用固定 `com.huyee.chiphand` bundle ID，版本升级为 `1.0.0 build 21`；`macos-v0.8.6` 保留为品牌改造前回滚点。
+- 提供包含所有运行资源的 Universal App、DMG、ZIP、SHA-256、MIT License、Apache 2.0 许可和离线网页版说明；最终用户不安装额外运行环境。
+- 不购买 Developer ID、不做 notarization。文档明确首次 Gatekeeper 右键打开/仍要打开流程；用户验收前不上传 GitHub。
+
+原因：
+- 薯片场景直接解释“不触碰油手键盘”的价值；蓝黄对比在 Dock 小尺寸下清楚，掌中眼方案对摄像头应用会增加监视联想。
+- 完整自包含安装包比要求普通用户安装开发工具更符合开源分发目标；Universal 包覆盖 Apple Silicon 与 Intel。
+
+影响：
+- 品牌切换会导致本机第一次重新授权摄像头与辅助功能；之后保持稳定身份。
+- 免费开源下载无法消除 Apple 首次安全提示，但不产生年费。
+
+相关文件：
+- `macos-app/Resources/Info.plist`
+- `macos-app/scripts/package-release.sh`
+- `docs/user-guide/index.html`
+
 ## 2026-07-16 v0.8.6 精简全屏反馈
 
 背景：

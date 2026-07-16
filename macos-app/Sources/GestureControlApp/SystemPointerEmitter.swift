@@ -8,7 +8,7 @@ protocol PointerEmitting {
 }
 
 final class SystemPointerEmitter: PointerEmitting {
-    private let queue = DispatchQueue(label: "com.huyee.gesture-control.pointer")
+    private let queue = DispatchQueue(label: "com.huyee.chiphand.pointer")
     private var lastLocation: CGPoint?
 
     func move(to point: NormalizedPoint) {

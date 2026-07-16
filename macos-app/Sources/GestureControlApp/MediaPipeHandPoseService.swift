@@ -6,7 +6,7 @@ import WebKit
 @MainActor
 final class MediaPipeHandPoseService: NSObject {
     private let logger = Logger(
-        subsystem: "com.huyee.gesture-control.prototype",
+        subsystem: "com.huyee.chiphand",
         category: "mediapipe-web"
     )
     var onPose: ((HandPose?) -> Void)?

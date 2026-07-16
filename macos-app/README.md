@@ -1,6 +1,19 @@
-# macOS 系统手势控制原型
+# 薯片手 ChipHand
 
-原生 Mac App 使用本机 MediaPipe Gesture Recognizer 识别手势，通过系统级滚动事件控制当前前台应用。Apple Vision 只作为启动失败时的备用引擎。
+一边吃薯片，一边畅快浏览；不用担心弄脏键盘和触控板。
+
+薯片手是原生 macOS 视觉手势控制 App。MediaPipe Gesture Recognizer、WASM、模型和说明文档全部内置，摄像头画面不保存、不上传；Apple Vision 只作为 MediaPipe 启动失败时的备用引擎。
+
+完整图文说明见 [`docs/user-guide/index.html`](../docs/user-guide/index.html)。
+
+## 普通用户安装
+
+1. 打开 `ChipHand-macOS-1.0.0-universal.dmg`。
+2. 把“薯片手.app”拖到“Applications / 应用程序”。
+3. 首次若被 macOS 拦截，右键 App 选择“打开”；或到“系统设置 → 隐私与安全性”点“仍要打开”。
+4. 允许“摄像头”和“辅助功能”，回到 App 点“开启手势控制”。
+
+不需要安装 Xcode、Node.js、Python 或其他运行环境。免费开源版没有 Developer ID 公证，因此其他用户首次下载后需要做一次安全放行。
 
 ## 当前动作
 
@@ -21,7 +34,7 @@
 - 菜单中的“测试系统下翻”可绕过手势识别，直接验证辅助功能和系统滚动是否正常。
 - App 同时出现在 Dock/程序坞和菜单栏；关闭控制窗口不会停止后台手势识别。
 
-## 开发
+## 开发与打包
 
 建议安装完整 Xcode，然后执行：
 
@@ -30,7 +43,7 @@ cd macos-app
 swift test
 swift run GestureControlCoreChecks
 ./scripts/build-app.sh
-open build/GestureControl.app
+open build/ChipHand.app
 ```
 
 稳定安装到“应用程序”：
@@ -39,4 +52,10 @@ open build/GestureControl.app
 ./scripts/install-app.sh
 ```
 
-首次启动需要允许“摄像头”和“辅助功能”。点击开启后如果辅助功能未生效，使用控制面板里的“设置”按钮；打开开关后 App 会自动继续启动，不需要反复点击。原型使用 ad-hoc 签名，重新构建并替换 App 后可能需要重新授权一次辅助功能。
+生成可分发的 Universal DMG 与 ZIP：
+
+```bash
+./scripts/package-release.sh
+```
+
+产物位于 `macos-app/releases/`。固定 bundle ID 为 `com.huyee.chiphand`；品牌切换后的第一次安装需要重新允许两项权限，后续同一身份的小版本更新不应反复授权。

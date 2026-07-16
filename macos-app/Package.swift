@@ -3,17 +3,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "GestureControl",
+    name: "ChipHand",
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "GestureControlCore", targets: ["GestureControlCore"]),
-        .executable(name: "GestureControl", targets: ["GestureControlApp"]),
+        .executable(name: "ChipHand", targets: ["ChipHand"]),
     ],
     targets: [
         .target(name: "GestureControlCore"),
         .executableTarget(
-            name: "GestureControlApp",
-            dependencies: ["GestureControlCore"]
+            name: "ChipHand",
+            dependencies: ["GestureControlCore"],
+            path: "Sources/GestureControlApp"
         ),
         .executableTarget(
             name: "GestureControlCoreChecks",

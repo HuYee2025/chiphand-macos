@@ -6,7 +6,7 @@ protocol NavigationEmitting {
 }
 
 final class SystemNavigationEmitter: NavigationEmitting {
-    private let queue = DispatchQueue(label: "com.huyee.gesture-control.navigation")
+    private let queue = DispatchQueue(label: "com.huyee.chiphand.navigation")
 
     func emit(_ direction: NavigationDirection) {
         guard AXIsProcessTrusted() else { return }

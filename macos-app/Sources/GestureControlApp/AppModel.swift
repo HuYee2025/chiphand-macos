@@ -13,7 +13,7 @@ struct CenterCrossingFlash: Equatable, Identifiable {
 @MainActor
 final class AppModel: ObservableObject {
     private let logger = Logger(
-        subsystem: "com.huyee.gesture-control.prototype",
+        subsystem: "com.huyee.chiphand",
         category: "recognition"
     )
     @Published private(set) var isRunning = false
@@ -325,7 +325,19 @@ final class AppModel: ObservableObject {
     func openAccessibilitySettings() {
         PermissionService.promptForAccessibility()
         PermissionService.openAccessibilitySettings()
-        status = "请打开 GestureControl 开关；授权后会自动启动"
+        status = "请打开“薯片手”开关；授权后会自动启动"
+    }
+
+    func openUserGuide() {
+        guard let guideURL = Bundle.main.url(
+            forResource: "index",
+            withExtension: "html",
+            subdirectory: "UserGuide"
+        ) else {
+            status = "未找到内置使用说明"
+            return
+        }
+        NSWorkspace.shared.open(guideURL)
     }
 
     func testPageDown() {

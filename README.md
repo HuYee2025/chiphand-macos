@@ -1,17 +1,24 @@
-# 手势浏览控制
+# 薯片手 ChipHand
 
-使用 MacBook 摄像头识别手势，系统级控制当前前台应用滚动。所有摄像头画面、手部关键点和模型推理都只在本机运行。
+一边吃薯片，一边畅快浏览；不用担心弄脏键盘和触控板。
+
+薯片手使用 Mac 摄像头在本机识别手势，系统级控制浏览器和前台应用。摄像头画面、手部关键点和模型推理都只在本机运行。
 
 ## macOS 系统 App（当前主线）
 
-`macos-app/` 使用 MediaPipe Hand Landmarker 识别 21 点与左右手，通过 macOS HID 滚动事件控制 Chrome、Safari、Preview、Notion 等前台应用；Apple Vision 仅作备用。
+当前测试版为 `ChipHand 1.0.0`，支持 Apple Silicon 与 Intel，安装包已经包含 MediaPipe、WASM、模型和离线说明，最终用户不需要安装 Xcode、Node.js、Python 或浏览器插件。
+
+- [网页版安装与手势说明](docs/user-guide/index.html)
+- 本地测试包：`macos-app/releases/ChipHand-macOS-1.0.0-universal.dmg`
 
 ```bash
 cd macos-app
 ./scripts/install-app.sh
 ```
 
-安装后从“应用程序”或 Dock 打开 GestureControl，允许摄像头和辅助功能。先用“测试系统下翻”验证系统输出，再测试右挥下翻、左挥上翻和捏住上下滚动。
+安装后从“应用程序”或 Dock 打开“薯片手”，允许摄像头和辅助功能。先用“测试系统下翻”验证系统输出，再测试张掌翻页、严格 OK 滚动/导航和食指控制点。
+
+免费开源版采用 ad-hoc 签名，没有购买 Apple Developer 年费证书。其他用户首次打开下载版时需要右键选择“打开”，或在“系统设置 → 隐私与安全性”中点一次“仍要打开”。
 
 ## Chrome 插件
 
