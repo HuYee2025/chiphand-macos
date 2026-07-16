@@ -134,12 +134,6 @@ src/                               已冻结的 Web Demo 与插件共用模块
 
 详细实现见[架构说明](docs/architecture.md)，版本变化见[CHANGELOG](CHANGELOG.md)。
 
-## 开发状态与边界
-
-macOS App 是当前主线。仓库同时保留早期 Three.js 黑洞手势 Demo 和 Chrome MV3 插件，它们是识别性能与交互方向的历史验证场，不是当前发布产品。
-
-当前不做：App Store、自动更新、登录启动、多屏食指映射、自定义手势模型，以及除浏览器前进后退外的合成键盘操作。
-
 ## 参与贡献
 
 欢迎提交 Bug、兼容性结果和明确的小功能改进。开始前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。涉及权限、隐私或系统事件安全的问题，请按 [SECURITY.md](SECURITY.md) 的方式报告。
