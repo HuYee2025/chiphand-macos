@@ -542,11 +542,27 @@ h1 {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
   gap: 80px;
-  border-top: 1px solid var(--ink);
 }
 
 .privacy p {
   color: var(--muted);
+}
+
+.contact-section {
+  max-width: none;
+  padding-right: max(24px, calc((100vw - var(--max)) / 2));
+  padding-left: max(24px, calc((100vw - var(--max)) / 2));
+  border-top: 1px solid rgba(0, 47, 167, 0.16);
+  background: var(--blue-soft);
+}
+
+.contact-section .contact-grid {
+  border-color: rgba(0, 47, 167, 0.24);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.contact-section .contact-grid article {
+  border-color: rgba(0, 47, 167, 0.14);
 }
 
 code {
