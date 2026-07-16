@@ -508,6 +508,46 @@ h1 {
   gap: 14px;
 }
 
+.trouble-section .faq-grid {
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.trouble-section details {
+  min-height: 168px;
+  padding: 28px 30px;
+  border: 0;
+  border-radius: 0;
+  color: white;
+  background: var(--blue);
+}
+
+.trouble-section details:nth-child(5) {
+  grid-column: 1 / -1;
+}
+
+.trouble-section details[open] {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.trouble-section summary {
+  color: white;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.trouble-section summary::marker {
+  color: var(--yellow);
+}
+
+.trouble-section details p {
+  color: rgba(255, 255, 255, 0.74);
+  line-height: 1.75;
+}
+
 details {
   padding: 22px 24px;
   border: 1px solid var(--line);
@@ -630,6 +670,10 @@ footer p {
   .faq-grid,
   .gesture-rules {
     grid-template-columns: 1fr;
+  }
+
+  .trouble-section details:nth-child(5) {
+    grid-column: auto;
   }
 
   .feature-strip article {
