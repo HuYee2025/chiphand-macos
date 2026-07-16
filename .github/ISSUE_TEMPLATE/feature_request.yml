@@ -1,0 +1,33 @@
+name: 功能建议
+description: 提议一个边界清楚、能验证的改进
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到的具体问题
+      description: 先说使用场景和阻碍，不要只写解决方案名称。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 怎样算完成
+      description: 写出可以实机验证的结果。
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私边界
+      options:
+        - label: 这个建议不依赖上传摄像头画面或读取屏幕内容
+          required: true

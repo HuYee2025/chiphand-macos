@@ -1,0 +1,64 @@
+name: Bug 报告
+description: 报告可复现的安装、权限、识别或控制问题
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: 请不要上传包含私人内容的摄像头画面或录屏。
+  - type: input
+    id: version
+    attributes:
+      label: 薯片手版本
+      placeholder: 例如 1.0.1 build 22
+    validations:
+      required: true
+  - type: input
+    id: mac
+    attributes:
+      label: Mac 与 macOS
+      placeholder: 例如 MacBook Air M3，macOS 15.5
+    validations:
+      required: true
+  - type: input
+    id: target
+    attributes:
+      label: 目标应用
+      placeholder: 例如 Chrome 138、Safari、Preview
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 从启动 App 开始，逐步写出做了什么。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+    validations:
+      required: true
+  - type: dropdown
+    id: system_test
+    attributes:
+      label: “测试系统下翻”是否有效
+      options:
+        - 有效
+        - 无效
+        - 未测试
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 补充信息
+      description: 可填写控制手、手势状态、错误文字或不含隐私的日志。

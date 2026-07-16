@@ -1,85 +1,149 @@
 # 薯片手 ChipHand
 
-一边吃薯片，一边畅快浏览；不用担心弄脏键盘和触控板。
+> 一边吃薯片，一边畅快浏览；不用担心弄脏键盘和触控板。
 
-薯片手使用 Mac 摄像头在本机识别手势，系统级控制浏览器和前台应用。摄像头画面、手部关键点和模型推理都只在本机运行。
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple)](https://github.com/HuYee2025/chiphand-macos/releases)
+[![Release](https://img.shields.io/github/v/release/HuYee2025/chiphand-macos?include_prereleases&label=release)](https://github.com/HuYee2025/chiphand-macos/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-165DFF.svg)](LICENSE)
 
-## macOS 系统 App（当前主线）
+薯片手是一款原生 macOS 手势控制 App。它使用 Mac 摄像头在本机识别单手动作，让你不碰键盘和触控板，也能翻页、连续滚动、浏览器前进后退，以及移动和点击鼠标。
 
-当前测试版为 `ChipHand 1.0.1`，支持 Apple Silicon 与 Intel，安装包已经包含 MediaPipe、WASM、模型和离线说明，最终用户不需要安装 Xcode、Node.js、Python 或浏览器插件。
+摄像头画面、手部关键点和模型推理全部留在本机；App 不读取屏幕、不保存视频，也不把识别数据上传到服务器。
 
-- [网页版安装与手势说明](docs/user-guide/index.html)
-- 本地测试包：`macos-app/releases/ChipHand-macOS-1.0.1-universal.dmg`
+<p align="center">
+  <img src="docs/user-guide/assets/brand/chiphand-icon.png" width="180" alt="薯片手应用图标">
+</p>
+
+## 下载
+
+- [下载最新版本](https://github.com/HuYee2025/chiphand-macos/releases/latest)
+- [下载 macOS 1.0.1 Universal DMG](https://github.com/HuYee2025/chiphand-macos/releases/download/macos-v1.0.1/ChipHand-macOS-1.0.1-universal.dmg)
+- [完整图文使用说明](docs/user-guide/index.html)
+
+当前版本为 `1.0.1 build 22`，支持 Apple Silicon 与 Intel Mac，要求 macOS 14 Sonoma 或更高版本。DMG 已内置 App、MediaPipe WASM、手势模型、离线说明和许可证；普通用户不需要安装 Xcode、Node.js、Python 或浏览器插件。
+
+## 安装
+
+1. 下载并打开 `ChipHand-macOS-1.0.1-universal.dmg`。
+2. 把“薯片手.app”拖进“Applications / 应用程序”。
+3. 首次启动时，如果 macOS 阻止打开，请右键 App 选择“打开”；也可以进入“系统设置 → 隐私与安全性”，点击“仍要打开”。
+4. 按 App 提示允许“摄像头”和“辅助功能”。
+5. 回到薯片手，点击“开启手势控制”。
+
+免费开源版使用固定身份的 ad-hoc 签名，没有购买 Apple Developer 的 Developer ID，也没有经过 Apple notarization。因此首次安装需要手动放行一次；这是免费分发方式的限制，不代表 App 需要联网。
+
+## 四种核心操作
+
+| 操作 | 手势 | 结果 |
+| --- | --- | --- |
+| 翻页 | 张开手掌左右挥动 | 右挥向下翻，左挥向上翻 |
+| 连续滚动 | 做严格 OK，捏住后上下移动 | 上下滚动；松开或丢手立即停止 |
+| 浏览器导航 | 严格 OK 从一侧跨过屏幕中线 | 左到右返回，右到左前进 |
+| 鼠标与点击 | 握拳竖食指；停稳后拇指中指轻捏 | 移动真实鼠标并单击 |
+
+“严格 OK”指拇指和食指接触，同时中指、无名指、小指保持张开。这样可以避免握拳或普通晃动误触滚动。
+
+浏览器返回/前进和食指鼠标目前只允许 Chrome、Safari、Microsoft Edge 与夸克浏览器；翻页和滚动可作用于当前前台应用。食指指针只映射主屏幕。
+
+## 反馈与控制
+
+- 全屏黄色控制点显示当前真正参与操作的位置。
+- 严格 OK 横向跨过中线时，会闪现白色核心、蓝色外发光竖线，表示动作已经触发，可以松手。
+- 全屏骨架可关闭；关闭后黄色控制点和跨线反馈仍保留。
+- 底部状态条可收进屏幕右边缘，迷你条可上下移动。
+- 双击展开状态条可暂停或恢复识别。
+- 控制窗口可选择右手或左手；另一只手会被忽略。
+- 摄像头校准窗口默认关闭，只在排查识别问题时打开。
+
+## 隐私与权限
+
+薯片手只申请两项系统权限：
+
+- 摄像头：获取实时画面，供本机 MediaPipe Gesture Recognizer 识别手势。
+- 辅助功能：向当前前台应用发送滚动、浏览器导航、鼠标移动和左键事件。
+
+薯片手不申请屏幕录制、输入监控或网络访问权限。运行时会在进程内临时监听随机 `127.0.0.1` 端口，只用于把 App 自带的模型和 WASM 资源交给本机 WKWebView；外部设备无法访问。
+
+## 常见问题
+
+### 系统显示权限已开，但 App 仍提示未授权
+
+先完全退出薯片手，在“系统设置 → 隐私与安全性 → 辅助功能”中删除旧条目，再重新打开 `/Applications/薯片手.app` 并授权。不要直接运行下载目录或构建目录中的临时 App。
+
+### 摄像头正常，但手势没有控制页面
+
+先在主窗口点击“测试系统下翻”。如果测试也没有效果，问题在辅助功能权限；如果测试有效，再打开摄像头校准窗口，确认选择的控制手、骨架和手势状态是否正确。
+
+### 食指有黄色点，但鼠标不移动
+
+食指鼠标只支持主屏幕和四个白名单浏览器。还要确认辅助功能已经允许，并且当前识别引擎不是 Apple Vision 备用模式。
+
+更多排障步骤见[完整图文说明](docs/user-guide/index.html)。
+
+## 从源码构建
+
+### 环境
+
+- macOS 14+
+- Xcode 26 或兼容的 Swift 6 工具链
+- Node.js 24+ 与 npm（只用于准备内置 MediaPipe Web 资源和历史 Web/Extension 工程）
+
+### 运行测试与构建 App
+
+```bash
+npm ci
+npm run typecheck
+npm test
+
+cd macos-app
+swift test
+swift run GestureControlCoreChecks
+./scripts/build-app.sh
+open build/ChipHand.app
+```
+
+安装到 `/Applications`：
 
 ```bash
 cd macos-app
 ./scripts/install-app.sh
 ```
 
-安装后从“应用程序”或 Dock 打开“薯片手”，允许摄像头和辅助功能。先用“测试系统下翻”验证系统输出，再测试张掌翻页、严格 OK 滚动/导航和食指控制点。
-
-免费开源版采用 ad-hoc 签名，没有购买 Apple Developer 年费证书。其他用户首次打开下载版时需要右键选择“打开”，或在“系统设置 → 隐私与安全性”中点一次“仍要打开”。
-
-## Chrome 插件
-
-- 向左挥：页面向上滚动约 75% 屏幕。
-- 向右挥：页面向下滚动约 75% 屏幕。
-- 只有张开手掌的快速挥动会触发；一次挥动只执行一次。
-
-### 构建和安装
+生成 Universal DMG、ZIP 和 SHA-256：
 
 ```bash
-npm install
-npm run build:extension
+cd macos-app
+./scripts/package-release.sh
 ```
 
-1. 打开 `chrome://extensions/`。
-2. 开启“开发者模式”。
-3. 点击“加载已解压的扩展程序”。
-4. 选择本项目的 `dist-extension/` 文件夹。
-5. 打开普通网页，点击插件图标；它会弹出独立的手势控制窗口。
-6. 在控制窗口点击“启动摄像头”。
+产物位于 `macos-app/releases/`。构建脚本会把 `arm64` 与 `x86_64` 合并为 Universal App，并检查 Info.plist、资源完整性和固定 designated requirement。
 
-授权完成后，控制窗口保留实时摄像头预览，识别转入 Chrome 后台页面：你可以直接点击和浏览网页，识别不会中断。控制窗口会贴近网页右侧入口；鼠标停留在窗口内时始终保持打开，只有移出窗口后才会自动关闭。关闭后会重新确认网页控制链路。Chrome 只会在首次授权时弹窗；此前已经允许时会直接启动。拇指与食指近乎贴合约 0.1 秒后，上下移动手即可连续滚动网页：手向上拖会看到下方内容，手向下拖会看到上方内容，稍微分开手指就立即停止。张开手掌向左挥会向上滚一屏，向右挥会向下滚一屏。网页默认不显示捏合点或手部网格，左右挥动时才在中央短暂显示空心上下箭头。右侧保留一个 28px 黑色圆点，点击可重新打开摄像头预览。控制窗口按钮下方始终显示“高级设置”：可调整左右挥手、手指捏合灵敏度，也可按需开启网页手部网格或捏合圆点；设置只保存在本机。
+## 项目结构
 
-### 打包与 Edge
-
-```bash
-npm run package:extension
+```text
+macos-app/
+  Sources/GestureControlCore/      手势几何与状态机
+  Sources/GestureControlApp/       SwiftUI App、权限、识别与系统事件
+  Tests/                           Swift 核心测试
+  scripts/                         App、安装包与 Release 构建脚本
+docs/user-guide/                   可离线打开的普通用户图文说明
+src/native-recognizer.ts           WKWebView 内的 MediaPipe 识别运行时
+extension/                         已冻结的 Chrome 插件实验
+src/                               已冻结的 Web Demo 与插件共用模块
 ```
 
-命令会生成 `releases/gesture-browser-control-v1.0.1.zip`，用于提交 Chrome Web Store 或 Microsoft Edge Add-ons。日常本机安装仍应选择解压后的 `dist-extension/` 文件夹，而不是 ZIP。
+详细实现见[架构说明](docs/architecture.md)，版本变化见[CHANGELOG](CHANGELOG.md)。
 
-Microsoft Edge（Chromium 版）可直接兼容这一份 MV3 扩展：在 `edge://extensions/` 开启“开发人员模式”，选择“加载解压缩的扩展”，再选 `dist-extension/`。发布到商店时，Chrome Web Store 与 Microsoft Edge Add-ons 分别提交同一份 ZIP 和各自的商店资料。
+## 开发状态与边界
 
-插件只申请 `activeTab`、`scripting` 和 `offscreen`。控制窗口只负责首次请求摄像头权限；后台页面负责持续识别，网页内提示条负责反馈。切换到新标签页后，需要在新页面再次点击插件图标授权。Chrome 内置页面、Chrome 应用商店等受保护页面无法控制。
+macOS App 是当前主线。仓库同时保留早期 Three.js 黑洞手势 Demo 和 Chrome MV3 插件，它们是识别性能与交互方向的历史验证场，不是当前发布产品。
 
-上下滚动为通用动作；本版本不再发送 JavaScript 合成方向键。
+当前不做：App Store、自动更新、登录启动、多屏食指映射、自定义手势模型，以及除浏览器前进后退外的合成键盘操作。
 
-## 验收页面
+## 参与贡献
 
-```bash
-npm run dev
-```
+欢迎提交 Bug、兼容性结果和明确的小功能改进。开始前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。涉及权限、隐私或系统事件安全的问题，请按 [SECURITY.md](SECURITY.md) 的方式报告。
 
-打开 `http://127.0.0.1:5173/gesture-test.html`，可以验证捏合下翻、左右挥动上下翻、单次触发和输入框保护。
+## 开源许可
 
-## 黑洞手势 Demo
-
-根地址仍保留原有 Three.js 黑洞实验，用于验证手部追踪、位置转向、手掌旋转、距离调速、张手继续和握拳暂停。
-
-```bash
-npm run dev
-```
-
-打开终端显示的根地址。摄像头只能在 HTTPS 或 localhost 环境使用。
-
-## 质量门
-
-```bash
-npm run typecheck
-npm test
-npm run build
-```
-
-`npm run build` 同时生成 `dist/` Web Demo 和 `dist-extension/` Chrome 插件。
+项目源码和原创视觉资产使用 [MIT License](LICENSE)。MediaPipe Tasks Vision 使用 Apache License 2.0，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 与 [THIRD_PARTY_LICENSES/Apache-2.0.txt](THIRD_PARTY_LICENSES/Apache-2.0.txt)。
