@@ -5,7 +5,7 @@
 ## 当前阶段
 
 - 第 05 阶段：薯片手开源发布（已完成）。
-- 当前版本：macOS `1.1.2 build 25`（校准窗口可直接关闭，本地待实机验收）；公开稳定版仍为 `macos-v1.0.1`，重要稳定版 `macos-v0.3.0`。
+- 当前版本：macOS `1.1.2 build 25`（校准窗口可直接关闭，已发布）；公开稳定版为 `macos-v1.1.2`，重要稳定版 `macos-v0.3.0`。
 - 当前分支：`main`。
 - 公开仓库：<https://github.com/HuYee2025/chiphand-macos>
 - 公开 Release：<https://github.com/HuYee2025/chiphand-macos/releases/tag/macos-v1.0.1>
@@ -25,6 +25,8 @@
 - `1.1.0 build 23` 已改为 `numHands: 2`：同时检测两只手，但只让控制手进入引擎；右手优先与 `120ms` 标签稳定窗口已写入原生识别器。
 - `1.1.1 build 24` 已移除重复的常驻普通窗口，只保留菜单栏小手弹出的控制面板；底部版本号改为动态读取 App Bundle。
 - `1.1.2 build 25` 已给 MediaPipe 和 Apple Vision 校准窗口增加标题栏关闭按钮；关闭时自动同步取消校准窗口设置，不影响手势识别。
+- `macos-v1.1.2` 已创建并上传 Universal DMG、ZIP、SHA256；`chiphand.huyee.art` 页面和 `/downloads/` 已同步到 1.1.2。
+- 已配置本机 `chiphand-server` SSH 别名与 `~/.ssh/chiphand_deploy_ed25519` 公钥登录，后续部署不再依赖微信扫码。
 - 已将在线安装与手势说明部署到 `https://chiphand.huyee.art/`；服务器版可直接下载 DMG、ZIP 和 SHA-256。
 - 在线说明页的“遇到问题 / 先检查这五件事”已改为与“三步开始”一致的深蓝样式；五条内容默认完整展示，标题和正文直接复用安装步骤的字号、颜色与间距。
 - 隐私说明后新增“联系与反馈”区：微信公众号“余生有所长”、X `@huart02261797`、邮箱 `huart022@gmail.com`；顶部导航新增“联系”入口。
@@ -60,10 +62,10 @@
 
 ## 下一步建议
 
-1. 先安装并实测 `macos-app/build/ChipHand.app` 的 `1.1.2 build 25`，重点验证校准窗口可用标题栏关闭，且关闭后手势控制仍正常。
+1. 继续收集 `1.1.2 build 25` 的实机反馈，重点验证校准窗口关闭后手势控制仍正常。
 2. 细节优化必须保留食指跟踪流畅度、严格 OK 防误触、单手选择、反馈窗口和权限稳定性。
 3. 修改后按风险运行 Swift/Web/Universal 构建与安装验证，并同步更新版本记录。
-4. 通过实机验收后再生成 `macos-v1.1.2` Release；不要移动或覆盖 `macos-v1.0.1` 标签。
+4. 后续改动继续按 SemVer 递增；不要移动或覆盖 `macos-v1.1.2` 与 `macos-v1.0.1` 标签。
 
 ## 最新归档
 

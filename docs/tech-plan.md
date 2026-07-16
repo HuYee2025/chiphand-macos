@@ -119,6 +119,7 @@ open build/ChipHand.app
 - 公开说明站为 `https://chiphand.huyee.art/`，Nginx 独立目录为 `/var/www/chiphand.huyee.art/`；HTTP 自动跳转 HTTPS。
 - 网站源文件来自 `docs/user-guide/`。服务器版同时在 `/downloads/` 提供 DMG、ZIP 和 `SHA256SUMS.txt`，不影响 App 内置的离线说明。
 - 更新网站时先上传到独立 staging 目录，验证 HTML、图片和安装包 SHA-256 后再原子替换正式目录；保留 `.well-known/acme-challenge/` 和时间戳备份，不触碰其他 `huyee.art` 站点。
+- 本机服务器部署使用 SSH 别名 `chiphand-server`（`43.163.201.57`）和 `~/.ssh/chiphand_deploy_ed25519`，不把密码或私钥写入仓库。
 - SSH 凭证只使用本机既有安全配置，不写入仓库。
 
 ### Web / Extension（冻结）

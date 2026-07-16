@@ -14,6 +14,6 @@
     "Universal App build and codesign verification passed."
   ],
   "notes": [
-    "This build is a local candidate pending real-device confirmation of the close button and preview toggle state."
+    "Published as macos-v1.1.2 after local build, package checksum, GitHub Release, and chiphand.huyee.art download verification."
   ]
 }
