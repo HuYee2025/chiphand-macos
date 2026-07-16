@@ -18,6 +18,7 @@
 
 - [下载最新版本](https://github.com/HuYee2025/chiphand-macos/releases/latest)
 - [下载 macOS 1.0.1 Universal DMG](https://github.com/HuYee2025/chiphand-macos/releases/download/macos-v1.0.1/ChipHand-macOS-1.0.1-universal.dmg)
+- [在线安装与手势说明](https://chiphand.huyee.art/)
 - [完整图文使用说明](docs/user-guide/index.html)
 
 当前版本为 `1.0.1 build 22`，支持 Apple Silicon 与 Intel Mac，要求 macOS 14 Sonoma 或更高版本。DMG 已内置 App、MediaPipe WASM、手势模型、离线说明和许可证；普通用户不需要安装 Xcode、Node.js、Python 或浏览器插件。

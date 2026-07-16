@@ -25,6 +25,27 @@
 
 ## 当前决策
 
+## 2026-07-16 部署 ChipHand 公开说明网站
+
+背景：
+- 用户已经准备好 `chiphand.huyee.art`，希望把本地图文说明部署到腾讯云，并让普通用户能够直接下载安装包。
+
+决策：
+- 使用独立 Nginx 站点和 `/var/www/chiphand.huyee.art/`，HTTP 强制跳转 HTTPS。
+- 网页源自 `docs/user-guide/`；服务器版额外提供 `/downloads/`，存放当前 DMG、ZIP 和 SHA-256。
+- 每次部署先进入 staging，校验文件和安装包后原子替换；保留 ACME 目录和时间戳备份，不影响同服务器其他网站。
+
+原因：
+- 独立域名比只依赖 GitHub README 更适合普通用户阅读图文说明，也能提供稳定的备用下载入口。
+
+影响：
+- 公开入口为 `https://chiphand.huyee.art/`；站点更新需要同时核对页面版本和下载包版本。
+
+相关文件：
+- `README.md`
+- `docs/user-guide/`
+- `docs/tech-plan.md`
+
 ## 2026-07-16 建立 ChipHand 独立公开仓库并发布 1.0.1
 
 背景：

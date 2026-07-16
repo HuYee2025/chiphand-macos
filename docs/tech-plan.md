@@ -115,7 +115,11 @@ open build/ChipHand.app
 - `macos-app/scripts/build-app.sh` 生成 `macos-app/build/ChipHand.app`，包含 `arm64 + x86_64`、`.icns`、MediaPipe/WASM/模型、离线用户说明和许可文件。
 - `macos-app/scripts/package-release.sh` 生成 Universal DMG、ZIP 与 SHA-256 校验，产物位于 `macos-app/releases/`。
 - 用户明确不购买每年 99 美元的 Apple Developer 会员，因此免费开源版使用固定 `com.huyee.chiphand` designated requirement 的 ad-hoc 签名。下载用户首次需右键“打开”或在“隐私与安全性”点一次“仍要打开”。
-- 当前只生成本地测试包；用户验收后再建立独立公开仓库，不自动上传 GitHub。
+- 公开仓库与 Release 已发布到 `HuYee2025/chiphand-macos`，既有 `macos-v1.0.1` 标签不得移动或覆盖。
+- 公开说明站为 `https://chiphand.huyee.art/`，Nginx 独立目录为 `/var/www/chiphand.huyee.art/`；HTTP 自动跳转 HTTPS。
+- 网站源文件来自 `docs/user-guide/`。服务器版同时在 `/downloads/` 提供 DMG、ZIP 和 `SHA256SUMS.txt`，不影响 App 内置的离线说明。
+- 更新网站时先上传到独立 staging 目录，验证 HTML、图片和安装包 SHA-256 后再原子替换正式目录；保留 `.well-known/acme-challenge/` 和时间戳备份，不触碰其他 `huyee.art` 站点。
+- SSH 凭证只使用本机既有安全配置，不写入仓库。
 
 ### Web / Extension（冻结）
 
