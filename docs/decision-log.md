@@ -25,6 +25,27 @@
 
 ## 当前决策
 
+## 2026-07-16 v1.1.1 只保留菜单栏控制面板
+
+背景：
+- `ChipHandApp` 同时创建普通 `Window` 和 `MenuBarExtra`，两者复用同一个 `MenuBarView`，启动后会出现两个完全相同的控制界面。
+
+决策：
+- 移除常驻普通窗口，只保留菜单栏小手弹出的控制面板作为唯一控制入口。
+- 底部版本号从 App Bundle 动态读取，避免界面继续显示旧版本。
+
+原因：
+- 这是菜单栏工具，不需要两个重复的主界面；单一入口更清楚，也减少用户误以为要同时操作两个窗口的困惑。
+
+影响：
+- 启动应用后不再额外出现普通控制窗口；所有设置仍可从菜单栏面板完成。
+- 升级为 `1.1.1 build 24`，`macos-v1.0.1` 公开稳定版保持不动。
+
+相关文件：
+- `macos-app/Sources/GestureControlApp/GestureControlApp.swift`
+- `macos-app/Sources/GestureControlApp/MenuBarView.swift`
+- `macos-app/versions/v1.1.1/version.json`
+
 ## 2026-07-16 v1.1.0 双手检测但单手控制
 
 背景：

@@ -176,7 +176,7 @@ struct MenuBarView: View {
             Button("刷新权限") { model.refreshPermissions() }
             Button("使用说明") { model.openUserGuide() }
             Spacer()
-            Text("v1.0.1")
+            Text("v\(appVersion)")
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
             Button("退出") { NSApplication.shared.terminate(nil) }
@@ -188,6 +188,10 @@ struct MenuBarView: View {
         if model.isPaused { return .red }
         if model.isRunning { return .green }
         return .secondary.opacity(0.45)
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     }
 
     private var primaryButtonTitle: String {

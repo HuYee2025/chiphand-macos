@@ -1,0 +1,18 @@
+{
+  "version": "1.1.1",
+  "build": 24,
+  "tag": "macos-v1.1.1",
+  "date": "2026-07-16",
+  "title": "移除重复控制窗口",
+  "changes": [
+    "Remove the duplicate persistent window and keep the menu bar control panel as the single control surface.",
+    "Read the displayed version from CFBundleShortVersionString instead of hard-coding an old version."
+  ],
+  "verification": [
+    "Swift tests and Universal App build must pass.",
+    "The built app should show only one control panel when launched and when the menu bar hand icon is clicked."
+  ],
+  "notes": [
+    "This build remains a local candidate until real-device menu bar and permission flow validation is complete."
+  ]
+}

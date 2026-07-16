@@ -4,7 +4,7 @@
 
 ### 当前主线：薯片手 ChipHand macOS App
 
-- Swift 6.3 / SwiftUI `Window` + `MenuBarExtra`，部署目标 macOS 14+。
+- Swift 6.3 / SwiftUI `MenuBarExtra`，部署目标 macOS 14+。
 - WKWebView + `@mediapipe/tasks-vision` 0.10.35：主引擎使用 Gesture Recognizer，单手 21 点、左右手与内置姿态分类，GPU 优先。
 - Network.framework：进程内只监听 `127.0.0.1`，向 WKWebView 提供打包在 App 内的 HTML、WASM 与模型。
 - AVFoundation + Vision：MediaPipe 启动失败时的本机备用识别路径。
@@ -27,7 +27,7 @@
 - `MediaPipeHandPoseService`：WKWebView 主识别运行时；接收完整 21 点、左右手、内置手势、置信度、推理耗时和 FPS，并可显示同源校准窗口。识别器使用 `numHands: 2`，优先选择用户设定的控制手；左右手标签切换需稳定 `120ms`，过渡期间不产生系统输出，校准层只绘制选中的控制手。
 - `LocalMediaServer`：仅在 loopback 随机端口提供离线运行资源，避免 `file://` 对 ES Module、WASM 与摄像头安全上下文的限制。
 - `CameraCaptureService` + `HandPoseService`：Apple Vision 备用路径；最多请求一只手，按结构与置信度连续跟踪。
-- `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；持久保存右手/左手单选，只有所选手能进入 `GestureEngine`，App 切换或控制手切换立即取消活动手势。
+- `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；持久保存右手/左手单选，只有所选手能进入 `GestureEngine`，App 切换或控制手切换立即取消活动手势。SwiftUI 只保留 `MenuBarExtra` 控制面板，不创建重复的常驻 `Window`。
 - `SystemScrollEmitter`：捏合增量直接转为像素滚动；离散翻页拆成 12 个小事件，并从 HID event tap 注入到目标窗口中心。
 - `SystemNavigationEmitter`：严格 OK 跨中线后按方向发送 `Command + [` 或 `Command + ]`；AppModel 只允许 Chrome、Safari、Edge 和夸克调用。
 - `SystemPointerEmitter`：把镜像 `indexTip` 直接映射到主屏幕并发送 HID `mouseMoved`；定位后的拇指中指捏合直接复用严格 OK 的距离、释放阈值和稳定时间，在冻结点使用独立 `.privateState` 事件源发送一次无修饰键左键按下/松开。只在四个浏览器和辅助功能有效时启用。
