@@ -330,18 +330,6 @@ h1 {
   gap: 14px;
 }
 
-.download-text-link {
-  color: rgba(255, 255, 255, 0.84);
-  font-size: 13px;
-  font-weight: 750;
-  white-space: nowrap;
-}
-
-.download-text-link:hover,
-.download-text-link:focus-visible {
-  color: var(--yellow);
-}
-
 .steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -405,8 +393,9 @@ h1 {
   width: 100%;
   aspect-ratio: 1.35;
   border-bottom: 1px solid var(--line);
-  object-fit: cover;
-  object-position: center 24%;
+  background: white;
+  object-fit: contain;
+  object-position: center;
 }
 
 .gesture-copy {
