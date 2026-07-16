@@ -1,0 +1,21 @@
+{
+  "version": "1.1.0",
+  "build": 23,
+  "tag": "macos-v1.1.0",
+  "date": "2026-07-16",
+  "title": "双手检测与单手控制",
+  "changes": [
+    "MediaPipe Gesture Recognizer detects up to two hands while only the selected control hand can produce actions.",
+    "Prefer the selected control hand when both hands are visible so a left hand entering first cannot hide the right hand.",
+    "Require 120 ms of stable handedness before switching labels and suppress all system output during the transition.",
+    "Draw only the selected control hand in the skeleton and calibration surfaces."
+  ],
+  "verification": [
+    "35 Web tests and TypeScript typecheck passed.",
+    "Native recognizer bundle built with numHands: 2.",
+    "33 Swift unit tests and 22 native core checks passed."
+  ],
+  "notes": [
+    "This build requires real-camera validation of FPS, right-hand reacquisition, and overlapping-hand behavior before publishing a new GitHub Release."
+  ]
+}

@@ -24,7 +24,7 @@
 ### macOS 原型
 
 - `GestureControlCore`：平台无关的关键点归一化、严格 OK 捏合迟滞与方向锁、跨中线导航、张掌翻页，以及严格食指指针/停稳/拇指中指接触点击组合状态机；V 手势仅保留状态。
-- `MediaPipeHandPoseService`：WKWebView 主识别运行时；接收完整 21 点、左右手、内置手势、置信度、推理耗时和 FPS，并可显示同源校准窗口。识别器固定 `numHands: 1`，校准层不绘制未选择手。
+- `MediaPipeHandPoseService`：WKWebView 主识别运行时；接收完整 21 点、左右手、内置手势、置信度、推理耗时和 FPS，并可显示同源校准窗口。识别器使用 `numHands: 2`，优先选择用户设定的控制手；左右手标签切换需稳定 `120ms`，过渡期间不产生系统输出，校准层只绘制选中的控制手。
 - `LocalMediaServer`：仅在 loopback 随机端口提供离线运行资源，避免 `file://` 对 ES Module、WASM 与摄像头安全上下文的限制。
 - `CameraCaptureService` + `HandPoseService`：Apple Vision 备用路径；最多请求一只手，按结构与置信度连续跟踪。
 - `AppModel`：权限、摄像头、手势状态和前台 App 目标的唯一协调者；持久保存右手/左手单选，只有所选手能进入 `GestureEngine`，App 切换或控制手切换立即取消活动手势。

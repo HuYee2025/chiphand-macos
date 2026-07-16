@@ -4,6 +4,12 @@ import {
   type GestureRecognizerResult,
   type NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
+import {
+  INITIAL_HAND_STABILITY,
+  selectNativeHandIndex,
+  updateHandStability,
+  type HandStabilityState,
+} from "./native-hand-selection";
 
 type Handedness = "Left" | "Right";
 type NativeMessage =
@@ -63,6 +69,7 @@ let lastVideoTime = -1;
 let lastInferenceAt = 0;
 let selectedHand: Handedness | null = null;
 let controlHand: Handedness = "Right";
+let handStability: HandStabilityState = INITIAL_HAND_STABILITY;
 let pointerModeEnabled = false;
 let previousLandmarks: NormalizedLandmark[] | null = null;
 let targetFPS = 30;
@@ -81,15 +88,14 @@ function normalizeHandedness(name: string | undefined): Handedness | null {
 
 function selectHandIndex(result: GestureRecognizerResult): number {
   if (result.landmarks.length === 0) return -1;
-  const preferred = result.handedness.findIndex(
-    (categories) => normalizeHandedness(categories[0]?.categoryName) === selectedHand,
+  return selectNativeHandIndex(
+    result.landmarks.map((_, index) => ({
+      handedness: normalizeHandedness(result.handedness[index]?.[0]?.categoryName),
+      score: result.handedness[index]?.[0]?.score ?? 0,
+    })),
+    controlHand,
+    selectedHand,
   );
-  if (preferred >= 0) return preferred;
-  return result.handedness.reduce((best, categories, index) => {
-    const score = categories[0]?.score ?? 0;
-    const bestScore = result.handedness[best]?.[0]?.score ?? -1;
-    return score > bestScore ? index : best;
-  }, 0);
 }
 
 function smoothLandmarks(next: readonly NormalizedLandmark[]): NormalizedLandmark[] {
@@ -278,7 +284,7 @@ async function createRecognizer(): Promise<"GPU" | "CPU"> {
   const vision = await FilesetResolver.forVisionTasks(wasmRoot, false);
   const shared = {
     runningMode: "VIDEO" as const,
-    numHands: 1,
+    numHands: 2,
     minHandDetectionConfidence: 0.45,
     minHandPresenceConfidence: 0.45,
     minTrackingConfidence: 0.45,
@@ -341,30 +347,42 @@ function loop(): void {
     const index = selectHandIndex(result);
     if (index < 0) {
       selectedHand = null;
+      handStability = INITIAL_HAND_STABILITY;
       previousLandmarks = null;
       clearSkeleton();
       post({ type: "lost" });
       return;
     }
     const category = result.handedness[index]?.[0];
-    selectedHand = normalizeHandedness(category?.categoryName);
+    const observedHand = normalizeHandedness(category?.categoryName);
+    const stability = updateHandStability(handStability, observedHand, now);
+    handStability = stability.state;
+    const isStable = stability.isStable && stability.active === observedHand;
     const gesture = result.gestures[index]?.[0];
-    const landmarks = smoothLandmarks(result.landmarks[index] ?? []);
-    previousLandmarks = landmarks;
-    if (selectedHand === controlHand) {
-      drawSkeleton(landmarks, selectedHand, gesture?.categoryName ?? "None", gesture?.score ?? 0);
-    } else {
+    const rawLandmarks = result.landmarks[index] ?? [];
+    if (!isStable) {
+      selectedHand = stability.active;
+      previousLandmarks = null;
       clearSkeleton();
+    } else {
+      selectedHand = stability.active;
+      const landmarks = smoothLandmarks(rawLandmarks);
+      previousLandmarks = landmarks;
+      if (selectedHand === controlHand) {
+        drawSkeleton(landmarks, selectedHand, gesture?.categoryName ?? "None", gesture?.score ?? 0);
+      } else {
+        clearSkeleton();
+      }
     }
     post({
       type: "pose",
-      handedness: selectedHand,
+      handedness: isStable ? observedHand : null,
       confidence: category?.score ?? 0,
       gesture: gesture?.categoryName ?? "None",
       gestureConfidence: gesture?.score ?? 0,
       inferenceDuration,
       recognitionFPS,
-      landmarks,
+      landmarks: isStable ? previousLandmarks ?? rawLandmarks : rawLandmarks,
     });
   } catch (error) {
     post({ type: "error", message: error instanceof Error ? error.message : String(error) });
@@ -402,6 +420,7 @@ window.stopRecognition = () => {
   recognizer?.close();
   recognizer = null;
   selectedHand = null;
+  handStability = INITIAL_HAND_STABILITY;
   previousLandmarks = null;
   targetFPS = 30;
   fastWindows = 0;
@@ -413,6 +432,9 @@ window.stopRecognition = () => {
 
 window.setControlHand = (hand: Handedness) => {
   controlHand = hand;
+  selectedHand = null;
+  handStability = INITIAL_HAND_STABILITY;
+  previousLandmarks = null;
   if (selectedHand !== controlHand) clearSkeleton();
 };
 
