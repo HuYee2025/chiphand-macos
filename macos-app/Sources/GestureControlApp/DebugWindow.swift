@@ -3,12 +3,14 @@ import GestureControlCore
 import SwiftUI
 
 @MainActor
-final class DebugWindowController {
+final class DebugWindowController: NSObject, NSWindowDelegate {
     private weak var model: AppModel?
     private var panel: NSPanel?
+    var onClose: (() -> Void)?
 
     init(model: AppModel) {
         self.model = model
+        super.init()
     }
 
     func show() {
@@ -23,6 +25,7 @@ final class DebugWindowController {
                 defer: false
             )
             panel.title = "手势识别测试"
+            panel.delegate = self
             panel.contentViewController = hosting
             panel.level = .floating
             panel.hidesOnDeactivate = false
@@ -32,6 +35,10 @@ final class DebugWindowController {
             self.panel = panel
         }
         panel?.orderFrontRegardless()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        onClose?()
     }
 
     func hide() {

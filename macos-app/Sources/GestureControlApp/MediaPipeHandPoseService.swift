@@ -4,7 +4,7 @@ import OSLog
 import WebKit
 
 @MainActor
-final class MediaPipeHandPoseService: NSObject {
+final class MediaPipeHandPoseService: NSObject, NSWindowDelegate {
     private let logger = Logger(
         subsystem: "com.huyee.chiphand",
         category: "mediapipe-web"
@@ -13,6 +13,7 @@ final class MediaPipeHandPoseService: NSObject {
     var onReady: ((String) -> Void)?
     var onPerformance: ((Int, Double) -> Void)?
     var onError: ((String) -> Void)?
+    var onPreviewClosed: (() -> Void)?
 
     private var webView: WKWebView?
     private var panel: NSPanel?
@@ -69,11 +70,12 @@ final class MediaPipeHandPoseService: NSObject {
         // hidden WKWebView is aggressively throttled and cannot sustain 30 FPS.
         let panel = NSPanel(
             contentRect: NSRect(x: -10_000, y: -10_000, width: 560, height: 420),
-            styleMask: [.titled, .utilityWindow, .nonactivatingPanel],
+            styleMask: [.titled, .closable, .utilityWindow, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
         panel.title = "MediaPipe 手势校准"
+        panel.delegate = self
         panel.contentView = webView
         panel.alphaValue = 0.01
         panel.backgroundColor = .black
@@ -114,6 +116,7 @@ final class MediaPipeHandPoseService: NSObject {
     func setPreviewVisible(_ visible: Bool) {
         previewVisible = visible
         guard let panel else { return }
+        panel.ignoresMouseEvents = !visible
         if visible {
             panel.alphaValue = 1
             panel.center()
@@ -123,6 +126,11 @@ final class MediaPipeHandPoseService: NSObject {
             panel.setFrameOrigin(NSPoint(x: -10_000, y: -10_000))
             panel.orderFrontRegardless()
         }
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        previewVisible = false
+        onPreviewClosed?()
     }
 
     func setControlHand(_ hand: Handedness) {

@@ -1,0 +1,19 @@
+{
+  "version": "1.1.2",
+  "build": 25,
+  "tag": "macos-v1.1.2",
+  "date": "2026-07-16",
+  "title": "校准窗口可直接关闭",
+  "changes": [
+    "Add a close button to the MediaPipe gesture calibration window.",
+    "Closing the calibration window automatically clears the calibration-window setting.",
+    "Apply the same close behavior to the Apple Vision fallback preview window."
+  ],
+  "verification": [
+    "33 Swift tests and 22 native core checks passed.",
+    "Universal App build and codesign verification passed."
+  ],
+  "notes": [
+    "This build is a local candidate pending real-device confirmation of the close button and preview toggle state."
+  ]
+}

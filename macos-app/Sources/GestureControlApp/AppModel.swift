@@ -89,7 +89,13 @@ final class AppModel: ObservableObject {
     private var permissionTimer: AnyCancellable?
     private var centerCrossingFlashTask: Task<Void, Never>?
     private var centerCrossingFlashSequence: UInt64 = 0
-    private lazy var debugWindowController = DebugWindowController(model: self)
+    private lazy var debugWindowController: DebugWindowController = {
+        let controller = DebugWindowController(model: self)
+        controller.onClose = { [weak self] in
+            self?.debugWindowEnabled = false
+        }
+        return controller
+    }()
     private lazy var screenOverlayController = ScreenGestureOverlayController(model: self)
     private var actionFeedback: (message: String, until: TimeInterval)?
     private var usingAppleVisionFallback = false
@@ -110,6 +116,9 @@ final class AppModel: ObservableObject {
         screenOverlayEnabled = defaults.object(forKey: "screenOverlayEnabled") as? Bool ?? true
         pointerInteractionState = nil
         applySettings()
+        mediaPipeService.onPreviewClosed = { [weak self] in
+            self?.debugWindowEnabled = false
+        }
         if let application = NSWorkspace.shared.frontmostApplication,
            application.bundleIdentifier != Bundle.main.bundleIdentifier {
             lastEligiblePID = application.processIdentifier

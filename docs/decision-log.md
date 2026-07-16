@@ -25,6 +25,28 @@
 
 ## 当前决策
 
+## 2026-07-16 v1.1.2 校准窗口支持直接关闭
+
+背景：
+- MediaPipe 校准窗口打开后只能通过菜单里的“显示摄像头校准窗口”开关关闭，用户无法直接点击窗口关闭。
+
+决策：
+- 给 MediaPipe 校准窗口增加标题栏关闭按钮，并在关闭时自动取消对应设置。
+- Apple Vision 备用校准窗口使用相同的关闭同步逻辑。
+- 关闭预览只隐藏窗口，不停止手势识别本身。
+
+原因：
+- 测试窗口是临时反馈工具，关闭它应该是窗口级操作，不应该要求用户绕回主菜单。
+
+影响：
+- 升级为 `1.1.2 build 25`，`macos-v1.0.1` 公开稳定版保持不动。
+
+相关文件：
+- `macos-app/Sources/GestureControlApp/MediaPipeHandPoseService.swift`
+- `macos-app/Sources/GestureControlApp/DebugWindow.swift`
+- `macos-app/Sources/GestureControlApp/AppModel.swift`
+- `macos-app/versions/v1.1.2/version.json`
+
 ## 2026-07-16 v1.1.1 只保留菜单栏控制面板
 
 背景：
