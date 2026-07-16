@@ -25,6 +25,31 @@
 
 ## 当前决策
 
+## 2026-07-16 建立 ChipHand 独立公开仓库并发布 1.0.1
+
+背景：
+- `1.0.1 build 22` 已通过 Swift、Web、Universal App、签名、DMG 挂载和 SHA-256 质量门，用户要求正式上传并提供普通用户可读的完整说明。
+
+决策：
+- 建立公开仓库 `HuYee2025/chiphand-macos`，以 `main` 作为当前公开代码线。
+- README 作为项目首页，补充架构说明、贡献指南、安全说明和 Bug/功能 Issue 模板。
+- 发布 `macos-v1.0.1` 正式 Release，上传 Universal DMG、ZIP 和 SHA-256 校验文件。
+- 旧 `black-hole-gesture-control` 仅保留为 `legacy-black-hole` 远程，不再作为薯片手主仓库。
+
+原因：
+- 用户已经完成本机候选版验收；继续停留在本地候选状态会让普通用户找不到安装入口，也无法复用完整的离线说明和版本校验。
+
+影响：
+- 薯片手现在有独立公开入口、可验证安装包和明确的开源协作边界。
+- `macos-v1.0.1` 成为不可移动的公开 Release 标签；后续修复必须递增版本。
+
+相关文件：
+- `README.md`
+- `docs/architecture.md`
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `.github/ISSUE_TEMPLATE/`
+
 ## 2026-07-16 v1.0.1 食指控制点永久开启
 
 背景：

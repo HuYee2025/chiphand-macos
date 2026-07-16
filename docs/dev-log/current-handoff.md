@@ -1,13 +1,14 @@
 # 当前交接
 
-更新时间：2026-07-16。当前长对话已结束，下一对话从本文件继续，不需要读取旧聊天。
+更新时间：2026-07-16。薯片手已完成公开发布；下一对话从本文件继续，不需要读取旧聊天。
 
 ## 当前阶段
 
-- 第 05 阶段：薯片手开源发布候选版。
+- 第 05 阶段：薯片手开源发布（已完成）。
 - 当前版本：macOS `1.0.1 build 22`；公开候选版回滚点 `macos-v1.0.0`，重要稳定版 `macos-v0.3.0`。
-- 当前分支：`codex/macos-system-prototype`。
-- 暂不上传 GitHub；用户完成本机验收后再建立独立仓库。
+- 当前分支：`main`。
+- 公开仓库：<https://github.com/HuYee2025/chiphand-macos>
+- 公开 Release：<https://github.com/HuYee2025/chiphand-macos/releases/tag/macos-v1.0.1>
 
 ## 已完成
 
@@ -19,6 +20,8 @@
 - 构建改为 `arm64 + x86_64` Universal；新增 `package-release.sh` 生成 DMG、ZIP 和 SHA-256。
 - 已安装 `/Applications/薯片手.app`。旧 `/Applications/GestureControl.app` 文件未删除，只停止进程以保留回滚。
 - 删除“显示控制点”设置项；食指黄色控制点、鼠标跟随和拇指中指点击永久开启，旧版关闭记录在启动时自动清除。
+- 已将完整源码、详细 README、架构说明、贡献指南、安全说明和 Issue 模板推送到公开仓库。
+- 已上传 Universal DMG、ZIP 和 SHA-256 校验文件，`macos-v1.0.1` Release 为正式版而非 Draft。
 
 ## 本轮验证
 
@@ -51,7 +54,7 @@
 1. 先接受用户下一条具体的实机反馈，检查当前安装版再修改，不重复搭建项目。
 2. 细节优化必须保留食指跟踪流畅度、严格 OK 防误触、单手选择、反馈窗口和权限稳定性。
 3. 修改后按风险运行 Swift/Web/Universal 构建与安装验证，并同步更新版本记录。
-4. 用户确认后再建立独立公开仓库，建议仓库名 `chiphand-macos`，上传源代码与正式 Release。
+4. 后续改动按 SemVer 更新版本并生成新的 Release；不要移动或覆盖 `macos-v1.0.1` 标签。
 
 ## 最新归档
 
