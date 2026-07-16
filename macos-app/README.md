@@ -8,7 +8,7 @@
 
 ## 普通用户安装
 
-1. 打开 `ChipHand-macOS-1.0.1-universal.dmg`。
+1. 打开 `ChipHand-macOS-1.1.2-universal.dmg`。
 2. 把“薯片手.app”拖到“Applications / 应用程序”。
 3. 首次若被 macOS 拦截，右键 App 选择“打开”；或到“系统设置 → 隐私与安全性”点“仍要打开”。
 4. 允许“摄像头”和“辅助功能”，回到 App 点“开启手势控制”。

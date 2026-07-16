@@ -17,15 +17,15 @@
 ## 下载
 
 - [下载最新版本](https://github.com/HuYee2025/chiphand-macos/releases/latest)
-- [下载 macOS 1.0.1 Universal DMG](https://github.com/HuYee2025/chiphand-macos/releases/download/macos-v1.0.1/ChipHand-macOS-1.0.1-universal.dmg)
+- [下载 macOS 1.1.2 Universal DMG](https://github.com/HuYee2025/chiphand-macos/releases/download/macos-v1.1.2/ChipHand-macOS-1.1.2-universal.dmg)
 - [在线安装与手势说明](https://chiphand.huyee.art/)
 - [完整图文使用说明](docs/user-guide/index.html)
 
-当前版本为 `1.0.1 build 22`，支持 Apple Silicon 与 Intel Mac，要求 macOS 14 Sonoma 或更高版本。DMG 已内置 App、MediaPipe WASM、手势模型、离线说明和许可证；普通用户不需要安装 Xcode、Node.js、Python 或浏览器插件。
+当前版本为 `1.1.2 build 25`，支持 Apple Silicon 与 Intel Mac，要求 macOS 14 Sonoma 或更高版本。DMG 已内置 App、MediaPipe WASM、手势模型、离线说明和许可证；普通用户不需要安装 Xcode、Node.js、Python 或浏览器插件。
 
 ## 安装
 
-1. 下载并打开 `ChipHand-macOS-1.0.1-universal.dmg`。
+1. 下载并打开 `ChipHand-macOS-1.1.2-universal.dmg`。
 2. 把“薯片手.app”拖进“Applications / 应用程序”。
 3. 首次启动时，如果 macOS 阻止打开，请右键 App 选择“打开”；也可以进入“系统设置 → 隐私与安全性”，点击“仍要打开”。
 4. 按 App 提示允许“摄像头”和“辅助功能”。
