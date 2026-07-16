@@ -538,11 +538,6 @@ h1 {
   background: var(--blue);
 }
 
-.trouble-section .faq-grid article:nth-child(5) {
-  grid-column: 1 / -1;
-  min-height: auto;
-}
-
 .privacy {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
@@ -648,10 +643,6 @@ footer p {
   .faq-grid,
   .gesture-rules {
     grid-template-columns: 1fr;
-  }
-
-  .trouble-section .faq-grid article:nth-child(5) {
-    grid-column: auto;
   }
 
   .feature-strip article {
